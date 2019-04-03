@@ -7,7 +7,7 @@ micro:bit Android application
     
     * [Android SDK](http://developer.android.com/sdk/index.html)
     
-    * [Gradle](https://gradle.org/gradle-download/) (Minimum version [2.14.1+](https://developer.android.com/studio/releases/gradle-plugin.html#updating-gradle))
+    * [Gradle](https://gradle.org/gradle-download/) (Minimum version [4.6+](https://developer.android.com/studio/releases/gradle-plugin.html#updating-gradle))
 
 * Go to root directory and run `gradle build`. After build is finished, apk file can be found under `~/app/build/outputs/apk/app-debug.apk`
 
