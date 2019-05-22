@@ -296,6 +296,14 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
                     // Regular image disabled
                     imageIcon.setVisibility(View.GONE);
                     break;
+                // Pairing screen
+                case 3:
+                    // Asset file
+                    gifImageView.setBackgroundResource(R.drawable.how_to_pair_microbit);
+                    gifImageView.setVisibility(View.VISIBLE);
+                    // Regular image disabled
+                    imageIcon.setVisibility(View.GONE);
+                    break;
             }
             // Set default plain icon
         } else {
