@@ -972,27 +972,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     },//override click listener for ok button
                     null);//pass null to use default listeneronClick
         } else {
-            //TODO Check if the micro:bit is reachable first
-
-            PopUp.show(getString(R.string.connect_tip_text),
-                        "Remember to enter bluetooth mode",
-                        R.drawable.message_face, R.drawable.red_btn,
-                        PopUp.GIFF_ANIMATION_PAIRING,
-                        PopUp.TYPE_CHOICE,
-                        new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                PopUp.hide();
-                                flashingChecks();
-                            }
-                        },//override click listener for ok button
-                        new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                PopUp.hide();
-                                return;
-                            }
-                        });
+            flashingChecks();
         }
     }
 
@@ -1401,14 +1381,31 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         ProjectActivity.class.getSimpleName(),
                         false, mProgramToSend.name, m_HexFileSizeStats,
                         m_BinSizeStats, m_MicroBitFirmware);
-                PopUp.show(error_message, //message
-                        getString(R.string.flashing_failed_title), //title
-                        R.drawable.error_face, R.drawable.red_btn,
-                        PopUp.GIFF_ANIMATION_ERROR,
-                        PopUp.TYPE_ALERT, //type of popup.
-                        popupOkHandler,//override click listener for ok button
-                        popupOkHandler);//pass null to use default listener
 
+                //Check for GATT ERROR - prompt user to enter bluetooth mode
+                if(errorCode == 0x0085) {
+                    PopUp.show(getString(R.string.connect_tip_text),
+                            "Remember to enter bluetooth mode",
+                            R.drawable.message_face, R.drawable.red_btn,
+                            PopUp.GIFF_ANIMATION_PAIRING,
+                            PopUp.TYPE_CHOICE,
+                            new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    PopUp.hide();
+                                    flashingChecks();
+                                }
+                            },
+                            popupOkHandler);
+                } else {
+                    PopUp.show(error_message, //message
+                            getString(R.string.flashing_failed_title), //title
+                            R.drawable.error_face, R.drawable.red_btn,
+                            PopUp.GIFF_ANIMATION_ERROR,
+                            PopUp.TYPE_ALERT, //type of popup.
+                            popupOkHandler,//override click listener for ok button
+                            popupOkHandler);//pass null to use default listener
+                }
                 removeReconnectionRunnable();
             } else if(intent.getAction().equals(DfuService.BROADCAST_LOG)) {
                 //Only used for Stats at the moment

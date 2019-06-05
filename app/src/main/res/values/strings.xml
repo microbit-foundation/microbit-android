@@ -165,10 +165,10 @@
     <string name="searching_microbit_found_message_one_line">Open your notification drawer and enter your Pin</string>
     <string name="desc_searching_microbit_found_message">Open your notification drawer and enter your Pin</string>
     <string name="step_connect_tip_text_step_two">Step 2</string>
-    <string name="connect_tip_text">Hold the A and B buttons, then PRESS RESET</string>
-    <string name="desc_connect_tip_text">Hold the A and B buttons, then PRESS RESET</string>
+    <string name="connect_tip_text">Hold the A and B buttons then press and release RESET. Keep holding A and B until the screen fills up</string>
+    <string name="desc_connect_tip_text">Hold the A and B buttons then press and release RESET. Keep holding A and B until the screen fills up</string>
     <string name="desc_connect_tip_text_step">Step one</string>
-    <string name="connect_tip_text_step_text">Hold the A and B buttons,\nthen PRESS RESET</string>
+    <string name="connect_tip_text_step_text">Hold the A and B buttons \nthen press and release RESET. \nKeep holding A and B \nuntil the screen fills up</string>
     <string name="desc_connect_tip_text_step_two">Step two</string>
     <string name="connect_tip_text_step_two_text">When asked, enter your PIP \n(personal identification pattern) </string>
     <string name="desc_connect_tip_text_step_two_text">When asked, enter your personal identification pattern </string>
