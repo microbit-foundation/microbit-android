@@ -972,57 +972,62 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     },//override click listener for ok button
                     null);//pass null to use default listeneronClick
         } else {
-            //TODO Check if the micro:bit is reachable first
-            if(mProgramToSend == null || mProgramToSend.filePath == null) {
-                PopUp.show(getString(R.string.internal_error_msg),
-                        "",
-                        R.drawable.error_face, R.drawable.red_btn,
-                        PopUp.GIFF_ANIMATION_ERROR,
-                        PopUp.TYPE_ALERT,
-                        null, null);
-                return;
-            }
-            if(mActivityState == FlashActivityState.FLASH_STATE_FIND_DEVICE
-                    || mActivityState == FlashActivityState.FLASH_STATE_VERIFY_DEVICE
-                    || mActivityState == FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT
-                    || mActivityState == FlashActivityState.FLASH_STATE_INIT_DEVICE
-                    || mActivityState == FlashActivityState.FLASH_STATE_PROGRESS
+            flashingChecks();
+        }
+    }
 
-                    ) {
-                // Another download session is in progress.xml
-                PopUp.show(getString(R.string.multple_flashing_session_msg),
-                        "",
-                        R.drawable.flash_face, R.drawable.blue_btn,
-                        PopUp.GIFF_ANIMATION_FLASH,
-                        PopUp.TYPE_ALERT,
-                        null, null);
-                return;
-            }
-            if(mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
-                    mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST) {
-                //Check final device from user and start flashing
-                PopUp.show(getString(R.string.flash_start_message, currentMicrobit.mName), //message
-                        getString(R.string.flashing_title), //title
-                        R.drawable.flash_face, R.drawable.blue_btn, //image icon res id
-                        PopUp.GIFF_ANIMATION_NONE,
-                        PopUp.TYPE_CHOICE, //type of popup.
-                        new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
-                                PopUp.hide();
-                                initiateFlashing();
-                            }
-                        },//override click listener for ok button
-                        new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                PopUp.hide();
-                            }
-                        });//pass null to use default listeneronClick
-            } else {
-                initiateFlashing();
-            }
+    private void flashingChecks() {
+        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
+
+        if(mProgramToSend == null || mProgramToSend.filePath == null) {
+            PopUp.show(getString(R.string.internal_error_msg),
+                    "",
+                    R.drawable.error_face, R.drawable.red_btn,
+                    PopUp.GIFF_ANIMATION_ERROR,
+                    PopUp.TYPE_ALERT,
+                    null, null);
+            return;
+        }
+        if(mActivityState == FlashActivityState.FLASH_STATE_FIND_DEVICE
+                || mActivityState == FlashActivityState.FLASH_STATE_VERIFY_DEVICE
+                || mActivityState == FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT
+                || mActivityState == FlashActivityState.FLASH_STATE_INIT_DEVICE
+                || mActivityState == FlashActivityState.FLASH_STATE_PROGRESS
+
+        ) {
+            // Another download session is in progress.xml
+            PopUp.show(getString(R.string.multple_flashing_session_msg),
+                    "",
+                    R.drawable.flash_face, R.drawable.blue_btn,
+                    PopUp.GIFF_ANIMATION_FLASH,
+                    PopUp.TYPE_ALERT,
+                    null, null);
+            return;
+        }
+        if(mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
+                mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST) {
+            //Check final device from user and start flashing
+            PopUp.show(getString(R.string.flash_start_message, currentMicrobit.mName), //message
+                    getString(R.string.flashing_title), //title
+                    R.drawable.flash_face, R.drawable.blue_btn, //image icon res id
+                    PopUp.GIFF_ANIMATION_NONE,
+                    PopUp.TYPE_CHOICE, //type of popup.
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+                            PopUp.hide();
+                            initiateFlashing();
+                        }
+                    },//override click listener for ok button
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            PopUp.hide();
+                        }
+                    });//pass null to use default listeneronClick
+        } else {
+            initiateFlashing();
         }
     }
 
@@ -1376,14 +1381,31 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         ProjectActivity.class.getSimpleName(),
                         false, mProgramToSend.name, m_HexFileSizeStats,
                         m_BinSizeStats, m_MicroBitFirmware);
-                PopUp.show(error_message, //message
-                        getString(R.string.flashing_failed_title), //title
-                        R.drawable.error_face, R.drawable.red_btn,
-                        PopUp.GIFF_ANIMATION_ERROR,
-                        PopUp.TYPE_ALERT, //type of popup.
-                        popupOkHandler,//override click listener for ok button
-                        popupOkHandler);//pass null to use default listener
 
+                //Check for GATT ERROR - prompt user to enter bluetooth mode
+                if(errorCode == 0x0085) {
+                    PopUp.show(getString(R.string.connect_tip_text),
+                            "Remember to enter bluetooth mode",
+                            R.drawable.message_face, R.drawable.red_btn,
+                            PopUp.GIFF_ANIMATION_PAIRING,
+                            PopUp.TYPE_CHOICE,
+                            new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    PopUp.hide();
+                                    flashingChecks();
+                                }
+                            },
+                            popupOkHandler);
+                } else {
+                    PopUp.show(error_message, //message
+                            getString(R.string.flashing_failed_title), //title
+                            R.drawable.error_face, R.drawable.red_btn,
+                            PopUp.GIFF_ANIMATION_ERROR,
+                            PopUp.TYPE_ALERT, //type of popup.
+                            popupOkHandler,//override click listener for ok button
+                            popupOkHandler);//pass null to use default listener
+                }
                 removeReconnectionRunnable();
             } else if(intent.getAction().equals(DfuService.BROADCAST_LOG)) {
                 //Only used for Stats at the moment

@@ -42,7 +42,7 @@ public class PopUp {
     public static final int GIFF_ANIMATION_NONE = 0;
     public static final int GIFF_ANIMATION_FLASH = 1;
     public static final int GIFF_ANIMATION_ERROR = 2;
-
+    public static final int GIFF_ANIMATION_PAIRING = 3;
 
     public static final String INTENT_EXTRA_OK_ACTION = "Popup.extra.ok.type";
     public static final int OK_ACTION_NONE = 0;

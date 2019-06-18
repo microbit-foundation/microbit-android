@@ -7,6 +7,7 @@ import android.util.Log;
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.data.constants.FileConstants;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -57,10 +58,14 @@ public class FileUtils {
                     dirChecker(ze.getName());
                 } else {
                     FileOutputStream fout = new FileOutputStream(outputDir + File.separator + ze.getName());
-                    for(int c = zin.read(); c != -1; c = zin.read()) {
-                        fout.write(c);
+                    BufferedOutputStream bufout = new BufferedOutputStream(fout);
+                    byte[] buffer = new byte[1024];
+                    int read = 0;
+                    while ((read = zin.read(buffer)) != -1) {
+                        bufout.write(buffer, 0, read);
                     }
                     zin.closeEntry();
+                    bufout.close();
                     fout.close();
                 }
             }
