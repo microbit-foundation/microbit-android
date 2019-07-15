@@ -1,2 +1,3 @@
 include ':app', ':android-gif-drawable-1.1.13'
 include ':dfuLibrary'
+include ':pfLibrary'
