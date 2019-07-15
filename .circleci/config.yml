@@ -13,6 +13,10 @@ jobs:
       - run:
          name: Chmod permissions #if permission for Gradlew Dependencies fail, use this.
          command: sudo chmod +x ./gradlew
+      - run:
+          name: Approve SDK Licenses
+          # Captures SIGPIPE 141 error but still allow repeating "y" to accept all licenses
+          command: yes | sdkmanager --licenses || if [ $? -ne '141' ]; then exit $?; fi;
       - save_cache:
           paths:
             - ~/.gradle
