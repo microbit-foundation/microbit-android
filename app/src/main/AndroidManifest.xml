@@ -150,6 +150,10 @@
             android:enabled="true"/>
 
         <service
+            android:name=".service.PartialFlashingService"
+            android:enabled="true"/>
+
+        <service
             android:name=".service.PluginService"
             android:enabled="true"
             android:exported="false"

@@ -46,6 +46,7 @@ import com.samsung.microbit.data.model.Project;
 import com.samsung.microbit.data.model.ui.FlashActivityState;
 import com.samsung.microbit.service.BLEService;
 import com.samsung.microbit.service.DfuService;
+import com.samsung.microbit.service.PartialFlashingService;
 import com.samsung.microbit.ui.BluetoothChecker;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.ui.adapter.ProjectAdapter;
@@ -69,6 +70,23 @@ import no.nordicsemi.android.error.GattError;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
 
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_CANCEL_PRESSED;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_CLOSE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_OK_PRESSED;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_LAYOUT;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_PROGRESS;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_CANCELABLE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_ICON;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_MESSAGE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_PROGRESS;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TITLE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TYPE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_GIFF_ANIMATION_CODE;
+
+import static com.samsung.microbit.ui.PopUp.TYPE_ALERT;
+import static com.samsung.microbit.ui.PopUp.TYPE_PROGRESS_NOT_CANCELABLE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_CANCEL_PRESSED;
+
 /**
  * Represents the Flash screen that contains a list of project samples
  * and allows to flash them to a micro:bit or remove them from the list.
@@ -90,6 +108,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private String m_MicroBitFirmware = "0.0";
 
     private DFUResultReceiver dfuResultReceiver;
+    private pfResultReceiver  pfResultReceiver;
 
     private List<Integer> mRequestPermissions = new ArrayList<>();
 
@@ -106,6 +125,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private boolean notAValidFlashHexFile;
 
     private boolean minimumPermissionsGranted;
+
+    private int FLASH_TYPE_DFU = 0;
+    private int FLASH_TYPE_PF  = 1;
 
     private final Runnable tryToConnectAgain = new Runnable() {
 
@@ -554,6 +576,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
 
         application.stopService(new Intent(application, DfuService.class));
+        application.stopService(new Intent(application, PartialFlashingService.class));
 
         super.onDestroy();
         releaseViews();
@@ -1044,13 +1067,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
         setActivityState(FlashActivityState.FLASH_STATE_FIND_DEVICE);
         registerCallbacksForFlashing();
-        startFlashing();
+        startFlashing(FLASH_TYPE_PF);
     }
 
     /**
      * Creates and starts service to flash a program to a micro:bit board.
      */
-    protected void startFlashing() {
+    protected void startFlashing(int flashingType) {
         logi(">>>>>>>>>>>>>>>>>>> startFlashing called  >>>>>>>>>>>>>>>>>>>  ");
         //Reset all stats value
         m_BinSizeStats = "0";
@@ -1060,20 +1083,30 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
         MBApp application = MBApp.getApp();
+        
+        if(flashingType == FLASH_TYPE_DFU) {
+            // Start DFU Service
+            final Intent service = new Intent(application, DfuService.class);
+            service.putExtra(DfuService.EXTRA_DEVICE_ADDRESS, currentMicrobit.mAddress);
+            service.putExtra(DfuService.EXTRA_DEVICE_NAME, currentMicrobit.mPattern);
+            service.putExtra(DfuService.EXTRA_DEVICE_PAIR_CODE, currentMicrobit.mPairingCode);
+            service.putExtra(DfuService.EXTRA_FILE_MIME_TYPE, DfuService.MIME_TYPE_OCTET_STREAM);
+            service.putExtra(DfuService.EXTRA_FILE_PATH, mProgramToSend.filePath); // a path or URI must be provided.
+            service.putExtra(DfuService.EXTRA_KEEP_BOND, false);
+            service.putExtra(DfuService.INTENT_REQUESTED_PHASE, 2);
+            if(notAValidFlashHexFile) {
+                service.putExtra(DfuService.EXTRA_WAIT_FOR_INIT_DEVICE_FIRMWARE, Constants.JUST_PAIRED_DELAY_ON_CONNECTION);
+            }
 
-        final Intent service = new Intent(application, DfuService.class);
-        service.putExtra(DfuService.EXTRA_DEVICE_ADDRESS, currentMicrobit.mAddress);
-        service.putExtra(DfuService.EXTRA_DEVICE_NAME, currentMicrobit.mPattern);
-        service.putExtra(DfuService.EXTRA_DEVICE_PAIR_CODE, currentMicrobit.mPairingCode);
-        service.putExtra(DfuService.EXTRA_FILE_MIME_TYPE, DfuService.MIME_TYPE_OCTET_STREAM);
-        service.putExtra(DfuService.EXTRA_FILE_PATH, mProgramToSend.filePath); // a path or URI must be provided.
-        service.putExtra(DfuService.EXTRA_KEEP_BOND, false);
-        service.putExtra(DfuService.INTENT_REQUESTED_PHASE, 2);
-        if(notAValidFlashHexFile) {
-            service.putExtra(DfuService.EXTRA_WAIT_FOR_INIT_DEVICE_FIRMWARE, Constants.JUST_PAIRED_DELAY_ON_CONNECTION);
+            application.startService(service);
+        } else if(flashingType == FLASH_TYPE_PF) {
+            // Attempt a partial flash
+            final Intent service = new Intent(application, PartialFlashingService.class);
+            service.putExtra("deviceAddress", currentMicrobit.mAddress);
+            service.putExtra("filepath", mProgramToSend.filePath); // a path or URI must be provided.
+            application.startService(service);
         }
 
-        application.startService(service);
     }
 
     /**
@@ -1088,6 +1121,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         dfuResultReceiver = new DFUResultReceiver();
 
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(dfuResultReceiver, filter);
+        
+        IntentFilter pfFilter = new IntentFilter();
+        filter.addAction(PartialFlashingService.BROADCAST_PROGRESS);
+        filter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
+        pfResultReceiver = new pfResultReceiver();
+
+        LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(pfResultReceiver, pfFilter);
     }
 
     /**
@@ -1110,6 +1150,66 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             toggleConnection();
         }
     };
+    
+    /**
+     * Represents a broadcast receiver that allows to handle states of
+     * partial flashing process.
+     */
+    class pfResultReceiver extends BroadcastReceiver {
+        public static final String BROADCAST_PROGRESS = "org.microbit.android.partialflashing.broadcast.BROADCAST_PROGRESS";
+        public static final String BROADCAST_START = "org.microbit.android.partialflashing.broadcast.BROADCAST_START";
+        public static final String EXTRA_PROGRESS = "org.microbit.android.partialflashing.extra.EXTRA_PROGRESS";
+        public static final String BROADCAST_COMPLETE = "org.microbit.android.partialflashing.broadcast.BROADCAST_COMPLETE";
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+        
+            MBApp application = MBApp.getApp();
+            LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(application);
+
+            String message = "Broadcast intent detected " + intent.getAction();
+            logi("DFUResultReceiver.onReceive :: " + message);
+            if(intent.getAction().equals(PartialFlashingService.BROADCAST_PROGRESS)) {
+                // Update UI
+                Intent progressUpdate = new Intent();
+                progressUpdate.setAction(INTENT_ACTION_UPDATE_PROGRESS);
+                int currentProgess = intent.getIntExtra(EXTRA_PROGRESS, 0);
+                progressUpdate.putExtra(INTENT_EXTRA_PROGRESS, currentProgess);
+                localBroadcastManager.sendBroadcast( progressUpdate );
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_COMPLETE)) {
+                // Success Message
+                Intent flashSuccess = new Intent();
+                flashSuccess.setAction(INTENT_ACTION_UPDATE_LAYOUT);
+                flashSuccess.putExtra(INTENT_EXTRA_TITLE, "Flash Complete");
+                flashSuccess.putExtra(INTENT_EXTRA_MESSAGE, "");
+                flashSuccess.putExtra(INTENT_GIFF_ANIMATION_CODE, 1);
+                flashSuccess.putExtra(INTENT_EXTRA_TYPE, TYPE_ALERT);
+                localBroadcastManager.sendBroadcast( flashSuccess );
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_START)) {
+                // Display progress
+                PopUp.show(getString(R.string.dfu_status_starting_msg),
+                           getString(R.string.send_project),
+                           R.drawable.flash_face,
+                           R.drawable.blue_btn,
+                           PopUp.GIFF_ANIMATION_FLASH,
+                           PopUp.TYPE_SPINNER_NOT_CANCELABLE,
+                           new View.OnClickListener() {
+                           @Override
+                               public void onClick(View v) {
+                                   //Do nothing. As this is non-cancellable pop-up
+
+                               }
+                           },//override click listener for ok button
+                           null);//pass null to use default listener
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
+                
+                // If Partial Flashing Fails attempt DFU Flash
+                startFlashing(FLASH_TYPE_DFU);
+
+            }
+
+        }
+    }
 
     /**
      * Represents a broadcast receiver that allows to handle states of
