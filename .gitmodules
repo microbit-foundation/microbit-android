@@ -1,0 +1,3 @@
+[submodule "pfLibrary"]
+	path = pfLibrary
+	url = git@github.com:microbit-foundation/android-partial-flashing-lib.git
