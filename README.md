@@ -18,3 +18,4 @@ micro:bit Android application
 
  * [Android-DFU-Library](https://github.com/NordicSemiconductor/Android-DFU-Library)
  * [android-gif-drawable](https://github.com/koral--/android-gif-drawable)
+ * [android-partial-flashing-lib](https://github.com/microbit-foundation/android-partial-flashing-lib)
