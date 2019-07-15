@@ -27,6 +27,12 @@ jobs:
       - run:
           name: Run Debug Build
           command: ./gradlew assembleDebug
+      - run:
+          name: Run Release Build
+          command: ./gradlew assembleRelease
+      - store_artifacts: # store apks; should we push these to GH?
+          path: app/build/outputs/apk/
+          destination: apks/
       - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/ 
           path: app/build/reports
           destination: reports
