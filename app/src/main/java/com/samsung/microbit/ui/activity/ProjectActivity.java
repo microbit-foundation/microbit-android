@@ -575,6 +575,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             localBroadcastManager.unregisterReceiver(dfuResultReceiver);
         }
 
+        if(pfResultReceiver != null) {
+            localBroadcastManager.unregisterReceiver(pfResultReceiver);
+        }
+
         application.stopService(new Intent(application, DfuService.class));
         application.stopService(new Intent(application, PartialFlashingService.class));
 
@@ -1065,6 +1069,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
             dfuResultReceiver = null;
         }
+        if(pfResultReceiver != null) {
+            LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(pfResultReceiver);
+            pfResultReceiver = null;
+        }
         setActivityState(FlashActivityState.FLASH_STATE_FIND_DEVICE);
         registerCallbacksForFlashing();
         startFlashing(FLASH_TYPE_PF);
@@ -1123,8 +1131,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(dfuResultReceiver, filter);
         
         IntentFilter pfFilter = new IntentFilter();
-        filter.addAction(PartialFlashingService.BROADCAST_PROGRESS);
-        filter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_START);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PROGRESS);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_COMPLETE);
         pfResultReceiver = new pfResultReceiver();
 
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(pfResultReceiver, pfFilter);
@@ -1156,10 +1166,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * partial flashing process.
      */
     class pfResultReceiver extends BroadcastReceiver {
-        public static final String BROADCAST_PROGRESS = "org.microbit.android.partialflashing.broadcast.BROADCAST_PROGRESS";
-        public static final String BROADCAST_START = "org.microbit.android.partialflashing.broadcast.BROADCAST_START";
-        public static final String EXTRA_PROGRESS = "org.microbit.android.partialflashing.extra.EXTRA_PROGRESS";
-        public static final String BROADCAST_COMPLETE = "org.microbit.android.partialflashing.broadcast.BROADCAST_COMPLETE";
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1168,14 +1174,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(application);
 
             String message = "Broadcast intent detected " + intent.getAction();
-            logi("DFUResultReceiver.onReceive :: " + message);
+            logi("PFResultReceiver.onReceive :: " + message);
             if(intent.getAction().equals(PartialFlashingService.BROADCAST_PROGRESS)) {
                 // Update UI
                 Intent progressUpdate = new Intent();
                 progressUpdate.setAction(INTENT_ACTION_UPDATE_PROGRESS);
-                int currentProgess = intent.getIntExtra(EXTRA_PROGRESS, 0);
-                progressUpdate.putExtra(INTENT_EXTRA_PROGRESS, currentProgess);
-                localBroadcastManager.sendBroadcast( progressUpdate );
+                int currentProgess = intent.getIntExtra(PartialFlashingService.EXTRA_PROGRESS, 0);
+                PopUp.updateProgressBar(currentProgess);
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_COMPLETE)) {
                 // Success Message
                 Intent flashSuccess = new Intent();
@@ -1187,12 +1192,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 localBroadcastManager.sendBroadcast( flashSuccess );
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_START)) {
                 // Display progress
-                PopUp.show(getString(R.string.dfu_status_starting_msg),
+                PopUp.show("",
                            getString(R.string.send_project),
                            R.drawable.flash_face,
                            R.drawable.blue_btn,
                            PopUp.GIFF_ANIMATION_FLASH,
-                           PopUp.TYPE_SPINNER_NOT_CANCELABLE,
+                           TYPE_PROGRESS_NOT_CANCELABLE,
                            new View.OnClickListener() {
                            @Override
                                public void onClick(View v) {
@@ -1202,7 +1207,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                            },//override click listener for ok button
                            null);//pass null to use default listener
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
-                
+
+                Log.v(TAG, "startFlashing(FLASH_TYPE_DFU);");
+
                 // If Partial Flashing Fails attempt DFU Flash
                 startFlashing(FLASH_TYPE_DFU);
 
