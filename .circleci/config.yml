@@ -80,13 +80,13 @@ workflows:
   version: 2
   build_branch:
     jobs:
-      - build
+      - build:
           filters:
             tags:
               ignore: /.*/
   build_tag:
     jobs:
-      - build_signed
+      - build_signed:
           filters:
             branches:
               ignore: /.*/
