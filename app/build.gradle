@@ -14,10 +14,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfigs {
                 release {
-                    keyAlias System.getenv('ORG_GRADLE_PROJECT_KEYALIAS')
-                    keyPassword ORG_GRADLE_PROJECT_KEYPASS
+                    keyAlias System.getenv('KEYALIAS')
+                    keyPassword System.getenv('KEYPASS')
                     storeFile 'release.keystore'
-                    storePassword ORG_GRADLE_PROJECT_STOREPASSWORD
+                    storePassword System.getenv('STOREPASS')
                 }
             }
         }
