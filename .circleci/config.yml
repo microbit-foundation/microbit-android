@@ -1,0 +1,47 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/microbit-android
+    docker:
+      - image: circleci/android:api-28
+    environment:
+      JVM_OPTS: -Xmx3200m
+    steps:
+      - checkout
+      - restore_cache:
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
+      - run:
+         name: Chmod permissions #if permission for Gradlew Dependencies fail, use this.
+         command: sudo chmod +x ./gradlew
+      - run:
+          name: Approve SDK Licenses
+          # Captures SIGPIPE 141 error but still allow repeating "y" to accept all licenses
+          command: yes | sdkmanager --licenses || if [ $? -ne '141' ]; then exit $?; fi;
+      - run:
+          name: Download Dependencies
+          command: ./gradlew androidDependencies
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: jars-{{ checksum "build.gradle" }}-{{ checksum  "app/build.gradle" }}
+      - run:
+          name: Run Debug Build
+          command: ./gradlew assembleDebug
+      - run:
+          name: Run Release Build
+          command: ./gradlew assembleRelease
+      - store_artifacts: # store apks; should we push these to GH?
+          path: app/build/outputs/apk/
+          destination: apks/
+      - store_artifacts: # for display in Artifacts: https://circleci.com/docs/2.0/artifacts/ 
+          path: app/build/reports
+          destination: reports
+      - store_test_results: # for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
+          path: app/build/test-results
+      # See https://circleci.com/docs/2.0/deployment-integrations/ for deploy examples
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build
