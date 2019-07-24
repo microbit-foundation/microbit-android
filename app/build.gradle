@@ -12,12 +12,14 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfigs {
-                release {
-                    keyAlias System.getenv('KEYALIAS')
-                    keyPassword System.getenv('KEYPASS')
-                    storeFile 'release.keystore'
-                    storePassword System.getenv('STOREPASS')
+            if(System.getenv('KEYALIAS') != null) {
+                signingConfigs {
+                    config {
+                        keyAlias System.getenv('KEYALIAS')
+                        keyPassword System.getenv('KEYPASS')
+                        storeFile file('release.keystore')
+                        storePassword System.getenv('STOREPASS')
+                    }
                 }
             }
         }
