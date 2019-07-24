@@ -12,22 +12,23 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            if(System.getenv('KEYALIAS') != null) {
-                signingConfigs {
-                    config {
-                        keyAlias System.getenv('KEYALIAS')
-                        keyPassword System.getenv('KEYPASS')
-                        storeFile file('release.keystore')
-                        storePassword System.getenv('STOREPASS')
-                    }
-                }
-            }
+            signingConfig signingConfigs.release
         }
     }
     productFlavors {
     }
     lintOptions {
         abortOnError false
+    }
+    signingConfigs {
+        if(System.getenv('KEYALIAS') != null) {
+            release {
+                keyAlias System.getenv('KEYALIAS')
+                keyPassword System.getenv('KEYPASS')
+                storeFile file('release.keystore')
+                storePassword System.getenv('STOREPASS')
+            }
+        }
     }
 }
 
