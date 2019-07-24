@@ -8,27 +8,29 @@ android {
         minSdkVersion 19
         targetSdkVersion 26
     }
+    signingConfigs {
+       release {
+           keyAlias System.getenv('KEYALIAS')
+           keyPassword System.getenv('KEYPASS')
+           storeFile file('release.keystore')
+           storePassword System.getenv('STOREPASS')
+       }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
+        debug {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
     }
     productFlavors {
     }
     lintOptions {
         abortOnError false
-    }
-    signingConfigs {
-        if(System.getenv('KEYALIAS') != null) {
-            release {
-                keyAlias System.getenv('KEYALIAS')
-                keyPassword System.getenv('KEYPASS')
-                storeFile file('release.keystore')
-                storePassword System.getenv('STOREPASS')
-            }
-        }
     }
 }
 
