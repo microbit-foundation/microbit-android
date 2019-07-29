@@ -14,6 +14,7 @@
             <option value="$PROJECT_DIR$/android-gif-drawable-1.1.13" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/dfuLibrary" />
+            <option value="$PROJECT_DIR$/pfLibrary" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />
