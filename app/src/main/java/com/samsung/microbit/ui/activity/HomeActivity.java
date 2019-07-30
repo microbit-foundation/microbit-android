@@ -346,14 +346,9 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 //Update Stats
                 GoogleAnalyticsManager.getInstance()
                         .sendNavigationStats(HomeActivity.class.getSimpleName(), "create-code");
-                if(urlToOpen == null) {
-                    urlToOpen = getString(R.string.create_code_url);
-                }
-
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse(urlToOpen));
-
-                startActivity(intent);
+                Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
+                launchMakeCodeIntent.putExtra("url", "https://makecode.microbit.org/");
+                startActivity(launchMakeCodeIntent);
             }
             break;
             case R.id.flash_microbit_btn:
