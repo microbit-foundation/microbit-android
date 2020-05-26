@@ -18,11 +18,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.DocumentsContract;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.content.PermissionChecker;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -31,6 +26,12 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.PermissionChecker;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
@@ -56,7 +57,10 @@ import com.samsung.microbit.utils.ProjectsHelper;
 import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -68,6 +72,7 @@ import java.util.List;
 import no.nordicsemi.android.error.GattError;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
+import static com.samsung.microbit.utils.FileUtils.getFileSize;
 
 /**
  * Represents the Flash screen that contains a list of project samples
@@ -1055,25 +1060,120 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         //Reset all stats value
         m_BinSizeStats = "0";
         m_MicroBitFirmware = "0.0";
-        m_HexFileSizeStats = FileUtils.getFileSize(mProgramToSend.filePath);
+        m_HexFileSizeStats = getFileSize(mProgramToSend.filePath);
 
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
         MBApp application = MBApp.getApp();
 
+        /*
         final Intent service = new Intent(application, DfuService.class);
         service.putExtra(DfuService.EXTRA_DEVICE_ADDRESS, currentMicrobit.mAddress);
         service.putExtra(DfuService.EXTRA_DEVICE_NAME, currentMicrobit.mPattern);
-        service.putExtra(DfuService.EXTRA_DEVICE_PAIR_CODE, currentMicrobit.mPairingCode);
+        // service.putExtra(DfuService.EXTRA_DEVICE_PAIR_CODE, currentMicrobit.mPairingCode);
         service.putExtra(DfuService.EXTRA_FILE_MIME_TYPE, DfuService.MIME_TYPE_OCTET_STREAM);
         service.putExtra(DfuService.EXTRA_FILE_PATH, mProgramToSend.filePath); // a path or URI must be provided.
         service.putExtra(DfuService.EXTRA_KEEP_BOND, false);
         service.putExtra(DfuService.INTENT_REQUESTED_PHASE, 2);
         if(notAValidFlashHexFile) {
-            service.putExtra(DfuService.EXTRA_WAIT_FOR_INIT_DEVICE_FIRMWARE, Constants.JUST_PAIRED_DELAY_ON_CONNECTION);
+             service.putExtra(DfuService.EXTRA_WAIT_FOR_INIT_DEVICE_FIRMWARE, Constants.JUST_PAIRED_DELAY_ON_CONNECTION);
         }
 
         application.startService(service);
+        */
+
+        // TODO
+        // Determine V1 / V2
+        // Restart into DFU Mode
+        // Refresh Services
+        // Parse HEX File
+        // Open connection to hex file
+        FileInputStream fis;
+        ByteArrayOutputStream outputHex;
+        outputHex = new ByteArrayOutputStream();
+        boolean records_wanted = false;
+
+        char c;
+        int next = 0;
+        try {
+            fis = new FileInputStream(mProgramToSend.filePath);
+            byte[] bs = new byte[Integer.valueOf(FileUtils.getFileSize(mProgramToSend.filePath))];
+            int i = 0;
+            i = fis.read(bs);
+
+            for (int b_x = 0; b_x < bs.length - 1; /* empty */) {
+                // Get record from following bytes
+                char b_type = (char) bs[b_x + 8];
+
+                // Find next record start, or EOF
+                next = 1;
+                while((b_x + next) < i && bs[b_x + next] != ':') {
+                    next++;
+                }
+
+                // Switch type and determine what to do with this record
+                switch (b_type) {
+                    case 'A': // Block start
+                        // Check data for id
+                        if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
+                            // records_wanted = true;
+                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '3') {
+                            records_wanted = true;
+                        }
+                        break;
+                    case 'E':
+                        break;
+                    case '4':
+                        outputHex.write(bs, b_x, next);
+                        break;
+                    case '1':
+                        outputHex.write(bs, b_x, next);
+                        break;
+                    case '0':
+                    case 'D':
+                        // Copy record to hex
+                        // Record starts at b_x, next long
+                        if (records_wanted)
+                            outputHex.write(bs, b_x, next);
+                        break;
+                    case 'C':
+                    case 'B':
+                        records_wanted = false;
+                        break;
+                    default:
+                        Log.e(TAG, "Record type not recognised; TYPE: " + b_type);
+                }
+
+                // Record handled. Move to next ':'
+                if((b_x + next) >= i) {
+                    break;
+                } else {
+                    b_x = b_x + next;
+                }
+            }
+
+            byte[] output = outputHex.toByteArray();
+            Log.v(TAG, "Finished parsing Fat Binary");
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        // Create reader for hex file
+
+        /*
+        DfuServiceInitiator.createDfuNotificationChannel(this);
+        final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+                .setDeviceName(currentMicrobit.mName)
+                .setKeepBond(true)
+                .setCustomUuidsForLegacyDfu( new UUID(0x000015301212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015311212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015321212EFDEl, 0x1523785FEABCD123l),  new UUID(0x000015341212EFDEl, 0x1523785FEABCD123l))
+                .setMbrSize(0x1000)
+                .setBinOrHex(DfuBaseService.TYPE_APPLICATION, mProgramToSend.filePath);
+        final DfuServiceController controller = starter.start(this, DfuService.class);
+        */
     }
 
     /**
@@ -1247,6 +1347,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     },//override click listener for ok button
                                     null);//pass null to use default listener
                             break;
+                        /*
                         case DfuService.PROGRESS_WAITING_REBOOT:
                             setActivityState(FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT);
                             PopUp.show(getString(R.string.waiting_reboot), //message
@@ -1285,10 +1386,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
                             dfuResultReceiver = null;
                             break;
+                        */
                         case DfuService.PROGRESS_ABORTED:
                             setActivityState(FlashActivityState.STATE_IDLE);
 
-                            application = MBApp.getApp();
+                            MBApp application = MBApp.getApp();
 
                             //Update Stats
                             GoogleAnalyticsManager.getInstance().sendFlashStats(
@@ -1308,6 +1410,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             dfuResultReceiver = null;
                             removeReconnectionRunnable();
                             break;
+                        /*
                         case DfuService.PROGRESS_SERVICE_NOT_FOUND:
                             Log.e(TAG, "service not found");
                             setActivityState(FlashActivityState.STATE_IDLE);
@@ -1332,6 +1435,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             dfuResultReceiver = null;
                             removeReconnectionRunnable();
                             break;
+                            */
 
                     }
                 } else if((state > 0) && (state < 100)) {
@@ -1411,6 +1515,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 //Only used for Stats at the moment
                 String data;
                 int logLevel = intent.getIntExtra(DfuService.EXTRA_LOG_LEVEL, 0);
+                /*
                 switch(logLevel) {
                     case DfuService.LOG_LEVEL_BINARY_SIZE:
                         data = intent.getStringExtra(DfuService.EXTRA_DATA);
@@ -1421,6 +1526,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         m_MicroBitFirmware = data;
                         break;
                 }
+                */
             }
         }
 

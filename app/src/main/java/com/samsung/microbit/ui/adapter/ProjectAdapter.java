@@ -2,7 +2,7 @@ package com.samsung.microbit.ui.adapter;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
-import android.support.v4.content.ContextCompat;
+import androidx.core.content.ContextCompat;
 import android.text.InputFilter;
 import android.text.Spanned;
 import android.util.Log;
