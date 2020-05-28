@@ -813,6 +813,7 @@ public class BLEService extends Service {
                     //bluetoothAdapter.disable();
                 }
             }
+            logi("Disconnected. Send IPC Message.");
             notificationString = getString(R.string.tray_notification_failure);
             onGoingNotification = false;
 
@@ -828,6 +829,7 @@ public class BLEService extends Service {
                 }
             }
         } else {
+            logi("Connected. Send IPC Message.");
             notificationString = getString(R.string.tray_notification_sucsess);
             onGoingNotification = true;
 

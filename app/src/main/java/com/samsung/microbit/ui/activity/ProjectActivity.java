@@ -35,7 +35,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
+// import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.core.bluetooth.BluetoothUtils;
 import com.samsung.microbit.data.constants.Constants;
 import com.samsung.microbit.data.constants.EventCategories;
@@ -66,9 +66,14 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
+import no.nordicsemi.android.dfu.DfuBaseService;
+import no.nordicsemi.android.dfu.DfuServiceController;
+import no.nordicsemi.android.dfu.DfuServiceInitiator;
 import no.nordicsemi.android.error.GattError;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
@@ -227,13 +232,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     protected void onStart() {
         super.onStart();
-        GoogleAnalyticsManager.getInstance().activityStart(this);
+        startBluetooth();
+        // GoogleAnalyticsManager.getInstance().activityStart(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        GoogleAnalyticsManager.getInstance().activityStop(this);
+        // GoogleAnalyticsManager.getInstance().activityStop(this);
     }
 
     @Override
@@ -363,7 +369,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         logi("onCreate() :: ");
 
         // Make sure to call this before any other userActionEvent is sent
-        GoogleAnalyticsManager.getInstance().sendViewEventStats(ProjectActivity.class.getSimpleName());
+        // GoogleAnalyticsManager.getInstance().sendViewEventStats(ProjectActivity.class.getSimpleName());
 
         //Remove title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -922,8 +928,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     public void onClick(final View v) {
         switch(v.getId()) {
             case R.id.createProject: {
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(ProjectActivity.class.getSimpleName(), "my-scripts");
+                // GoogleAnalyticsManager.getInstance()
+                //        .sendNavigationStats(ProjectActivity.class.getSimpleName(), "my-scripts");
 
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setData(Uri.parse(getString(R.string.my_scripts_url)));
@@ -1053,6 +1059,17 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     /**
+     * Convert a HEX char to int
+     */
+    int charToInt(char in) {
+        // 0 - 9
+        if(in - '0' >= 0 && in - '0' < 10) return (in - '0');
+
+        // A - F
+        return in - 55;
+    }
+
+    /**
      * Creates and starts service to flash a program to a micro:bit board.
      */
     protected void startFlashing() {
@@ -1091,10 +1108,17 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         FileInputStream fis;
         ByteArrayOutputStream outputHex;
         outputHex = new ByteArrayOutputStream();
-        boolean records_wanted = false;
 
-        char c;
+        File hexToFlash = new File(this.getCacheDir() + "/tmp");
+        FileOutputStream outputStream;
+
         int next = 0;
+        boolean records_wanted = false;
+        boolean is_fat = false;
+        int hardwareType = 0; // 0 v1, 1 v2
+
+        ByteArrayOutputStream lastELA = new ByteArrayOutputStream();
+
         try {
             fis = new FileInputStream(mProgramToSend.filePath);
             byte[] bs = new byte[Integer.valueOf(FileUtils.getFileSize(mProgramToSend.filePath))];
@@ -1114,17 +1138,27 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 // Switch type and determine what to do with this record
                 switch (b_type) {
                     case 'A': // Block start
+                        is_fat = true;
+
                         // Check data for id
                         if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
-                            // records_wanted = true;
+                            records_wanted = (hardwareType == 0);
                         } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '3') {
-                            records_wanted = true;
+                            records_wanted = (hardwareType == 1);
                         }
                         break;
                     case 'E':
                         break;
                     case '4':
-                        outputHex.write(bs, b_x, next);
+                        ByteArrayOutputStream currentELA = new ByteArrayOutputStream();
+                        currentELA.write(bs, b_x, next);
+
+                        // If ELA has changed write
+                        if(!Arrays.equals(currentELA.toByteArray(), lastELA.toByteArray())) {
+                            lastELA.reset();
+                            lastELA.write(bs, b_x, next);
+                            outputHex.write(bs, b_x, next);
+                        }
                         break;
                     case '1':
                         outputHex.write(bs, b_x, next);
@@ -1133,8 +1167,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     case 'D':
                         // Copy record to hex
                         // Record starts at b_x, next long
-                        if (records_wanted)
+                        // Calculate address of record
+                        int b_ela    = (charToInt((char)lastELA.toByteArray()[9]) << 12) | (charToInt((char)lastELA.toByteArray()[10]) << 8) | (charToInt((char)lastELA.toByteArray()[11]) << 4) | (charToInt((char)lastELA.toByteArray()[12]));
+                        int b_raddr  = (charToInt((char)bs[b_x + 3]) << 12) | (charToInt((char)bs[b_x + 4]) << 8) | (charToInt((char)bs[b_x + 5]) << 4) | (charToInt((char)bs[b_x + 6]));
+                        int b_addr   = b_ela << 16 | b_raddr;
+                        if ((records_wanted || !is_fat ) && b_addr >= 0x18000 && b_addr < 0x3C000) {
                             outputHex.write(bs, b_x, next);
+                        }
                         break;
                     case 'C':
                     case 'B':
@@ -1153,7 +1192,22 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
 
             byte[] output = outputHex.toByteArray();
-            Log.v(TAG, "Finished parsing Fat Binary");
+            Log.v(TAG, "Finished parsing Fat Binary. Writing HEX for flashing");
+
+
+            try {
+                hexToFlash = new File(this.getCacheDir() + "/" + mProgramToSend.name + ".hex");
+                outputStream = new FileOutputStream(hexToFlash);
+
+                if (!hexToFlash.exists()) {
+                    hexToFlash.createNewFile();
+                }
+
+                outputStream.write(output);
+                outputStream.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -1162,18 +1216,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
 
 
-        // Create reader for hex file
-
-        /*
         DfuServiceInitiator.createDfuNotificationChannel(this);
         final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
                 .setDeviceName(currentMicrobit.mName)
                 .setKeepBond(true)
                 .setCustomUuidsForLegacyDfu( new UUID(0x000015301212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015311212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015321212EFDEl, 0x1523785FEABCD123l),  new UUID(0x000015341212EFDEl, 0x1523785FEABCD123l))
                 .setMbrSize(0x1000)
-                .setBinOrHex(DfuBaseService.TYPE_APPLICATION, mProgramToSend.filePath);
+                .setPacketsReceiptNotificationsEnabled(true)
+                .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexToFlash.getPath());
         final DfuServiceController controller = starter.start(this, DfuService.class);
-        */
     }
 
     /**
@@ -1268,19 +1319,20 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     null);//pass null to use default listener
                             break;
                         case DfuService.PROGRESS_COMPLETED:
-                            if(!isCompleted) {
+                            if (!isCompleted) {
                                 setActivityState(FlashActivityState.STATE_IDLE);
 
                                 MBApp application = MBApp.getApp();
 
                                 LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
                                 dfuResultReceiver = null;
-                                //Update Stats
+                                /* Update Stats
                                 GoogleAnalyticsManager.getInstance().sendFlashStats(
                                         ProjectActivity.class.getSimpleName(),
                                         true, mProgramToSend.name,
                                         m_HexFileSizeStats,
                                         m_BinSizeStats, m_MicroBitFirmware);
+                                        */
                                 PopUp.show(getString(R.string.flashing_success_message), //message
                                         getString(R.string.flashing_success_title), //title
                                         R.drawable.message_face, R.drawable.blue_btn,
@@ -1300,7 +1352,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             break;
 
                         case DfuService.PROGRESS_CONNECTING:
-                            if((!inInit) && (!isCompleted)) {
+                            if ((!inInit) && (!isCompleted)) {
                                 setActivityState(FlashActivityState.FLASH_STATE_INIT_DEVICE);
                                 PopUp.show(getString(R.string.init_connection), //message
                                         getString(R.string.send_project), //title
@@ -1320,7 +1372,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                                 long delayForCheckOnConnection = Constants.TIME_FOR_CONNECTION_COMPLETED;
 
-                                if(notAValidFlashHexFile) {
+                                if (notAValidFlashHexFile) {
                                     notAValidFlashHexFile = false;
                                     delayForCheckOnConnection += Constants.JUST_PAIRED_DELAY_ON_CONNECTION;
                                 }
@@ -1393,11 +1445,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             MBApp application = MBApp.getApp();
 
                             //Update Stats
+                            /*
                             GoogleAnalyticsManager.getInstance().sendFlashStats(
                                     ProjectActivity.class.getSimpleName(),
                                     false, mProgramToSend.name,
                                     m_HexFileSizeStats,
                                     m_BinSizeStats, m_MicroBitFirmware);
+                                    */
                             PopUp.show(getString(R.string.flashing_aborted), //message
                                     getString(R.string.flashing_aborted_title),
                                     R.drawable.error_face, R.drawable.red_btn,
@@ -1436,8 +1490,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             removeReconnectionRunnable();
                             break;
                             */
-
+                        default:
+                            Log.v(TAG, "No handler!: " + state);
                     }
+
                 } else if((state > 0) && (state < 100)) {
                     if(!inProgress) {
                         setActivityState(FlashActivityState.FLASH_STATE_PROGRESS);
@@ -1481,10 +1537,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
                 dfuResultReceiver = null;
                 //Update Stats
+                /*
                 GoogleAnalyticsManager.getInstance().sendFlashStats(
                         ProjectActivity.class.getSimpleName(),
                         false, mProgramToSend.name, m_HexFileSizeStats,
                         m_BinSizeStats, m_MicroBitFirmware);
+                        */
 
                 //Check for GATT ERROR - prompt user to enter bluetooth mode
                 if(errorCode == 0x0085) {
