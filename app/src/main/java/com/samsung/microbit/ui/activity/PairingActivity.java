@@ -25,11 +25,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.core.content.PermissionChecker;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -43,9 +38,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.PermissionChecker;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.core.bluetooth.BluetoothUtils;
 import com.samsung.microbit.data.constants.EventCategories;
 import com.samsung.microbit.data.constants.IPCConstants;
@@ -223,8 +223,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     }
                 } else if(state == BluetoothDevice.BOND_NONE && prevState == BluetoothDevice.BOND_BONDING) {
                     stopScanning();
-                    GoogleAnalyticsManager.getInstance()
-                            .sendPairingStats(PairingActivity.class.getSimpleName(),false, null);
                     PopUp.show(getString(R.string.pairing_failed_message), //message
                             getString(R.string.pairing_failed_title), //title
                             R.drawable.error_face, //image icon res id
@@ -489,13 +487,11 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     @Override
     protected void onStart() {
         super.onStart();
-        GoogleAnalyticsManager.getInstance().activityStart(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        GoogleAnalyticsManager.getInstance().activityStop(this);
     }
 
     @Override
@@ -545,8 +541,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             pairingState = (PAIRING_STATE) savedInstanceState.getSerializable(PAIRING_STATE_KEY);
         }
 
-        // Make sure to call this before any other userActionEvent is sent
-        GoogleAnalyticsManager.getInstance().sendViewEventStats(PairingActivity.class.getSimpleName());
 
         setupBleController();
 
@@ -1200,8 +1194,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void handlePairingFailed() {
         logi("handlePairingFailed() :: Start");
-        GoogleAnalyticsManager.getInstance()
-                .sendPairingStats(PairingActivity.class.getSimpleName(),false, null);
         PopUp.show(getString(R.string.pairingErrorMessage), //message
                 getString(R.string.timeOut), //title
                 R.drawable.error_face, //image icon res id
@@ -1220,8 +1212,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void handlePairingSuccessful(final ConnectedDevice newDev) {
         logi("handlePairingSuccessful()");
-        GoogleAnalyticsManager.getInstance()
-                .sendPairingStats(PairingActivity.class.getSimpleName(),true, newDev.mfirmware_version);
         BluetoothUtils.setPairedMicroBit(MBApp.getApp(), newDev);
         updatePairedDeviceCard();
         // Pop up to show pairing successful

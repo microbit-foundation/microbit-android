@@ -233,13 +233,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     protected void onStart() {
         super.onStart();
         startBluetooth();
-        // GoogleAnalyticsManager.getInstance().activityStart(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        // GoogleAnalyticsManager.getInstance().activityStop(this);
     }
 
     @Override
@@ -367,9 +365,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
 
         logi("onCreate() :: ");
-
-        // Make sure to call this before any other userActionEvent is sent
-        // GoogleAnalyticsManager.getInstance().sendViewEventStats(ProjectActivity.class.getSimpleName());
 
         //Remove title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -928,8 +923,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     public void onClick(final View v) {
         switch(v.getId()) {
             case R.id.createProject: {
-                // GoogleAnalyticsManager.getInstance()
-                //        .sendNavigationStats(ProjectActivity.class.getSimpleName(), "my-scripts");
 
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setData(Uri.parse(getString(R.string.my_scripts_url)));

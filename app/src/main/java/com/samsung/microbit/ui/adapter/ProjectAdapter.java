@@ -2,7 +2,6 @@ package com.samsung.microbit.ui.adapter;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
-import androidx.core.content.ContextCompat;
 import android.text.InputFilter;
 import android.text.Spanned;
 import android.util.Log;
@@ -19,9 +18,10 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.data.model.Project;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.ui.activity.ProjectActivity;
@@ -302,9 +302,6 @@ public class ProjectAdapter extends BaseAdapter {
             logi("deleteBtnClickListener() :: ");
             final int pos = (int) v.getTag();
             //Update Stats
-
-            GoogleAnalyticsManager.getInstance()
-                    .sendNavigationStats(ProjectActivity.class.getSimpleName(), "DeleteProject");
 
             PopUp.show(mProjectActivity.getString(R.string.delete_project_message),
                     mProjectActivity.getString(R.string.delete_project_title),

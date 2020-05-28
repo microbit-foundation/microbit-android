@@ -30,10 +30,8 @@ import androidx.core.content.PermissionChecker;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
-import com.google.android.gms.analytics.GoogleAnalytics;
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.data.constants.PermissionCodes;
 import com.samsung.microbit.service.IPCService;
 import com.samsung.microbit.ui.PopUp;
@@ -104,13 +102,11 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onStart() {
         super.onStart();
-        GoogleAnalyticsManager.getInstance().activityStart(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        GoogleAnalyticsManager.getInstance().activityStop(this);
     }
 
     @Override
@@ -128,8 +124,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         setupButtonsFontStyle();
 
         checkMinimumPermissionsForThisScreen();
-
-        GoogleAnalyticsManager.getInstance().sendViewEventStats(HomeActivity.class.getSimpleName());
 
         /* Debug code*/
         MenuItem item = (MenuItem) findViewById(R.id.live);
@@ -184,7 +178,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         mPrefs = getSharedPreferences("com.samsung.microbit", MODE_PRIVATE);
         if(mPrefs != null) {
             shareStats = mPrefs.getBoolean(getString(R.string.prefs_share_stats_status), true);
-            GoogleAnalyticsManager.getInstance().setShareStatistic(shareStats);
         }
         //TODO focusable view
         mDrawer.setDrawerListener(toggle);
@@ -347,8 +340,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             break;
             case R.id.create_code_btn: {
                 //Update Stats
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName(), "create-code");
                 if(urlToOpen == null) {
                     urlToOpen = getString(R.string.create_code_url);
                 }
@@ -360,14 +351,10 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.flash_microbit_btn:
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName(), "flash");
                 Intent i = new Intent(this, ProjectActivity.class);
                 startActivity(i);
                 break;
             case R.id.discover_btn:
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName(), "discover");
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setData(Uri.parse(getString(R.string.discover_url)));
                 startActivity(intent);
@@ -389,8 +376,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.btn_help: {
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName() + ", overflow-menu", "help");
                 Intent launchHelpIntent = new Intent(this, HelpWebView.class);
                 launchHelpIntent.putExtra("url", "file:///android_asset/help.html");
                 startActivity(launchHelpIntent);
@@ -399,8 +384,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.btn_privacy_cookies: {
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName() + ", overflow-menu", "privacy-policy");
 
                 Intent privacyIntent = new Intent(Intent.ACTION_VIEW);
                 privacyIntent.setData(Uri.parse(getString(R.string.privacy_policy_url)));
@@ -410,8 +393,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.btn_terms_conditions: {
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName() + ", overflow-menu", "ts-and-cs");
 
                 Intent termsIntent = new Intent(Intent.ACTION_VIEW);
                 termsIntent.setData(Uri.parse(getString(R.string.terms_of_use_url)));
@@ -457,17 +438,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         }
         boolean shareStatistics = mShareStatsCheckBox.isChecked();
 
-        if(shareStatistics) {
-            GoogleAnalytics.getInstance(this).reportActivityStart(this);
-        } else {
-            GoogleAnalytics.getInstance(this).reportActivityStop(this);
-        }
-
         mPrefs.edit().putBoolean(getString(R.string.prefs_share_stats_status), shareStatistics).apply();
         logi("shareStatistics = " + shareStatistics);
-        GoogleAnalyticsManager.getInstance().setShareStatistic(shareStatistics);
-        GoogleAnalyticsManager.getInstance().
-                sendStatSharing(HomeActivity.class.getSimpleName(), shareStatistics);
     }
 
     /**
