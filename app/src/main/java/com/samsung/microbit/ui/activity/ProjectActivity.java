@@ -35,7 +35,6 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-// import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.core.bluetooth.BluetoothUtils;
 import com.samsung.microbit.data.constants.Constants;
 import com.samsung.microbit.data.constants.EventCategories;
@@ -47,6 +46,7 @@ import com.samsung.microbit.data.model.Project;
 import com.samsung.microbit.data.model.ui.FlashActivityState;
 import com.samsung.microbit.service.BLEService;
 import com.samsung.microbit.service.DfuService;
+import com.samsung.microbit.service.PartialFlashingService;
 import com.samsung.microbit.ui.BluetoothChecker;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.ui.adapter.ProjectAdapter;
@@ -69,7 +69,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
 
 import no.nordicsemi.android.dfu.DfuBaseService;
 import no.nordicsemi.android.dfu.DfuServiceController;
@@ -77,7 +76,17 @@ import no.nordicsemi.android.dfu.DfuServiceInitiator;
 import no.nordicsemi.android.error.GattError;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
+import static com.samsung.microbit.ui.PopUp.TYPE_ALERT;
+import static com.samsung.microbit.ui.PopUp.TYPE_PROGRESS_NOT_CANCELABLE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_LAYOUT;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_PROGRESS;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_MESSAGE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TITLE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TYPE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_GIFF_ANIMATION_CODE;
 import static com.samsung.microbit.utils.FileUtils.getFileSize;
+
+// import com.samsung.microbit.core.GoogleAnalyticsManager;
 
 /**
  * Represents the Flash screen that contains a list of project samples
@@ -100,6 +109,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private String m_MicroBitFirmware = "0.0";
 
     private DFUResultReceiver dfuResultReceiver;
+    private pfResultReceiver pfResultReceiver;
 
     private List<Integer> mRequestPermissions = new ArrayList<>();
 
@@ -116,6 +126,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private boolean notAValidFlashHexFile;
 
     private boolean minimumPermissionsGranted;
+
+    private int FLASH_TYPE_DFU = 0;
+    private int FLASH_TYPE_PF  = 1;
 
     private final Runnable tryToConnectAgain = new Runnable() {
 
@@ -224,7 +237,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     getString(R.string.permissions_needed_title),
                     R.drawable.error_face, R.drawable.red_btn,
                     PopUp.GIFF_ANIMATION_ERROR,
-                    PopUp.TYPE_ALERT,
+                    TYPE_ALERT,
                     checkMorePermissionsNeeded, checkMorePermissionsNeeded);
         }
     };
@@ -605,7 +618,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 getString(R.string.permissions_needed_title),
                 R.drawable.error_face, R.drawable.red_btn,
                 PopUp.GIFF_ANIMATION_ERROR,
-                PopUp.TYPE_ALERT,
+                TYPE_ALERT,
                 okMorePermissionNeededHandler,
                 okMorePermissionNeededHandler);
     }
@@ -630,7 +643,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             getString(R.string.permissions_needed_title),
                             R.drawable.error_face, R.drawable.red_btn,
                             PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_ALERT,
+                            TYPE_ALERT,
                             checkMorePermissionsNeeded, checkMorePermissionsNeeded);
                 } else {
                     if(!mRequestPermissions.isEmpty()) {
@@ -645,7 +658,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             getString(R.string.permissions_needed_title),
                             R.drawable.error_face, R.drawable.red_btn,
                             PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_ALERT,
+                            TYPE_ALERT,
                             checkMorePermissionsNeeded, checkMorePermissionsNeeded);
                 } else {
                     if(!mRequestPermissions.isEmpty()) {
@@ -859,7 +872,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         "",
                         R.drawable.error_face, R.drawable.red_btn,
                         PopUp.GIFF_ANIMATION_ERROR,
-                        PopUp.TYPE_ALERT,
+                        TYPE_ALERT,
                         null, null);
             }
         }
@@ -967,7 +980,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     R.drawable.error_face,//image icon res id
                     R.drawable.red_btn,
                     PopUp.GIFF_ANIMATION_ERROR,
-                    PopUp.TYPE_ALERT, //type of popup.
+                    TYPE_ALERT, //type of popup.
                     new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
@@ -988,7 +1001,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     "",
                     R.drawable.error_face, R.drawable.red_btn,
                     PopUp.GIFF_ANIMATION_ERROR,
-                    PopUp.TYPE_ALERT,
+                    TYPE_ALERT,
                     null, null);
             return;
         }
@@ -1004,7 +1017,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     "",
                     R.drawable.flash_face, R.drawable.blue_btn,
                     PopUp.GIFF_ANIMATION_FLASH,
-                    PopUp.TYPE_ALERT,
+                    TYPE_ALERT,
                     null, null);
             return;
         }
@@ -1048,7 +1061,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
         setActivityState(FlashActivityState.FLASH_STATE_FIND_DEVICE);
         registerCallbacksForFlashing();
-        startFlashing();
+
+        // Attempt Partial Flashing first
+        startFlashing(FLASH_TYPE_PF);
     }
 
     /**
@@ -1064,8 +1079,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     /**
      * Creates and starts service to flash a program to a micro:bit board.
+     * @param FLASH_TYPE_DFU
      */
-    protected void startFlashing() {
+    protected void startFlashing(int flashingType) {
         logi(">>>>>>>>>>>>>>>>>>> startFlashing called  >>>>>>>>>>>>>>>>>>>  ");
         //Reset all stats value
         m_BinSizeStats = "0";
@@ -1094,10 +1110,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         // TODO
         // Determine V1 / V2
-        // Restart into DFU Mode
-        // Refresh Services
-        // Parse HEX File
-        // Open connection to hex file
+
+
         FileInputStream fis;
         ByteArrayOutputStream outputHex;
         outputHex = new ByteArrayOutputStream();
@@ -1207,17 +1221,40 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         } catch (IOException e) {
             e.printStackTrace();
         }
+//
+//
+//        DfuServiceInitiator.createDfuNotificationChannel(this);
+//        final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+//                .setDeviceName(currentMicrobit.mName)
+//                .setKeepBond(true)
+//                .setCustomUuidsForLegacyDfu( new UUID(0x000015301212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015311212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015321212EFDEl, 0x1523785FEABCD123l),  new UUID(0x000015341212EFDEl, 0x1523785FEABCD123l))
+//                .setMbrSize(0x1000)
+//                .setPacketsReceiptNotificationsEnabled(true)
+//                .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexToFlash.getPath());
+//        final DfuServiceController controller = starter.start(this, DfuService.class);
 
-
-        DfuServiceInitiator.createDfuNotificationChannel(this);
-        final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+        if(flashingType == FLASH_TYPE_DFU) {
+            // Start DFU Service
+            Log.v(TAG, "Start Full DFU");
+            DfuServiceInitiator.createDfuNotificationChannel(this);
+            final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
                 .setDeviceName(currentMicrobit.mName)
                 .setKeepBond(true)
-                .setCustomUuidsForLegacyDfu( new UUID(0x000015301212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015311212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015321212EFDEl, 0x1523785FEABCD123l),  new UUID(0x000015341212EFDEl, 0x1523785FEABCD123l))
                 .setMbrSize(0x1000)
                 .setPacketsReceiptNotificationsEnabled(true)
                 .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexToFlash.getPath());
-        final DfuServiceController controller = starter.start(this, DfuService.class);
+            final DfuServiceController controller = starter.start(this, DfuService.class);
+
+        } else if(flashingType == FLASH_TYPE_PF) {
+            // Attempt a partial flash
+            Log.v(TAG, "Send Partial Flashing Intent");
+            final Intent service = new Intent(application, PartialFlashingService.class);
+            service.putExtra("deviceAddress", currentMicrobit.mAddress);
+            service.putExtra("filepath", hexToFlash); // a path or URI must be provided.
+            application.startService(service);
+        }
+
+
     }
 
     /**
@@ -1231,6 +1268,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         filter.addAction(DfuService.BROADCAST_LOG);
         dfuResultReceiver = new DFUResultReceiver();
 
+        IntentFilter pfFilter = new IntentFilter();
+        pfFilter.addAction(PartialFlashingService.BROADCAST_START);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PROGRESS);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_COMPLETE);
+        pfResultReceiver = new pfResultReceiver();
+
+        LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(pfResultReceiver, pfFilter);
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(dfuResultReceiver, filter);
     }
 
@@ -1254,6 +1299,63 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             toggleConnection();
         }
     };
+
+    /**
+     * Represents a broadcast receiver that allows to handle states of
+     * partial flashing process.
+     */
+    class pfResultReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            MBApp application = MBApp.getApp();
+            LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(application);
+
+            String message = "Broadcast intent detected " + intent.getAction();
+            logi("PFResultReceiver.onReceive :: " + message);
+            if(intent.getAction().equals(PartialFlashingService.BROADCAST_PROGRESS)) {
+                // Update UI
+                Intent progressUpdate = new Intent();
+                progressUpdate.setAction(INTENT_ACTION_UPDATE_PROGRESS);
+                int currentProgess = intent.getIntExtra(PartialFlashingService.EXTRA_PROGRESS, 0);
+                PopUp.updateProgressBar(currentProgess);
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_COMPLETE)) {
+                // Success Message
+                Intent flashSuccess = new Intent();
+                flashSuccess.setAction(INTENT_ACTION_UPDATE_LAYOUT);
+                flashSuccess.putExtra(INTENT_EXTRA_TITLE, "Flash Complete");
+                flashSuccess.putExtra(INTENT_EXTRA_MESSAGE, "");
+                flashSuccess.putExtra(INTENT_GIFF_ANIMATION_CODE, 1);
+                flashSuccess.putExtra(INTENT_EXTRA_TYPE, TYPE_ALERT);
+                localBroadcastManager.sendBroadcast( flashSuccess );
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_START)) {
+                // Display progress
+                PopUp.show("",
+                        getString(R.string.send_project),
+                        R.drawable.flash_face,
+                        R.drawable.blue_btn,
+                        PopUp.GIFF_ANIMATION_FLASH,
+                        TYPE_PROGRESS_NOT_CANCELABLE,
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                //Do nothing. As this is non-cancellable pop-up
+
+                            }
+                        },//override click listener for ok button
+                        null);//pass null to use default listener
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
+
+                Log.v(TAG, "startFlashing(FLASH_TYPE_DFU);");
+
+                // If Partial Flashing Fails attempt DFU Flash
+                startFlashing(FLASH_TYPE_DFU);
+
+            }
+
+        }
+    }
 
     /**
      * Represents a broadcast receiver that allows to handle states of
@@ -1330,7 +1432,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         getString(R.string.flashing_success_title), //title
                                         R.drawable.message_face, R.drawable.blue_btn,
                                         PopUp.GIFF_ANIMATION_NONE,
-                                        PopUp.TYPE_ALERT, //type of popup.
+                                        TYPE_ALERT, //type of popup.
                                         okFinishFlashingHandler,//override click listener for ok button
                                         okFinishFlashingHandler);//pass null to use default listener
                             }
@@ -1449,7 +1551,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     getString(R.string.flashing_aborted_title),
                                     R.drawable.error_face, R.drawable.red_btn,
                                     PopUp.GIFF_ANIMATION_ERROR,
-                                    PopUp.TYPE_ALERT, //type of popup.
+                                    TYPE_ALERT, //type of popup.
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
 
@@ -1497,7 +1599,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                 String.format(application.getString(R.string.flashing_project), mProgramToSend.name),
                                 R.drawable.flash_modal_emoji, 0,
                                 PopUp.GIFF_ANIMATION_FLASH,
-                                PopUp.TYPE_PROGRESS_NOT_CANCELABLE, null, null);
+                                TYPE_PROGRESS_NOT_CANCELABLE, null, null);
 
                         inProgress = true;
 
@@ -1557,7 +1659,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             getString(R.string.flashing_failed_title), //title
                             R.drawable.error_face, R.drawable.red_btn,
                             PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_ALERT, //type of popup.
+                            TYPE_ALERT, //type of popup.
                             popupOkHandler,//override click listener for ok button
                             popupOkHandler);//pass null to use default listener
                 }

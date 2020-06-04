@@ -165,6 +165,11 @@
             android:enabled="true"
             android:exported="false"/>
 
+        <service
+            android:name=".service.PartialFlashingService"
+            android:enabled="true"
+        />
+
         <activity
             android:name=".ui.activity.SplashScreenActivity"
             android:screenOrientation="locked"
@@ -182,6 +187,7 @@
                 <action android:name="com.samsung.microbit.core.SHOWFROMSERVICE"/>
             </intent-filter>
         </receiver>
+
     </application>
 
 </manifest>

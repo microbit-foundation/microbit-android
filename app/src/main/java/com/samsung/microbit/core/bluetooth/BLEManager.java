@@ -8,9 +8,11 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
-import androidx.annotation.Nullable;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.UUID;
 
@@ -386,6 +388,17 @@ public class BLEManager {
 
                 inBleOp = OP_DISCOVER_SERVICES;
                 error = 0;
+
+                try {
+                    // BluetoothGatt gatt
+                    final Method refresh = gatt.getClass().getMethod("refresh");
+                    if (refresh != null) {
+                        refresh.invoke(gatt);
+                    }
+                } catch (Exception e) {
+                    // Log it
+                }
+
                 try {
                     callbackCompleted = false;
                     if(gatt.discoverServices()) {

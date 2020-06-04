@@ -1072,6 +1072,7 @@ public class BLEService extends Service {
         if(bleManager != null) {
             rc = bleManager.connect(AUTO_RECONNECT);
             rc = interpretCode(rc, BLEManager.BLE_CONNECTED);
+
         }
 
         return rc;
