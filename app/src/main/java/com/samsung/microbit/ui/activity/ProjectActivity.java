@@ -117,6 +117,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     private int mActivityState;
 
+    Intent service;
+
     private BroadcastReceiver connectionChangedReceiver = BLEConnectionHandler.bleConnectionChangedReceiver(this);
 
     private Handler handler = new Handler();
@@ -1202,9 +1204,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         } else if(flashingType == FLASH_TYPE_PF) {
             // Attempt a partial flash
             Log.v(TAG, "Send Partial Flashing Intent");
-            final Intent service = new Intent(application, PartialFlashingService.class);
+            if(service != null) {
+                application.stopService(service);
+            }
+            service = new Intent(application, PartialFlashingService.class);
             service.putExtra("deviceAddress", currentMicrobit.mAddress);
-            service.putExtra("filepath", hexToFlash.getPath()); // a path or URI must be provided.
+            service.putExtra("filepath", mProgramToSend.filePath); // a path or URI must be provided.
             application.startService(service);
         }
 
@@ -1328,8 +1333,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 PopUp.hide();
 
                 //Show dialog to reconnect to a board if auto reconnect feature is disabled.
-                if(!BLEService.AUTO_RECONNECT) {
-                    PopUp.show(getString(R.string.reconnect_text),
+                PopUp.show(getString(R.string.reconnect_text),
                             getString(R.string.reconnect_title),
                             R.drawable.message_face,
                             R.drawable.green_btn,
@@ -1337,7 +1341,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             PopUp.TYPE_CHOICE,
                             reconnectHandler,
                             null);
-                }
             }
         };
 
