@@ -254,6 +254,10 @@ public class BLEManager {
         if(DEBUG) {
             logi("connectMaybeInit() :: rc = " + rc);
         }
+
+        // Attempt to rebond
+        bluetoothDevice.createBond();
+
         return rc;
     }
 

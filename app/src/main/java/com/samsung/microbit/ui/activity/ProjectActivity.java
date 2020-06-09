@@ -1092,26 +1092,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         MBApp application = MBApp.getApp();
 
-        /*
-        final Intent service = new Intent(application, DfuService.class);
-        service.putExtra(DfuService.EXTRA_DEVICE_ADDRESS, currentMicrobit.mAddress);
-        service.putExtra(DfuService.EXTRA_DEVICE_NAME, currentMicrobit.mPattern);
-        // service.putExtra(DfuService.EXTRA_DEVICE_PAIR_CODE, currentMicrobit.mPairingCode);
-        service.putExtra(DfuService.EXTRA_FILE_MIME_TYPE, DfuService.MIME_TYPE_OCTET_STREAM);
-        service.putExtra(DfuService.EXTRA_FILE_PATH, mProgramToSend.filePath); // a path or URI must be provided.
-        service.putExtra(DfuService.EXTRA_KEEP_BOND, false);
-        service.putExtra(DfuService.INTENT_REQUESTED_PHASE, 2);
-        if(notAValidFlashHexFile) {
-             service.putExtra(DfuService.EXTRA_WAIT_FOR_INIT_DEVICE_FIRMWARE, Constants.JUST_PAIRED_DELAY_ON_CONNECTION);
-        }
-
-        application.startService(service);
-        */
-
-        // TODO
-        // Determine V1 / V2
-
-
         FileInputStream fis;
         ByteArrayOutputStream outputHex;
         outputHex = new ByteArrayOutputStream();
@@ -1120,9 +1100,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         FileOutputStream outputStream;
 
         int next = 0;
-        boolean records_wanted = false;
-        boolean is_fat = false;
-        int hardwareType = 0; // 0 v1, 1 v2
+        boolean records_wanted = true;
 
         ByteArrayOutputStream lastELA = new ByteArrayOutputStream();
 
@@ -1144,16 +1122,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                 // Switch type and determine what to do with this record
                 switch (b_type) {
-                    case 'A': // Block start
-                        is_fat = true;
-
-                        // Check data for id
-                        if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
-                            records_wanted = (hardwareType == 0);
-                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '3') {
-                            records_wanted = (hardwareType == 1);
-                        }
-                        break;
                     case 'E':
                         break;
                     case '4':
@@ -1170,6 +1138,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     case '1':
                         outputHex.write(bs, b_x, next);
                         break;
+                    case '5':
                     case '0':
                     case 'D':
                         // Copy record to hex
@@ -1178,13 +1147,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         int b_ela    = (charToInt((char)lastELA.toByteArray()[9]) << 12) | (charToInt((char)lastELA.toByteArray()[10]) << 8) | (charToInt((char)lastELA.toByteArray()[11]) << 4) | (charToInt((char)lastELA.toByteArray()[12]));
                         int b_raddr  = (charToInt((char)bs[b_x + 3]) << 12) | (charToInt((char)bs[b_x + 4]) << 8) | (charToInt((char)bs[b_x + 5]) << 4) | (charToInt((char)bs[b_x + 6]));
                         int b_addr   = b_ela << 16 | b_raddr;
-                        if ((records_wanted || !is_fat ) && b_addr >= 0x18000 && b_addr < 0x3C000) {
+                        if ((records_wanted) && b_addr >= 0x18000 && b_addr < 0x3C000) {
                             outputHex.write(bs, b_x, next);
                         }
-                        break;
-                    case 'C':
-                    case 'B':
-                        records_wanted = false;
                         break;
                     default:
                         Log.e(TAG, "Record type not recognised; TYPE: " + b_type);
@@ -1199,7 +1164,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
 
             byte[] output = outputHex.toByteArray();
-            Log.v(TAG, "Finished parsing Fat Binary. Writing HEX for flashing");
+            Log.v(TAG, "Finished parsing HEX. Writing application HEX for flashing");
 
 
             try {
@@ -1221,17 +1186,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         } catch (IOException e) {
             e.printStackTrace();
         }
-//
-//
-//        DfuServiceInitiator.createDfuNotificationChannel(this);
-//        final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
-//                .setDeviceName(currentMicrobit.mName)
-//                .setKeepBond(true)
-//                .setCustomUuidsForLegacyDfu( new UUID(0x000015301212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015311212EFDEl, 0x1523785FEABCD123l), new UUID(0x000015321212EFDEl, 0x1523785FEABCD123l),  new UUID(0x000015341212EFDEl, 0x1523785FEABCD123l))
-//                .setMbrSize(0x1000)
-//                .setPacketsReceiptNotificationsEnabled(true)
-//                .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexToFlash.getPath());
-//        final DfuServiceController controller = starter.start(this, DfuService.class);
 
         if(flashingType == FLASH_TYPE_DFU) {
             // Start DFU Service
@@ -1250,7 +1204,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             Log.v(TAG, "Send Partial Flashing Intent");
             final Intent service = new Intent(application, PartialFlashingService.class);
             service.putExtra("deviceAddress", currentMicrobit.mAddress);
-            service.putExtra("filepath", hexToFlash); // a path or URI must be provided.
+            service.putExtra("filepath", hexToFlash.getPath()); // a path or URI must be provided.
             application.startService(service);
         }
 
