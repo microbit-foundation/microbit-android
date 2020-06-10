@@ -938,10 +938,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     public void onClick(final View v) {
         switch(v.getId()) {
             case R.id.createProject: {
-
+                Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
+                startActivity(launchMakeCodeIntent);
+                /*
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setData(Uri.parse(getString(R.string.my_scripts_url)));
                 startActivity(intent);
+                 */
             }
             break;
 

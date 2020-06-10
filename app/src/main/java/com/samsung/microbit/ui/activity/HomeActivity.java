@@ -2,6 +2,7 @@ package com.samsung.microbit.ui.activity;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -11,17 +12,21 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Html;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnLongClickListener;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
@@ -46,7 +51,7 @@ import static com.samsung.microbit.BuildConfig.DEBUG;
  * Represents a home screen. Allows to navigate to all functionality
  * that the app provides.
  */
-public class HomeActivity extends AppCompatActivity implements View.OnClickListener {
+public class HomeActivity extends AppCompatActivity implements View.OnClickListener, OnLongClickListener {
     private static final String TAG = HomeActivity.class.getSimpleName();
 
     public static final String FIRST_RUN = "firstrun";
@@ -187,6 +192,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         /* Todo [Hack]:
         * NavigationView items for selection by user using
         * onClick listener instead of overriding onNavigationItemSelected*/
+        findViewById(R.id.homeHelloAnimationGifView).setOnLongClickListener(this);
+
         Button menuNavBtn = (Button) findViewById(R.id.btn_nav_menu);
         menuNavBtn.setTypeface(MBApp.getApp().getTypeface());
         findViewById(R.id.btn_nav_menu).setOnClickListener(this);
@@ -325,6 +332,38 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
+    public boolean onLongClick(final View v) {
+        switch(v.getId()) {
+            case R.id.homeHelloAnimationGifView: {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Edit Editor URL");
+
+                final EditText editorURL = new EditText(this);
+                editorURL.setText(MakeCodeWebView.makecodeUrl);
+                editorURL.setInputType(InputType.TYPE_CLASS_TEXT);
+                builder.setView(editorURL);
+
+                builder.setPositiveButton("Set", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        MakeCodeWebView.setMakecodeUrl(editorURL.getText().toString());
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+                builder.show();
+                break;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public void onClick(final View v) {
         if(DEBUG) logi("onBtnClicked() :: ");
 
@@ -340,7 +379,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             break;
             case R.id.create_code_btn: {
                 Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
-                launchMakeCodeIntent.putExtra("url", "https://makecode.microbit.org/");
                 startActivity(launchMakeCodeIntent);
             }
             break;
@@ -561,4 +599,5 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             gifAnimationHelloEmoji.animate();
         }
     }
+
 }

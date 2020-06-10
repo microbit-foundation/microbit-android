@@ -3,19 +3,34 @@ package com.samsung.microbit.ui.activity;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Environment;
+import android.util.Base64;
 import android.view.View;
+import android.webkit.DownloadListener;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import com.samsung.microbit.R;
+import com.samsung.microbit.ui.PopUp;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+import static com.samsung.microbit.ui.PopUp.TYPE_CHOICE;
 
 /**
  * Displays MakeCode
  */
-public class MakeCodeWebView extends Activity {
+public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
+    public static String makecodeUrl = "https://makecode.microbit.org/v2";
+
+    public static void setMakecodeUrl(String url) {
+        makecodeUrl = url;
+    }
 
     @Override
     protected void onStart() {
@@ -26,6 +41,13 @@ public class MakeCodeWebView extends Activity {
     protected void onStop() {
         super.onStop();
     }
+
+    View.OnClickListener launchProjectActivity = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            openProjectActivity();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,10 +74,52 @@ public class MakeCodeWebView extends Activity {
             }
         });
 
+        webView.setDownloadListener(new DownloadListener() {
+            public void onDownloadStart(String url, String userAgent,
+                                        String contentDisposition, String mimetype,
+                                        long contentLength) {
+
+                File hexToWrite;
+                FileOutputStream outputStream;
+                String[] data = url.split(",");
+                String hexName = data[0].replace("data:","").replace(";base64", "");
+                byte[] decode = Base64.decode(data[1], Base64.DEFAULT);
+
+                try {
+                    hexToWrite = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + hexName);
+
+                    // Append n to file until it doesn't exist
+                    int i = 0;
+
+                    while (hexToWrite.exists()) {
+                        hexName = hexName.replaceAll("-?\\d*\\.","-" + i + ".");
+                        hexToWrite = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + hexName);
+                        i++;
+                    }
+
+                    // Create file
+                    hexToWrite.createNewFile();
+                    outputStream = new FileOutputStream(hexToWrite);
+                    outputStream.write(decode);
+                    outputStream.flush();
+
+                    PopUp.show("",
+                            getString(R.string.download_complete),
+                            R.drawable.message_face, R.drawable.green_btn,
+                            PopUp.GIFF_ANIMATION_NONE,
+                            TYPE_CHOICE,
+                            launchProjectActivity,
+                            null);
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
         //Check parameters Before load
         Intent intent = getIntent();
-        String url = intent.getStringExtra("url");
-        webView.loadUrl(url);
+        webView.loadUrl(makecodeUrl);
     }
 
     @Override
@@ -71,5 +135,10 @@ public class MakeCodeWebView extends Activity {
         if(v.getId() == R.id.backBtn) {
             finish();
         }
+    }
+
+    void openProjectActivity() {
+        Intent i = new Intent(this, ProjectActivity.class);
+        startActivity(i);
     }
 }
