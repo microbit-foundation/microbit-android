@@ -27,7 +27,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
-    implementation project(':android-gif-drawable-1.1.13')
+    implementation 'pl.droidsonroids.gif:android-gif-drawable:1.2.19'
     implementation 'no.nordicsemi.android:dfu:1.10.2'
     implementation project(':pfLibrary')
     implementation 'com.google.android.gms:play-services-analytics:9.2.0'
