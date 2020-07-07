@@ -487,6 +487,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 startBluetooth();
             } else {
                 adviceOnMicrobitState();
+                finish();
             }
         } else {
             if (isOpenByOtherApp) {
@@ -980,52 +981,42 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
         if(currentMicrobit.mPattern == null) {
-            PopUp.show(getString(R.string.flashing_failed_no_microbit), //message
-                    getString(R.string.flashing_error), //title
-                    R.drawable.error_face,//image icon res id
-                    R.drawable.red_btn,
-                    PopUp.GIFF_ANIMATION_ERROR,
-                    TYPE_ALERT, //type of popup.
-                    new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            PopUp.hide();
-                        }
-                    },//override click listener for ok button
-                    null);//pass null to use default listeneronClick
+            Intent intent = new Intent(this, PairingActivity.class);
+            startActivity(intent);
         } else {
+            Log.v(TAG, "Start flash!");
             flashingChecks();
         }
     }
 
     private void flashingChecks() {
-        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
-
-        if(mProgramToSend == null || mProgramToSend.filePath == null) {
-            PopUp.show(getString(R.string.internal_error_msg),
-                    "",
-                    R.drawable.error_face, R.drawable.red_btn,
-                    PopUp.GIFF_ANIMATION_ERROR,
-                    TYPE_ALERT,
-                    null, null);
-            return;
-        }
-        if(mActivityState == FlashActivityState.FLASH_STATE_FIND_DEVICE
-                || mActivityState == FlashActivityState.FLASH_STATE_VERIFY_DEVICE
-                || mActivityState == FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT
-                || mActivityState == FlashActivityState.FLASH_STATE_INIT_DEVICE
-                || mActivityState == FlashActivityState.FLASH_STATE_PROGRESS
-
-        ) {
-            // Another download session is in progress.xml
-            PopUp.show(getString(R.string.multple_flashing_session_msg),
-                    "",
-                    R.drawable.flash_face, R.drawable.blue_btn,
-                    PopUp.GIFF_ANIMATION_FLASH,
-                    TYPE_ALERT,
-                    null, null);
-            return;
-        }
+          ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
+//
+//        if(mProgramToSend == null || mProgramToSend.filePath == null) {
+//            PopUp.show(getString(R.string.internal_error_msg),
+//                    "",
+//                    R.drawable.error_face, R.drawable.red_btn,
+//                    PopUp.GIFF_ANIMATION_ERROR,
+//                    TYPE_ALERT,
+//                    null, null);
+//            return;
+//        }
+//        if(mActivityState == FlashActivityState.FLASH_STATE_FIND_DEVICE
+//                || mActivityState == FlashActivityState.FLASH_STATE_VERIFY_DEVICE
+//                || mActivityState == FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT
+//                || mActivityState == FlashActivityState.FLASH_STATE_INIT_DEVICE
+//                || mActivityState == FlashActivityState.FLASH_STATE_PROGRESS
+//
+//        ) {
+//            // Another download session is in progress.xml
+//            PopUp.show(getString(R.string.multple_flashing_session_msg),
+//                    "",
+//                    R.drawable.flash_face, R.drawable.blue_btn,
+//                    PopUp.GIFF_ANIMATION_FLASH,
+//                    TYPE_ALERT,
+//                    null, null);
+//            return;
+//        }
         if(mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
                 mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST) {
             //Check final device from user and start flashing
