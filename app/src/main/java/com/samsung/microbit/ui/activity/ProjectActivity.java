@@ -1001,22 +1001,24 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 //                    null, null);
 //            return;
 //        }
-//        if(mActivityState == FlashActivityState.FLASH_STATE_FIND_DEVICE
-//                || mActivityState == FlashActivityState.FLASH_STATE_VERIFY_DEVICE
-//                || mActivityState == FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT
-//                || mActivityState == FlashActivityState.FLASH_STATE_INIT_DEVICE
-//                || mActivityState == FlashActivityState.FLASH_STATE_PROGRESS
-//
-//        ) {
-//            // Another download session is in progress.xml
-//            PopUp.show(getString(R.string.multple_flashing_session_msg),
-//                    "",
-//                    R.drawable.flash_face, R.drawable.blue_btn,
-//                    PopUp.GIFF_ANIMATION_FLASH,
-//                    TYPE_ALERT,
-//                    null, null);
-//            return;
-//        }
+
+        if(mActivityState == FlashActivityState.FLASH_STATE_FIND_DEVICE
+                || mActivityState == FlashActivityState.FLASH_STATE_VERIFY_DEVICE
+                || mActivityState == FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT
+                || mActivityState == FlashActivityState.FLASH_STATE_INIT_DEVICE
+                || mActivityState == FlashActivityState.FLASH_STATE_PROGRESS
+
+        ) {
+            // Another download session is in progress.xml
+            PopUp.show(getString(R.string.multple_flashing_session_msg),
+                    "",
+                    R.drawable.flash_face, R.drawable.blue_btn,
+                    PopUp.GIFF_ANIMATION_FLASH,
+                    TYPE_ALERT,
+                    null, null);
+            return;
+        }
+
         if(mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
                 mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST) {
             //Check final device from user and start flashing
@@ -1037,6 +1039,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         @Override
                         public void onClick(View v) {
                             PopUp.hide();
+                            finish();
                         }
                     });//pass null to use default listeneronClick
         } else {
@@ -1078,6 +1081,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * @param FLASH_TYPE_DFU
      */
     protected void startFlashing(int flashingType) {
+
         logi(">>>>>>>>>>>>>>>>>>> startFlashing called  >>>>>>>>>>>>>>>>>>>  ");
         //Reset all stats value
         m_BinSizeStats = "0";
@@ -1191,6 +1195,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 .setDeviceName(currentMicrobit.mName)
                 .setKeepBond(true)
                 .setMbrSize(0x1000)
+                .setDisableNotification(true)
                 .setPacketsReceiptNotificationsEnabled(true)
                 .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexToFlash.getPath());
             final DfuServiceController controller = starter.start(this, DfuService.class);
@@ -1325,16 +1330,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             public void onClick(View v) {
                 logi("popupOkHandler");
                 PopUp.hide();
-
-                //Show dialog to reconnect to a board if auto reconnect feature is disabled.
-                PopUp.show(getString(R.string.reconnect_text),
-                            getString(R.string.reconnect_title),
-                            R.drawable.message_face,
-                            R.drawable.green_btn,
-                            PopUp.GIFF_ANIMATION_NONE,
-                            PopUp.TYPE_CHOICE,
-                            reconnectHandler,
-                            null);
             }
         };
 
@@ -1379,6 +1374,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         m_HexFileSizeStats,
                                         m_BinSizeStats, m_MicroBitFirmware);
                                         */
+                                ServiceUtils.sendConnectDisconnectMessage(false);
+
+
                                 PopUp.show(getString(R.string.flashing_success_message), //message
                                         getString(R.string.flashing_success_title), //title
                                         R.drawable.message_face, R.drawable.blue_btn,
@@ -1606,7 +1604,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             },
                             popupOkHandler);
                 } else {
-                    PopUp.show(error_message, //message
+                    PopUp.show(error_message + "\n\n" + getString(R.string.connect_tip_text), //message
                             getString(R.string.flashing_failed_title), //title
                             R.drawable.error_face, R.drawable.red_btn,
                             PopUp.GIFF_ANIMATION_ERROR,

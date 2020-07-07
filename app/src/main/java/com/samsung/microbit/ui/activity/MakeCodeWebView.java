@@ -2,6 +2,7 @@ package com.samsung.microbit.ui.activity;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Base64;
@@ -12,13 +13,10 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import com.samsung.microbit.R;
-import com.samsung.microbit.ui.PopUp;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-
-import static com.samsung.microbit.ui.PopUp.TYPE_CHOICE;
 
 /**
  * Displays MakeCode
@@ -26,7 +24,9 @@ import static com.samsung.microbit.ui.PopUp.TYPE_CHOICE;
 public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
-    public static String makecodeUrl = "https://makecode.microbit.org/v2";
+    public static String makecodeUrl = "https://makecode.microbit.org/?android=16";
+
+    Uri hexToFlash;
 
     public static void setMakecodeUrl(String url) {
         makecodeUrl = url;
@@ -41,13 +41,6 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     protected void onStop() {
         super.onStop();
     }
-
-    View.OnClickListener launchProjectActivity = new View.OnClickListener() {
-        @Override
-        public void onClick(View view) {
-            openProjectActivity();
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,13 +96,10 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                     outputStream.write(decode);
                     outputStream.flush();
 
-                    PopUp.show("",
-                            getString(R.string.download_complete),
-                            R.drawable.message_face, R.drawable.green_btn,
-                            PopUp.GIFF_ANIMATION_NONE,
-                            TYPE_CHOICE,
-                            launchProjectActivity,
-                            null);
+                    // Get file path
+                    hexToFlash = Uri.fromFile(hexToWrite);
+
+                    openProjectActivity();
 
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -139,6 +129,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     void openProjectActivity() {
         Intent i = new Intent(this, ProjectActivity.class);
+        i.setData(hexToFlash);
         startActivity(i);
     }
 }

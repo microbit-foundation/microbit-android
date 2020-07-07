@@ -228,7 +228,7 @@
     <string name="no_projects">No projects found!</string>
     <string name="connected_to">Connected to</string>
     <string name="not_connected">Not Connected</string>
-    <string name="micro_bit_reset_msg">Please reset your micro:bit and try again.</string>
+    <string name="micro_bit_reset_msg">Please reset your micro:bit into pairing mode and try again.\n\nHOLD the A and B buttons and PRESS and RELEASE RESET</string>
     <string name="flashing_title">Flashing</string>
     <string name="pairing_title">Pairing</string>
     <string name="flashing_error_msg">micro:bit not in correct state</string>
