@@ -24,7 +24,7 @@ import java.io.IOException;
 public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
-    public static String makecodeUrl = "https://makecode.microbit.org/?android=16";
+    public static String makecodeUrl = "https://makecode.microbit.org/v2?androidapp=19";
 
     Uri hexToFlash;
 

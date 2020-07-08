@@ -1230,6 +1230,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         pfFilter.addAction(PartialFlashingService.BROADCAST_START);
         pfFilter.addAction(PartialFlashingService.BROADCAST_PROGRESS);
         pfFilter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU);
         pfFilter.addAction(PartialFlashingService.BROADCAST_COMPLETE);
         pfResultReceiver = new pfResultReceiver();
 
@@ -1303,13 +1304,21 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             }
                         },//override click listener for ok button
                         null);//pass null to use default listener
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU)) {
+                Log.v(TAG, "Use Nordic DFU");
+                startFlashing(FLASH_TYPE_DFU);
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
 
-                Log.v(TAG, "startFlashing(FLASH_TYPE_DFU);");
+                Log.v(TAG, "Partial flashing failed");
 
-                // If Partial Flashing Fails attempt DFU Flash
-                startFlashing(FLASH_TYPE_DFU);
-
+                // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU.
+                PopUp.show(getString(R.string.flashing_aborted), //message
+                        getString(R.string.flashing_aborted_title),
+                        R.drawable.error_face, R.drawable.red_btn,
+                        PopUp.GIFF_ANIMATION_ERROR,
+                        TYPE_ALERT, //type of popup.
+                        popupOkHandler,//override click listener for ok button
+                        popupOkHandler);//pass null to use default listener
             }
 
         }
