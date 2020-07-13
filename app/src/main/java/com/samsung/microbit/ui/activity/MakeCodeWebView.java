@@ -59,6 +59,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setBuiltInZoomControls(true);
         webSettings.setDisplayZoomControls(false);
+        webView.setWebContentsDebuggingEnabled(true);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override

@@ -335,7 +335,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     public boolean onLongClick(final View v) {
         switch(v.getId()) {
             case R.id.homeHelloAnimationGifView: {
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.AlertDialogDarkButtons);
                 builder.setTitle("Edit Editor URL");
 
                 final EditText editorURL = new EditText(this);
@@ -357,6 +357,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 });
 
                 builder.show();
+
                 break;
             }
         }
