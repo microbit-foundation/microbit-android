@@ -81,12 +81,15 @@
     <string name="flashing_failed_io_error">Flashing Failed! Cannot find the file. Please reset micro:bit and try again.</string>
     <string name="flashing_failed_message">Flashing Failed! No Programs Found</string>
     <string name="flashing_aborted">Flashing aborted! Required service not found on device. Please reset micro:bit and try again.</string>
+    <string name="could_not_connect">Could not connect to micro:bit. \n\n Please reset your micro:bit into pairing mode and try again.\n\nHOLD the A and B buttons and PRESS and RELEASE RESET to enter pairing mode</string>
+
 
     <string name="flashing_verifcation_failed">Flashing Failed</string>
     <string name="flashing_verifcation_failed_title">Cannot verify the flashing code. Please reset micro:bit and try again.</string>
 
 
     <string name="flashing_aborted_title">Aborted</string>
+    <string name="could_not_connect_title">Unable to connect</string>
     <string name="flashing_failed_title">Flashing unsuccessful</string>
     <string name="flashing_progress_message">Please do not interact with micro:bit before flashing process is complete</string>
     <string name="flashing_success_message">You have successfully downloaded program to micro:bit</string>
@@ -228,7 +231,7 @@
     <string name="no_projects">No projects found!</string>
     <string name="connected_to">Connected to</string>
     <string name="not_connected">Not Connected</string>
-    <string name="micro_bit_reset_msg">Please reset your micro:bit into pairing mode and try again.\n\nHOLD the A and B buttons and PRESS and RELEASE RESET</string>
+    <string name="micro_bit_reset_msg">Please reset your micro:bit into pairing mode and try again.\n\nHOLD the A and B buttons and PRESS and RELEASE RESET to enter pairing mode</string>
     <string name="flashing_title">Flashing</string>
     <string name="pairing_title">Pairing</string>
     <string name="flashing_error_msg">micro:bit not in correct state</string>

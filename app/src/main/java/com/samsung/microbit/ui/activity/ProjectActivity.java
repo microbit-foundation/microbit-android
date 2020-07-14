@@ -78,6 +78,7 @@ import no.nordicsemi.android.error.GattError;
 import static com.samsung.microbit.BuildConfig.DEBUG;
 import static com.samsung.microbit.ui.PopUp.TYPE_ALERT;
 import static com.samsung.microbit.ui.PopUp.TYPE_PROGRESS_NOT_CANCELABLE;
+import static com.samsung.microbit.ui.PopUp.TYPE_SPINNER_NOT_CANCELABLE;
 import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_LAYOUT;
 import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_PROGRESS;
 import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_MESSAGE;
@@ -1058,6 +1059,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
             dfuResultReceiver = null;
         }
+
+        /* Pop up for flash init */
+
         setActivityState(FlashActivityState.FLASH_STATE_FIND_DEVICE);
         registerCallbacksForFlashing();
 
@@ -1087,6 +1091,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         m_BinSizeStats = "0";
         m_MicroBitFirmware = "0.0";
         m_HexFileSizeStats = getFileSize(mProgramToSend.filePath);
+
+        PopUp.show(getString(R.string.dfu_status_starting_msg),
+                "",
+                R.drawable.flash_face, R.drawable.blue_btn,
+                PopUp.GIFF_ANIMATION_FLASH,
+                TYPE_SPINNER_NOT_CANCELABLE,
+                null, null);
 
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
@@ -1312,8 +1323,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 Log.v(TAG, "Partial flashing failed");
 
                 // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU.
-                PopUp.show(getString(R.string.flashing_aborted), //message
-                        getString(R.string.flashing_aborted_title),
+                PopUp.show(getString(R.string.could_not_connect), //message
+                        getString(R.string.could_not_connect_title),
                         R.drawable.error_face, R.drawable.red_btn,
                         PopUp.GIFF_ANIMATION_ERROR,
                         TYPE_ALERT, //type of popup.
@@ -1452,8 +1463,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     },//override click listener for ok button
                                     null);//pass null to use default listener
                             break;
-                        /*
-                        case DfuService.PROGRESS_WAITING_REBOOT:
+
+                        case DfuService.PROGRESS_ENABLING_DFU_MODE:
                             setActivityState(FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT);
                             PopUp.show(getString(R.string.waiting_reboot), //message
                                     getString(R.string.send_project), //title
@@ -1469,7 +1480,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     },//override click listener for ok button
                                     null);//pass null to use default listener
                             break;
-                        case DfuService.PROGRESS_VALIDATION_FAILED:
+                        /*
+                        case DfuService.PROGRESS_VALIDATING:
                             setActivityState(FlashActivityState.STATE_IDLE);
 
                             MBApp application = MBApp.getApp();
