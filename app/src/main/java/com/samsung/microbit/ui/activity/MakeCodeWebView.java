@@ -12,6 +12,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import com.samsung.microbit.BuildConfig;
 import com.samsung.microbit.R;
 
 import java.io.File;
@@ -24,7 +25,7 @@ import java.io.IOException;
 public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
-    public static String makecodeUrl = "https://makecode.microbit.org/v2?androidapp=19";
+    public static String makecodeUrl = "https://makecode.microbit.org/?androidapp=" + BuildConfig.VERSION_CODE;
 
     Uri hexToFlash;
 
@@ -59,6 +60,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setBuiltInZoomControls(true);
         webSettings.setDisplayZoomControls(false);
+        webSettings.setDomStorageEnabled(true);
         webView.setWebContentsDebuggingEnabled(true);
 
         webView.setWebViewClient(new WebViewClient() {
@@ -132,5 +134,6 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         Intent i = new Intent(this, ProjectActivity.class);
         i.setData(hexToFlash);
         startActivity(i);
+        finish();
     }
 }

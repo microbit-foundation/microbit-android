@@ -130,6 +130,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     private boolean minimumPermissionsGranted;
 
+    private boolean previousPartialFlashFailed = false;
+
     private int FLASH_TYPE_DFU = 0;
     private int FLASH_TYPE_PF  = 1;
 
@@ -984,6 +986,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         if(currentMicrobit.mPattern == null) {
             Intent intent = new Intent(this, PairingActivity.class);
             startActivity(intent);
+            /*
+            while(pairingFailed = PENDING)
+            if PASS
+            if FAIL cancel
+            */
         } else {
             Log.v(TAG, "Start flash!");
             flashingChecks();
@@ -1092,6 +1099,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         m_MicroBitFirmware = "0.0";
         m_HexFileSizeStats = getFileSize(mProgramToSend.filePath);
 
+
         PopUp.show(getString(R.string.dfu_status_starting_msg),
                 "",
                 R.drawable.flash_face, R.drawable.blue_btn,
@@ -1147,6 +1155,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         }
                         break;
                     case '1':
+                        // EOF
+                        // Ensure KV storage is erased
+                        String kv_address = ":020000040003F7";
+                        String kv_data = ":1000000000000000000000000000000000000000F0";
+                        outputHex.write(kv_address.getBytes());
+                        outputHex.write(kv_data.getBytes());
+
+                        // Write final block
                         outputHex.write(bs, b_x, next);
                         break;
                     case '5':
@@ -1179,15 +1195,17 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
 
             try {
-                hexToFlash = new File(this.getCacheDir() + "/" + mProgramToSend.name + ".hex");
-                outputStream = new FileOutputStream(hexToFlash);
-
-                if (!hexToFlash.exists()) {
-                    hexToFlash.createNewFile();
+                hexToFlash = new File(this.getCacheDir() + "/tmp.hex");
+                if (hexToFlash.exists()) {
+                    hexToFlash.delete();
                 }
+                hexToFlash.createNewFile();
 
+                outputStream = new FileOutputStream(hexToFlash);
                 outputStream.write(output);
                 outputStream.flush();
+
+                Log.v(TAG, hexToFlash.getAbsolutePath());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -1208,7 +1226,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 .setMbrSize(0x1000)
                 .setDisableNotification(true)
                 .setPacketsReceiptNotificationsEnabled(true)
-                .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexToFlash.getPath());
+                //.setBinOrHex(DfuBaseService.TYPE_APPLICATION, mProgramToSend.filePath);
+                .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexToFlash.getAbsolutePath());
             final DfuServiceController controller = starter.start(this, DfuService.class);
 
         } else if(flashingType == FLASH_TYPE_PF) {
@@ -1219,7 +1238,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
             service = new Intent(application, PartialFlashingService.class);
             service.putExtra("deviceAddress", currentMicrobit.mAddress);
-            service.putExtra("filepath", mProgramToSend.filePath); // a path or URI must be provided.
+            service.putExtra("filepath", hexToFlash.getAbsolutePath()); // a path or URI must be provided.
+            service.putExtra("pf", false); // Enable partial flashing
             application.startService(service);
         }
 
@@ -1321,8 +1341,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
 
                 Log.v(TAG, "Partial flashing failed");
+                previousPartialFlashFailed = true;
 
-                // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU.
+                // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU automatically
+                // Set flag to avoid partial flash next time
                 PopUp.show(getString(R.string.could_not_connect), //message
                         getString(R.string.could_not_connect_title),
                         R.drawable.error_face, R.drawable.red_btn,
@@ -1358,7 +1380,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             String message = "Broadcast intent detected " + intent.getAction();
             logi("DFUResultReceiver.onReceive :: " + message);
             if(intent.getAction().equals(DfuService.BROADCAST_PROGRESS)) {
-
                 int state = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
                 if(state < 0) {
                     logi("DFUResultReceiver.onReceive :: state -- " + state);
@@ -1396,6 +1417,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         */
                                 ServiceUtils.sendConnectDisconnectMessage(false);
 
+                                previousPartialFlashFailed = false;
 
                                 PopUp.show(getString(R.string.flashing_success_message), //message
                                         getString(R.string.flashing_success_title), //title
@@ -1565,6 +1587,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                         MBApp application = MBApp.getApp();
 
+                        PopUp.hide();
                         PopUp.show(application.getString(R.string.flashing_progress_message),
                                 String.format(application.getString(R.string.flashing_project), mProgramToSend.name),
                                 R.drawable.flash_modal_emoji, 0,

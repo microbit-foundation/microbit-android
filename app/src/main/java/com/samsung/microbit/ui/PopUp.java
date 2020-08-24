@@ -294,6 +294,7 @@ public class PopUp {
         while(!pendingQueue.isEmpty() && !done) {
             PendingRequest request = pendingQueue.peek();
 
+            if(request == null) return;
             switch(request.type) {
                 case REQUEST_TYPE_SHOW: {
                     Log.d(TAG, "processNextPendingRequest REQUEST_TYPE_SHOW");
