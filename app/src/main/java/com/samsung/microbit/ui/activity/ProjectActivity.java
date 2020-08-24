@@ -1239,11 +1239,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             service = new Intent(application, PartialFlashingService.class);
             service.putExtra("deviceAddress", currentMicrobit.mAddress);
             service.putExtra("filepath", hexToFlash.getAbsolutePath()); // a path or URI must be provided.
-            service.putExtra("pf", false); // Enable partial flashing
+            service.putExtra("pf", true); // Enable partial flashing
             application.startService(service);
         }
-
-
     }
 
     /**
