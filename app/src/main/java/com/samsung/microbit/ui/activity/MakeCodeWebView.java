@@ -134,6 +134,5 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         Intent i = new Intent(this, ProjectActivity.class);
         i.setData(hexToFlash);
         startActivity(i);
-        finish();
     }
 }
