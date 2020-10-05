@@ -197,4 +197,5 @@ public class BluetoothUtils {
 
         editor.apply();
     }
+
 }

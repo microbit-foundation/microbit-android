@@ -378,6 +378,8 @@ public class BLEService extends Service {
      * @return True, if successful.
      */
     private boolean registerMicrobitRequirements(BluetoothGattService eventService, boolean enable) {
+        return true;
+        /*
         BluetoothGattCharacteristic microbit_requirements = eventService.getCharacteristic(CharacteristicUUIDs
                 .ES_MICROBIT_REQUIREMENTS);
         if(microbit_requirements == null) {
@@ -413,6 +415,7 @@ public class BLEService extends Service {
         logi("registerMicrobitRequirements() :: found Constants.ES_MICROBIT_REQUIREMENTS ");
         enableCharacteristicNotification(microbit_requirements, microbit_requirementsDescriptor, enable);
         return true;
+         */
     }
 
     private void sendMicroBitNeedsCallNotification() {

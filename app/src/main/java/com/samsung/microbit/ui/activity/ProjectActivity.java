@@ -14,6 +14,7 @@ import android.content.res.AssetFileDescriptor;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -28,6 +29,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
@@ -65,10 +67,14 @@ import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import no.nordicsemi.android.dfu.DfuBaseService;
 import no.nordicsemi.android.dfu.DfuServiceController;
@@ -134,6 +140,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     private int FLASH_TYPE_DFU = 0;
     private int FLASH_TYPE_PF  = 1;
+
+    private int MICROBIT_V1 = 1;
+    private int MICROBIT_V2 = 2;
+
+    BLEService bleService;
 
     private final Runnable tryToConnectAgain = new Runnable() {
 
@@ -1089,8 +1100,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     /**
      * Creates and starts service to flash a program to a micro:bit board.
-     * @param FLASH_TYPE_DFU
+     * int FLASH_TYPE_DFU
      */
+    @RequiresApi(api = Build.VERSION_CODES.O)
     protected void startFlashing(int flashingType) {
 
         logi(">>>>>>>>>>>>>>>>>>> startFlashing called  >>>>>>>>>>>>>>>>>>>  ");
@@ -1110,22 +1122,164 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
         MBApp application = MBApp.getApp();
+        int hardwareType = currentMicrobit.mhardwareVersion;
 
+
+        // Create tmp hex for V1 or V2
+        String[] ret = universalHexToDFU(mProgramToSend.filePath, hardwareType);
+        String hexAbsolutePath = ret[0];
+        int applicationSize = Integer.parseInt(ret[1]);
+
+        // If V2 create init packet
+        String initPacketAbsolutePath = "-1";
+        if(hardwareType == MICROBIT_V2) {
+            try {
+                initPacketAbsolutePath = createDFUInitPacket(applicationSize);
+                String[] files = new String[]{initPacketAbsolutePath, hexAbsolutePath};
+                createDFUZip(files);
+            } catch (IOException e) {
+                Log.v(TAG, "Failed to create init packet");
+                e.printStackTrace();
+            }
+        }
+
+        if(flashingType == FLASH_TYPE_DFU) {
+
+            // Start DFU Service
+            Log.v(TAG, "Start Full DFU");
+            Log.v(TAG, "DFU hex: " + hexAbsolutePath);
+            if(hardwareType == MICROBIT_V2) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    DfuServiceInitiator.createDfuNotificationChannel(this);
+                }
+                final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+                        .setDeviceName(currentMicrobit.mName)
+                        .setPacketsReceiptNotificationsEnabled(true)
+                        .setKeepBond(true)
+                        .setForceDfu(true)
+                        .setZip(this.getCacheDir() + "/update.zip");
+                final DfuServiceController controller = starter.start(this, DfuService.class);
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    DfuServiceInitiator.createDfuNotificationChannel(this);
+                }
+                final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+                        .setDeviceName(currentMicrobit.mName)
+                        .setKeepBond(true)
+                        .setForceDfu(true)
+                        .setPacketsReceiptNotificationsEnabled(true)
+                        .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexAbsolutePath);
+                final DfuServiceController controller = starter.start(this, DfuService.class);
+            }
+
+        } else if(flashingType == FLASH_TYPE_PF) {
+            // Attempt a partial flash
+            Log.v(TAG, "Send Partial Flashing Intent");
+            if(service != null) {
+                application.stopService(service);
+            }
+            service = new Intent(application, PartialFlashingService.class);
+            service.putExtra("deviceAddress", currentMicrobit.mAddress);
+            service.putExtra("filepath", hexAbsolutePath); // a path or URI must be provided.
+            service.putExtra("pf", true); // Enable partial flashing
+            application.startService(service);
+        }
+    }
+
+    /**
+     * Create zip for DFU
+     */
+    private String createDFUZip(String[] srcFiles ) throws IOException {
+        byte[] buffer = new byte[1024];
+
+        File zipFile = new File(this.getCacheDir() + "/update.zip");
+        if (zipFile.exists()) {
+            zipFile.delete();
+        }
+        zipFile.createNewFile();
+
+        FileOutputStream fileOutputStream = new FileOutputStream(this.getCacheDir() + "/update.zip");
+        ZipOutputStream zipOutputStream = new ZipOutputStream(fileOutputStream);
+
+        for (int i=0; i < srcFiles.length; i++) {
+
+            File srcFile = new File(srcFiles[i]);
+            FileInputStream fileInputStream = new FileInputStream(srcFile);
+            zipOutputStream.putNextEntry(new ZipEntry(srcFile.getName()));
+
+            int length;
+            while ((length = fileInputStream.read(buffer)) > 0) {
+                zipOutputStream.write(buffer, 0, length);
+            }
+
+            zipOutputStream.closeEntry();
+            fileInputStream.close();
+
+        }
+
+        // close the ZipOutputStream
+        zipOutputStream.close();
+
+        return this.getCacheDir() + "/update.zip";
+    }
+
+    /**
+     * Create DFU init packet from HEX
+     * @param hexLength
+     */
+    private String createDFUInitPacket(int hexLength) throws IOException {
+        ByteArrayOutputStream outputInitPacket;
+        outputInitPacket = new ByteArrayOutputStream();
+
+        Log.v(TAG, "DFU App Length: " + hexLength);
+
+        outputInitPacket.write("microbit_app".getBytes()); // "microbit_app"
+        outputInitPacket.write(new byte[]{0x1, 0, 0, 0});  // Init packet version
+        outputInitPacket.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(hexLength).array());  // App size
+        outputInitPacket.write(new byte[]{0, 0, 0, 0x0});  // Hash Size. 0: Ignore Hash
+        outputInitPacket.write(new byte[]{
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0
+        }); // Hash
+
+        // Write to temp file
+        File initPacket = new File(this.getCacheDir() + "/application.dat");
+        if (initPacket.exists()) {
+            initPacket.delete();
+        }
+        initPacket.createNewFile();
+
+        FileOutputStream outputStream;
+        outputStream = new FileOutputStream(initPacket);
+        outputStream.write(outputInitPacket.toByteArray());
+        outputStream.flush();
+
+        // Should return from here
+        return initPacket.getAbsolutePath();
+    }
+
+    /**
+     * Process Universal Hex
+     * @return
+     */
+    private String[] universalHexToDFU(String inputPath, int hardwareType) {
         FileInputStream fis;
         ByteArrayOutputStream outputHex;
         outputHex = new ByteArrayOutputStream();
 
-        File hexToFlash = new File(this.getCacheDir() + "/tmp");
         FileOutputStream outputStream;
 
+        int application_size = 0;
         int next = 0;
-        boolean records_wanted = true;
-
+        boolean records_wanted = false;
+        boolean is_fat = false;
         ByteArrayOutputStream lastELA = new ByteArrayOutputStream();
 
         try {
-            fis = new FileInputStream(mProgramToSend.filePath);
-            byte[] bs = new byte[Integer.valueOf(FileUtils.getFileSize(mProgramToSend.filePath))];
+            fis = new FileInputStream(inputPath);
+            byte[] bs = new byte[Integer.valueOf(FileUtils.getFileSize(inputPath))];
             int i = 0;
             i = fis.read(bs);
 
@@ -1135,12 +1289,22 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                 // Find next record start, or EOF
                 next = 1;
-                while((b_x + next) < i && bs[b_x + next] != ':') {
+                while ((b_x + next) < i && bs[b_x + next] != ':') {
                     next++;
                 }
 
                 // Switch type and determine what to do with this record
                 switch (b_type) {
+                    case 'A': // Block start
+                        is_fat = true;
+
+                        // Check data for id
+                        if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
+                            records_wanted = (hardwareType == MICROBIT_V1);
+                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '3') {
+                            records_wanted = (hardwareType == MICROBIT_V2);
+                        }
+                        break;
                     case 'E':
                         break;
                     case '4':
@@ -1148,7 +1312,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         currentELA.write(bs, b_x, next);
 
                         // If ELA has changed write
-                        if(!Arrays.equals(currentELA.toByteArray(), lastELA.toByteArray())) {
+                        if (!Arrays.equals(currentELA.toByteArray(), lastELA.toByteArray())) {
                             lastELA.reset();
                             lastELA.write(bs, b_x, next);
                             outputHex.write(bs, b_x, next);
@@ -1157,33 +1321,62 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     case '1':
                         // EOF
                         // Ensure KV storage is erased
-                        String kv_address = ":020000040003F7";
-                        String kv_data = ":1000000000000000000000000000000000000000F0";
-                        outputHex.write(kv_address.getBytes());
-                        outputHex.write(kv_data.getBytes());
+                        if(hardwareType == MICROBIT_V1) {
+                            String kv_address = ":020000040003F7\n";
+                            String kv_data = ":1000000000000000000000000000000000000000F0\n";
+                            outputHex.write(kv_address.getBytes());
+                            outputHex.write(kv_data.getBytes());
+                        }
 
                         // Write final block
                         outputHex.write(bs, b_x, next);
                         break;
+                    case 'D': // V2 section of Universal Hex
+                        // Remove D
+                        bs[b_x + 8] = '0';
+                        // Find first \n. PXT adds in extra padding occasionally
+                        int first_cr = 0;
+                        while(bs[b_x + first_cr] != '\n') {
+                            first_cr++;
+                        }
+
+                        // Recalculate checksum
+                        int checksum = (charToInt((char) bs[b_x + first_cr - 2]) * 16) + charToInt((char) bs[b_x + first_cr - 1]) + 0xD;
+                        String checksum_hex = Integer.toHexString(checksum);
+                        checksum_hex = "00" + checksum_hex.toUpperCase(); // Pad to ensure we have 2 characters
+                        checksum_hex = checksum_hex.substring(checksum_hex.length() - 2);
+                        bs[b_x + first_cr - 2] = (byte) checksum_hex.charAt(0);
+                        bs[b_x + first_cr - 1] = (byte) checksum_hex.charAt(1);
                     case '5':
                     case '0':
-                    case 'D':
                         // Copy record to hex
                         // Record starts at b_x, next long
                         // Calculate address of record
-                        int b_ela    = (charToInt((char)lastELA.toByteArray()[9]) << 12) | (charToInt((char)lastELA.toByteArray()[10]) << 8) | (charToInt((char)lastELA.toByteArray()[11]) << 4) | (charToInt((char)lastELA.toByteArray()[12]));
-                        int b_raddr  = (charToInt((char)bs[b_x + 3]) << 12) | (charToInt((char)bs[b_x + 4]) << 8) | (charToInt((char)bs[b_x + 5]) << 4) | (charToInt((char)bs[b_x + 6]));
-                        int b_addr   = b_ela << 16 | b_raddr;
-                        if ((records_wanted) && b_addr >= 0x18000 && b_addr < 0x3C000) {
+                        int b_ela = (charToInt((char) lastELA.toByteArray()[9]) << 12) | (charToInt((char) lastELA.toByteArray()[10]) << 8) | (charToInt((char) lastELA.toByteArray()[11]) << 4) | (charToInt((char) lastELA.toByteArray()[12]));
+                        int b_raddr = (charToInt((char) bs[b_x + 3]) << 12) | (charToInt((char) bs[b_x + 4]) << 8) | (charToInt((char) bs[b_x + 5]) << 4) | (charToInt((char) bs[b_x + 6]));
+                        int b_addr = b_ela << 16 | b_raddr;
+
+                        int lower_bound = 0; int upper_bound = 0;
+                        if(hardwareType == MICROBIT_V1) { lower_bound = 0x18000; upper_bound = 0x38000; }
+                        if(hardwareType == MICROBIT_V2) { lower_bound = 0x27000; upper_bound = 0x70000; }
+
+                        if ((records_wanted || !is_fat) && b_addr >= lower_bound && b_addr < upper_bound) {
                             outputHex.write(bs, b_x, next);
+                            // Add to app size
+                            application_size = application_size + charToInt((char) bs[b_x + 1]) * 16 + charToInt((char) bs[b_x + 2]);
                         }
+
+                        break;
+                    case 'C':
+                    case 'B':
+                        records_wanted = false;
                         break;
                     default:
                         Log.e(TAG, "Record type not recognised; TYPE: " + b_type);
                 }
 
                 // Record handled. Move to next ':'
-                if((b_x + next) >= i) {
+                if ((b_x + next) >= i) {
                     break;
                 } else {
                     b_x = b_x + next;
@@ -1195,7 +1388,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
 
             try {
-                hexToFlash = new File(this.getCacheDir() + "/tmp.hex");
+                File hexToFlash = new File(this.getCacheDir() + "/application.hex");
                 if (hexToFlash.exists()) {
                     hexToFlash.delete();
                 }
@@ -1205,7 +1398,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 outputStream.write(output);
                 outputStream.flush();
 
+                // Should return from here
                 Log.v(TAG, hexToFlash.getAbsolutePath());
+                String[] ret = new String[2];
+                ret[0] = hexToFlash.getAbsolutePath();
+                ret[1] = Integer.toString(application_size);
+
+                return ret;
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -1216,32 +1415,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             e.printStackTrace();
         }
 
-        if(flashingType == FLASH_TYPE_DFU) {
-            // Start DFU Service
-            Log.v(TAG, "Start Full DFU");
-            DfuServiceInitiator.createDfuNotificationChannel(this);
-            final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
-                .setDeviceName(currentMicrobit.mName)
-                .setKeepBond(true)
-                .setMbrSize(0x1000)
-                .setDisableNotification(true)
-                .setPacketsReceiptNotificationsEnabled(true)
-                //.setBinOrHex(DfuBaseService.TYPE_APPLICATION, mProgramToSend.filePath);
-                .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexToFlash.getAbsolutePath());
-            final DfuServiceController controller = starter.start(this, DfuService.class);
-
-        } else if(flashingType == FLASH_TYPE_PF) {
-            // Attempt a partial flash
-            Log.v(TAG, "Send Partial Flashing Intent");
-            if(service != null) {
-                application.stopService(service);
-            }
-            service = new Intent(application, PartialFlashingService.class);
-            service.putExtra("deviceAddress", currentMicrobit.mAddress);
-            service.putExtra("filepath", hexToFlash.getAbsolutePath()); // a path or URI must be provided.
-            service.putExtra("pf", true); // Enable partial flashing
-            application.startService(service);
-        }
+        // Should not reach this
+        return new String[]{"-1", "-1"};
     }
 
     /**
@@ -1346,7 +1521,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 PopUp.show(getString(R.string.could_not_connect), //message
                         getString(R.string.could_not_connect_title),
                         R.drawable.error_face, R.drawable.red_btn,
-                        PopUp.GIFF_ANIMATION_ERROR,
+                        PopUp.GIFF_ANIMATION_PAIRING,
                         TYPE_ALERT, //type of popup.
                         popupOkHandler,//override click listener for ok button
                         popupOkHandler);//pass null to use default listener

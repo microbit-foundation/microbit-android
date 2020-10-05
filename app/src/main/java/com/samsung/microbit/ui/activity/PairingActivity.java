@@ -218,7 +218,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         Log.e(TAG, "device code empty. State = " + state + ", prevState = " + prevState + ".");
                     } else {
                         ConnectedDevice newDev = new ConnectedDevice(newDeviceCode.toUpperCase(), newDeviceCode
-                                .toUpperCase(), false, newDeviceAddress, 0, null, System.currentTimeMillis());
+                                .toUpperCase(), false, newDeviceAddress, 0, null, System.currentTimeMillis(), 0);
                         handlePairingSuccessful(newDev);
                     }
                 } else if(state == BluetoothDevice.BOND_NONE && prevState == BluetoothDevice.BOND_BONDING) {
@@ -908,6 +908,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     public void toggleConnection() {
         ConnectedDevice currentDevice = BluetoothUtils.getPairedMicrobit(this);
+        Log.v(TAG, "currentDevice.toString()");
+
         if(currentDevice.mAddress != null) {
             boolean currentState = currentDevice.mStatus;
 
@@ -1358,6 +1360,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         if((newDeviceName.isEmpty()) || (device.getName() == null)) {
             logi("mLeScanCallback.onLeScan() ::   Cannot Compare " + device.getAddress() + " " + rssi + " " + Arrays.toString(scanRecord));
+            Log.v(TAG, String.valueOf(device));
+            Log.v(TAG, String.valueOf(newDeviceName));
         } else {
             String s = device.getName().toLowerCase();
             //Replace all : to blank - Fix for #64
@@ -1405,6 +1409,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void startPairingSecureBle(BluetoothDevice device) {
         logi("###>>>>>>>>>>>>>>>>>>>>> startPairingSecureBle");
+        // Service to connect
         //Check if the device is already bonded
         if(device.getBondState() == BluetoothDevice.BOND_BONDED) {
             logi("Device is already bonded.");
@@ -1412,7 +1417,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             //Get device name from the System settings if present and add to our list
             ConnectedDevice newDev = new ConnectedDevice(newDeviceCode.toUpperCase(),
                     newDeviceCode.toUpperCase(), false, newDeviceAddress, 0, null,
-                    System.currentTimeMillis());
+                    System.currentTimeMillis(), 0);
             handlePairingSuccessful(newDev);
         } else {
             logi("device.createBond returns " + device.createBond());

@@ -12,6 +12,9 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.samsung.microbit.MBApp;
+import com.samsung.microbit.data.model.ConnectedDevice;
+
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.UUID;
@@ -51,6 +54,7 @@ public class BLEManager {
     public static final int OP_RELIABLE_WRITE_COMPLETED = 8;
     public static final int OP_READ_REMOTE_RSSI = 9;
     public static final int OP_MTU_CHANGED = 10;
+
 
     /**
      * It represents ble device state.
@@ -261,6 +265,7 @@ public class BLEManager {
         return rc;
     }
 
+
     /**
      * Trigger connection to remote GATT device.
      * <p/>
@@ -300,6 +305,7 @@ public class BLEManager {
                         if(DEBUG) {
                             logi("gattConnect() :: remote device = " + gatt.getDevice().getAddress());
                         }
+
 
                         if(!callbackCompleted) {
                             logi("BLE_ERROR_FAIL | BLE_ERROR_TIMEOUT");
@@ -766,8 +772,17 @@ public class BLEManager {
                     }
 
                     if(status == BluetoothGatt.GATT_SUCCESS) {
-                        bleState |= state;
+                        ConnectedDevice cD = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+                        if(gatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb")) != null ) {
+                            Log.v(TAG, "Hardware Type: V2");
+                            cD.mhardwareVersion = 2;
+                        } else {
+                            Log.v(TAG, "Hardware Type: V2");
+                            cD.mhardwareVersion = 1;
 
+                        }
+                        BluetoothUtils.setPairedMicroBit(MBApp.getApp(), cD);
+                        bleState |= state;
                     } else {
                         bleState &= (~state);
                     }
