@@ -248,6 +248,7 @@
     <string name="init_connection">Connecting to micro:bit</string>
     <string name="disconnecting">Disconnecting from micro:bit</string>
     <string name="dfu_status_starting_msg">Initializing flashing process&#8230;</string>
+    <string name="v1_hex_v2_hardware">This hex file is not compatible with V2 hardware\nPlease re-download it from MakeCode</string>
     <string name="multple_flashing_session_msg">A project is currently being flashed. Wait for it to complete!</string>
     <string name="internal_error_msg">Internal error. Please try again</string>
     <string name="no_device_paired">Cannot connect.  No micro:bit paired</string>

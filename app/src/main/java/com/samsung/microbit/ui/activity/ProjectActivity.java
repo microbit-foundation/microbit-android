@@ -1130,6 +1130,17 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         String hexAbsolutePath = ret[0];
         int applicationSize = Integer.parseInt(ret[1]);
 
+        if(applicationSize == -1) {
+            // V1 Hex on a V2
+            PopUp.show(getString(R.string.v1_hex_v2_hardware),
+                    "",
+                    R.drawable.message_face, R.drawable.red_btn,
+                    PopUp.GIFF_ANIMATION_ERROR,
+                    TYPE_ALERT,
+                    null, null);
+            return;
+        }
+
         // If V2 create init packet
         String initPacketAbsolutePath = "-1";
         if(hardwareType == MICROBIT_V2) {
@@ -1143,7 +1154,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
         }
 
-        if(flashingType == FLASH_TYPE_DFU) {
+        if(flashingType == FLASH_TYPE_DFU || hardwareType == MICROBIT_V2) {
 
             // Start DFU Service
             Log.v(TAG, "Start Full DFU");
@@ -1358,7 +1369,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                         int lower_bound = 0; int upper_bound = 0;
                         if(hardwareType == MICROBIT_V1) { lower_bound = 0x18000; upper_bound = 0x38000; }
-                        if(hardwareType == MICROBIT_V2) { lower_bound = 0x27000; upper_bound = 0x70000; }
+                        if(hardwareType == MICROBIT_V2) { lower_bound = 0x27000; upper_bound = 0x71FFF; }
 
                         if ((records_wanted || !is_fat) && b_addr >= lower_bound && b_addr < upper_bound) {
                             outputHex.write(bs, b_x, next);
@@ -1386,7 +1397,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             byte[] output = outputHex.toByteArray();
             Log.v(TAG, "Finished parsing HEX. Writing application HEX for flashing");
 
-
             try {
                 File hexToFlash = new File(this.getCacheDir() + "/application.hex");
                 if (hexToFlash.exists()) {
@@ -1403,6 +1413,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 String[] ret = new String[2];
                 ret[0] = hexToFlash.getAbsolutePath();
                 ret[1] = Integer.toString(application_size);
+
+                if(hardwareType == MICROBIT_V2 && is_fat == false) {
+                    ret[1] = Integer.toString(-1); // Invalidate hex file
+                }
 
                 return ret;
             } catch (IOException e) {

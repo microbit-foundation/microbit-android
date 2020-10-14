@@ -1422,6 +1422,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         } else {
             logi("device.createBond returns " + device.createBond());
         }
+        device.createBond();
     }
 
     @Override
