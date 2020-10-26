@@ -779,7 +779,6 @@ public class BLEManager {
                         } else {
                             Log.v(TAG, "Hardware Type: V2");
                             cD.mhardwareVersion = 1;
-
                         }
                         BluetoothUtils.setPairedMicroBit(MBApp.getApp(), cD);
                         bleState |= state;

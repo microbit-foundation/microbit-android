@@ -1414,6 +1414,21 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         if(device.getBondState() == BluetoothDevice.BOND_BONDED) {
             logi("Device is already bonded.");
             stopScanning();
+
+            // Rebond
+            try {
+                Method m = device.getClass().getMethod("removeBond", (Class[]) null);
+                m.invoke(device, (Object[]) null);
+            } catch (Exception e) { Log.e(TAG, e.getMessage()); }
+
+            // Sleep for 200ms
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            device.createBond();
+
             //Get device name from the System settings if present and add to our list
             ConnectedDevice newDev = new ConnectedDevice(newDeviceCode.toUpperCase(),
                     newDeviceCode.toUpperCase(), false, newDeviceAddress, 0, null,
@@ -1422,7 +1437,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         } else {
             logi("device.createBond returns " + device.createBond());
         }
-        device.createBond();
     }
 
     @Override

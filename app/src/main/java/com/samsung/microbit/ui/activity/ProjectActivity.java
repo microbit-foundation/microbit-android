@@ -83,6 +83,7 @@ import no.nordicsemi.android.error.GattError;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
 import static com.samsung.microbit.ui.PopUp.TYPE_ALERT;
+import static com.samsung.microbit.ui.PopUp.TYPE_CHOICE;
 import static com.samsung.microbit.ui.PopUp.TYPE_PROGRESS_NOT_CANCELABLE;
 import static com.samsung.microbit.ui.PopUp.TYPE_SPINNER_NOT_CANCELABLE;
 import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_LAYOUT;
@@ -1123,6 +1124,18 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         MBApp application = MBApp.getApp();
         int hardwareType = currentMicrobit.mhardwareVersion;
+        if(hardwareType != MICROBIT_V1 && hardwareType != MICROBIT_V2) {
+            // Ask the user what type of hardware they have
+            PopUp.show(getString(R.string.dfu_what_hardware),
+                    getString(R.string.dfu_what_hardware_title),
+                    R.drawable.error_face,
+                    R.drawable.red_btn,
+                    PopUp.GIFF_ANIMATION_ERROR,
+                    TYPE_ALERT,
+                    null,
+                    null
+            );
+        }
 
 
         // Create tmp hex for V1 or V2
@@ -1284,9 +1297,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         int application_size = 0;
         int next = 0;
-        boolean records_wanted = false;
+        boolean records_wanted = true;
         boolean is_fat = false;
+        boolean is_v2 = false;
+        boolean uses_ESA = false;
         ByteArrayOutputStream lastELA = new ByteArrayOutputStream();
+        ByteArrayOutputStream lastESA = new ByteArrayOutputStream();
 
         try {
             fis = new FileInputStream(inputPath);
@@ -1308,6 +1324,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 switch (b_type) {
                     case 'A': // Block start
                         is_fat = true;
+                        records_wanted = false;
 
                         // Check data for id
                         if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
@@ -1326,6 +1343,19 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         if (!Arrays.equals(currentELA.toByteArray(), lastELA.toByteArray())) {
                             lastELA.reset();
                             lastELA.write(bs, b_x, next);
+                            outputHex.write(bs, b_x, next);
+                        }
+                        break;
+                    case '2':
+                        uses_ESA = true;
+
+                        ByteArrayOutputStream currentESA = new ByteArrayOutputStream();
+                        currentESA.write(bs, b_x, next);
+
+                        // If ESA has changed write
+                        if (!Arrays.equals(currentESA.toByteArray(), lastESA.toByteArray())) {
+                            lastESA.reset();
+                            lastESA.write(bs, b_x, next);
                             outputHex.write(bs, b_x, next);
                         }
                         break;
@@ -1363,13 +1393,31 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         // Copy record to hex
                         // Record starts at b_x, next long
                         // Calculate address of record
-                        int b_ela = (charToInt((char) lastELA.toByteArray()[9]) << 12) | (charToInt((char) lastELA.toByteArray()[10]) << 8) | (charToInt((char) lastELA.toByteArray()[11]) << 4) | (charToInt((char) lastELA.toByteArray()[12]));
+                        int b_a = 0;
+                        if(lastELA.size() > 0 && !uses_ESA) {
+                            b_a = 0;
+                            b_a = (charToInt((char) lastELA.toByteArray()[9]) << 12) | (charToInt((char) lastELA.toByteArray()[10]) << 8) | (charToInt((char) lastELA.toByteArray()[11]) << 4) | (charToInt((char) lastELA.toByteArray()[12]));
+                            b_a = b_a << 16;
+                        }
+                        if(lastESA.size() > 0 && uses_ESA) {
+                            b_a = 0;
+                            b_a = (charToInt((char) lastESA.toByteArray()[9]) << 12) | (charToInt((char) lastESA.toByteArray()[10]) << 8) | (charToInt((char) lastESA.toByteArray()[11]) << 4) | (charToInt((char) lastESA.toByteArray()[12]));
+                            b_a = b_a * 16;
+                        }
+
                         int b_raddr = (charToInt((char) bs[b_x + 3]) << 12) | (charToInt((char) bs[b_x + 4]) << 8) | (charToInt((char) bs[b_x + 5]) << 4) | (charToInt((char) bs[b_x + 6]));
-                        int b_addr = b_ela << 16 | b_raddr;
+                        int b_addr = b_a | b_raddr;
+
 
                         int lower_bound = 0; int upper_bound = 0;
                         if(hardwareType == MICROBIT_V1) { lower_bound = 0x18000; upper_bound = 0x38000; }
-                        if(hardwareType == MICROBIT_V2) { lower_bound = 0x27000; upper_bound = 0x71FFF; }
+                        if(hardwareType == MICROBIT_V2 && is_fat) { lower_bound = 0x27000; upper_bound = 0x71FFF; } // Current Universal Hex files are s140
+                        if(hardwareType == MICROBIT_V2 && !is_fat) { lower_bound = 0x1C000; upper_bound = 0x77000; } // Current C++ programs are S113
+
+                        // Check for Cortex-M4 Vector Table
+                        if(b_addr == 0x10 && bs[b_x + 41] != 'E' && bs[b_x + 42] != '0') { // Vectors exist
+                            is_v2 = true;
+                        }
 
                         if ((records_wanted || !is_fat) && b_addr >= lower_bound && b_addr < upper_bound) {
                             outputHex.write(bs, b_x, next);
@@ -1414,9 +1462,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 ret[0] = hexToFlash.getAbsolutePath();
                 ret[1] = Integer.toString(application_size);
 
-                if(hardwareType == MICROBIT_V2 && is_fat == false) {
+                /*
+                if(hardwareType == MICROBIT_V2 && (!is_v2 && !is_fat)) {
                     ret[1] = Integer.toString(-1); // Invalidate hex file
                 }
+                 */
 
                 return ret;
             } catch (IOException e) {
@@ -1424,8 +1474,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
 
         } catch (FileNotFoundException e) {
+            Log.v(TAG, "File not found.");
             e.printStackTrace();
         } catch (IOException e) {
+            Log.v(TAG, "IO Exception.");
             e.printStackTrace();
         }
 

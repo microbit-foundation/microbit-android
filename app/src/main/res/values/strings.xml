@@ -375,5 +375,9 @@
     <string name="reconnect_text">You\'ve been disconnected from the micro:bit board. Do you want to reconnect?</string>
     <string name="reconnect_ok_button">Reconnect</string>
     <string name="reset_microbit_because_of_hex_file_wrong">. Please press RESET button!</string>
+
+    <string name="dfu_what_hardware_title">Unable to determine your micro:bit type</string>
+    <string name="dfu_what_hardware">Try again, if the problem persists please attempt a USB flash</string>
+
 </resources>
 
