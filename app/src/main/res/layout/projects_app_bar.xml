@@ -78,15 +78,4 @@
     <include layout="@layout/app_bar_small_divider" />
 
     <!-- connected device status -->
-    <ImageView
-        android:id="@+id/connectedIndicatorIcon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
-        android:contentDescription="@string/desc_connection_status_flash_text"
-        android:importantForAccessibility="yes"
-        android:nextFocusDown="@+id/ll_toolbar_indicator"
-        android:onClick="onClick"
-        android:padding="@dimen/project_app_bar_connect_btn_padding"
-        android:src="@drawable/device_status_connected" />
 </LinearLayout>

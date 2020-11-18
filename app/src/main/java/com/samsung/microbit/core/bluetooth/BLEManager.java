@@ -206,6 +206,7 @@ public class BLEManager {
      * @return Connection result with an appropriate error code if connection is failed.
      */
     public int connect(boolean autoReconnect) {
+
         int rc = BLE_ERROR_NOOP;
 
         if(gatt == null) {
@@ -258,6 +259,7 @@ public class BLEManager {
         if(DEBUG) {
             logi("connectMaybeInit() :: rc = " + rc);
         }
+
 
         // Attempt to rebond
         bluetoothDevice.createBond();
@@ -686,6 +688,8 @@ public class BLEManager {
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
 
+            gatt.discoverServices();
+
             if(DEBUG) {
                 logi("BluetoothGattCallback.onConnectionStateChange() :: start : status = " + status + " newState = " +
                         "" + newState);
@@ -777,7 +781,7 @@ public class BLEManager {
                             Log.v(TAG, "Hardware Type: V2");
                             cD.mhardwareVersion = 2;
                         } else {
-                            Log.v(TAG, "Hardware Type: V2");
+                            Log.v(TAG, "Hardware Type: V1");
                             cD.mhardwareVersion = 1;
                         }
                         BluetoothUtils.setPairedMicroBit(MBApp.getApp(), cD);

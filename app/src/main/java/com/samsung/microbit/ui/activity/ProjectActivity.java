@@ -23,7 +23,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.Window;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -83,7 +82,7 @@ import no.nordicsemi.android.error.GattError;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
 import static com.samsung.microbit.ui.PopUp.TYPE_ALERT;
-import static com.samsung.microbit.ui.PopUp.TYPE_CHOICE;
+import static com.samsung.microbit.ui.PopUp.TYPE_HARDWARE_CHOICE;
 import static com.samsung.microbit.ui.PopUp.TYPE_PROGRESS_NOT_CANCELABLE;
 import static com.samsung.microbit.ui.PopUp.TYPE_SPINNER_NOT_CANCELABLE;
 import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_LAYOUT;
@@ -730,7 +729,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         deviceName.setContentDescription(deviceName.getText());
         deviceName.setTypeface(MBApp.getApp().getRobotoTypeface());
         deviceName.setOnClickListener(this);
-        ImageView connectedIndicatorIcon = (ImageView) findViewById(R.id.connectedIndicatorIcon);
+        // ImageView connectedIndicatorIcon = (ImageView) findViewById(R.id.connectedIndicatorIcon);
 
         //Override the connection Icon in case of active flashing
         if(mActivityState == FlashActivityState.FLASH_STATE_FIND_DEVICE
@@ -739,14 +738,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 || mActivityState == FlashActivityState.FLASH_STATE_INIT_DEVICE
                 || mActivityState == FlashActivityState.FLASH_STATE_PROGRESS
                 ) {
-            connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
+            // connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
             connectedIndicatorText.setText(getString(R.string.connected_to));
 
             return;
         }
         ConnectedDevice device = BluetoothUtils.getPairedMicrobit(this);
         if(!device.mStatus) {
-            connectedIndicatorIcon.setImageResource(R.drawable.device_status_disconnected);
+            // connectedIndicatorIcon.setImageResource(R.drawable.device_status_disconnected);
             connectedIndicatorText.setText(getString(R.string.not_connected));
             if(device.mName != null) {
                 deviceName.setText(device.mName);
@@ -754,7 +753,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 deviceName.setText("");
             }
         } else {
-            connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
+            //  connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
             connectedIndicatorText.setText(getString(R.string.connected_to));
             if(device.mName != null) {
                 deviceName.setText(device.mName);
@@ -970,15 +969,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 startActivity(intentHomeActivity);
                 finish();
                 break;
-
-            case R.id.connectedIndicatorIcon:
-                if(!BluetoothChecker.getInstance().isBluetoothON()) {
-                    setActivityState(FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT);
-                    startBluetooth();
-                } else {
-                    toggleConnection();
-                }
-                break;
+//
+//            case R.id.connectedIndicatorIcon:
+//                if(!BluetoothChecker.getInstance().isBluetoothON()) {
+//                    setActivityState(FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT);
+//                    startBluetooth();
+//                } else {
+//                    toggleConnection();
+//                }
+//                break;
             case R.id.deviceName:
                 // Toast.makeText(this, "Back to connectMaybeInit screen", Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(this, PairingActivity.class);
@@ -1010,7 +1009,34 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     private void flashingChecks() {
-          ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
+          ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+
+          if(currentMicrobit.mhardwareVersion != MICROBIT_V1 && currentMicrobit.mhardwareVersion != MICROBIT_V2 ) {
+              PopUp.show(getString(R.string.dfu_what_hardware_title),
+                    getString(R.string.dfu_what_hardware),
+                    R.drawable.error_face, R.drawable.red_btn,
+                    PopUp.GIFF_ANIMATION_ERROR,
+                      TYPE_HARDWARE_CHOICE,
+                      new View.OnClickListener() {
+                          @Override
+                          public void onClick(View v) {
+                              ConnectedDevice temp = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+                              temp.mhardwareVersion = MICROBIT_V2;
+                              BluetoothUtils.setPairedMicroBit(MBApp.getApp(), temp);
+                              PopUp.hide();
+                          }
+                      },new View.OnClickListener() {
+                          @Override
+                          public void onClick(View v) {
+                              ConnectedDevice temp = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+                              temp.mhardwareVersion = MICROBIT_V1;
+                              BluetoothUtils.setPairedMicroBit(MBApp.getApp(), temp);
+                              PopUp.hide();
+                          }
+                      }
+              );
+            return;
+          }
 //
 //        if(mProgramToSend == null || mProgramToSend.filePath == null) {
 //            PopUp.show(getString(R.string.internal_error_msg),
@@ -1124,19 +1150,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         MBApp application = MBApp.getApp();
         int hardwareType = currentMicrobit.mhardwareVersion;
-        if(hardwareType != MICROBIT_V1 && hardwareType != MICROBIT_V2) {
-            // Ask the user what type of hardware they have
-            PopUp.show(getString(R.string.dfu_what_hardware),
-                    getString(R.string.dfu_what_hardware_title),
-                    R.drawable.error_face,
-                    R.drawable.red_btn,
-                    PopUp.GIFF_ANIMATION_ERROR,
-                    TYPE_ALERT,
-                    null,
-                    null
-            );
-        }
-
 
         // Create tmp hex for V1 or V2
         String[] ret = universalHexToDFU(mProgramToSend.filePath, hardwareType);
@@ -1176,11 +1189,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     DfuServiceInitiator.createDfuNotificationChannel(this);
                 }
+
                 final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+                        .setUnsafeExperimentalButtonlessServiceInSecureDfuEnabled(true)
                         .setDeviceName(currentMicrobit.mName)
                         .setPacketsReceiptNotificationsEnabled(true)
                         .setKeepBond(true)
-                        .setForceDfu(true)
+                        .setForeground(true)
+                        .setNumberOfRetries(3)
                         .setZip(this.getCacheDir() + "/update.zip");
                 final DfuServiceController controller = starter.start(this, DfuService.class);
             } else {
@@ -1327,7 +1343,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         records_wanted = false;
 
                         // Check data for id
-                        if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
+                        if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '0') {
+                            records_wanted = (hardwareType == MICROBIT_V1);
+                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
                             records_wanted = (hardwareType == MICROBIT_V1);
                         } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '3') {
                             records_wanted = (hardwareType == MICROBIT_V2);
@@ -1411,8 +1429,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                         int lower_bound = 0; int upper_bound = 0;
                         if(hardwareType == MICROBIT_V1) { lower_bound = 0x18000; upper_bound = 0x38000; }
-                        if(hardwareType == MICROBIT_V2 && is_fat) { lower_bound = 0x27000; upper_bound = 0x71FFF; } // Current Universal Hex files are s140
-                        if(hardwareType == MICROBIT_V2 && !is_fat) { lower_bound = 0x1C000; upper_bound = 0x77000; } // Current C++ programs are S113
+                        if(hardwareType == MICROBIT_V2) { lower_bound = 0x1C000; upper_bound = 0x77000; }
 
                         // Check for Cortex-M4 Vector Table
                         if(b_addr == 0x10 && bs[b_x + 41] != 'E' && bs[b_x + 42] != '0') { // Vectors exist

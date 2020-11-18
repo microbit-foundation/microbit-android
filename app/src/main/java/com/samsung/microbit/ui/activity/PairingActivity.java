@@ -5,6 +5,8 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
@@ -67,9 +69,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import pl.droidsonroids.gif.GifImageView;
 
+import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
+import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTED;
 import static com.samsung.microbit.BuildConfig.DEBUG;
 
 /**
@@ -1350,15 +1355,15 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     public void onLeScan(final BluetoothDevice device, int rssi, byte[] scanRecord) {
         logi("mLeScanCallback.onLeScan() [+]");
 
-        if(!scanning) {
+        if (!scanning) {
             return;
         }
 
-        if(device == null) {
+        if (device == null) {
             return;
         }
 
-        if((newDeviceName.isEmpty()) || (device.getName() == null)) {
+        if ((newDeviceName.isEmpty()) || (device.getName() == null)) {
             logi("mLeScanCallback.onLeScan() ::   Cannot Compare " + device.getAddress() + " " + rssi + " " + Arrays.toString(scanRecord));
             Log.v(TAG, String.valueOf(device));
             Log.v(TAG, String.valueOf(newDeviceName));
@@ -1367,9 +1372,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             //Replace all : to blank - Fix for #64
             //TODO Use pattern recognition instead
             s = s.replaceAll(":", "");
-            if(newDeviceName.toLowerCase().startsWith(s)) {
+            if (newDeviceName.toLowerCase().startsWith(s)) {
                 logi("mLeScanCallback.onLeScan() ::   Found micro:bit -" + device.getName().toLowerCase() + " " +
                         device.getAddress());
+
                 // Stop scanning as device is found.
                 stopScanning();
                 newDeviceAddress = device.getAddress();
@@ -1379,12 +1385,12 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         TextView textView = (TextView) findViewById(R.id.search_microbit_step_3_title);
                         TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
                         TextView tvSearchingInstructions = (TextView) findViewById(R.id.searching_microbit_step_instructions);
-                        if(textView != null) {
+                        if (textView != null) {
                             textView.setText(getString(R.string.searchingTitle));
                             findViewById(R.id.searching_progress_spinner).setVisibility(View.GONE);
                             ((GifImageView) findViewById(R.id.searching_microbit_found_giffview))
                                     .setImageResource(R.drawable.emoji_microbit_found);
-                            if(currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+                            if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
                                 tvSearchingStep.setText(R.string.searching_microbit_found_message_one_line);
                             } else {
                                 tvSearchingStep.setText(R.string.searching_microbit_found_message);
@@ -1411,6 +1417,43 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         logi("###>>>>>>>>>>>>>>>>>>>>> startPairingSecureBle");
         // Service to connect
         //Check if the device is already bonded
+
+        // Connect to device and discover services
+        BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
+            @Override
+            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+                super.onConnectionStateChange(gatt, status, newState);
+
+                Log.v(TAG, "onConnectionStateChange");
+                if(newState == STATE_CONNECTED) {
+                    Log.v(TAG, "gattDiscoverServices");
+                    Log.v(TAG, String.valueOf(gatt.discoverServices()));
+                }
+
+                if(newState == STATE_DISCONNECTED) {
+                    gatt.close();
+                }
+            }
+
+            @Override
+            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+                super.onServicesDiscovered(gatt, status);
+                Log.v(TAG, "onServicesDiscovered");
+                ConnectedDevice cD = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+                if(gatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb")) != null ) {
+                    Log.v(TAG, "Hardware Type: V2");
+                    cD.mhardwareVersion = 2;
+                } else {
+                    Log.v(TAG, "Hardware Type: V1");
+                    cD.mhardwareVersion = 1;
+                }
+                BluetoothUtils.setPairedMicroBit(MBApp.getApp(), cD);
+                gatt.disconnect();
+            }
+        };
+
+        BluetoothGatt gatt = device.connectGatt(this, false, bluetoothGattCallback);
+
         if(device.getBondState() == BluetoothDevice.BOND_BONDED) {
             logi("Device is already bonded.");
             stopScanning();

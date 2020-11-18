@@ -25,7 +25,7 @@ import java.io.IOException;
 public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
-    public static String makecodeUrl = "https://makecode.microbit.org/stable?androidapp=" + BuildConfig.VERSION_CODE;
+    public static String makecodeUrl = "https://makecode.microbit.org/beta?androidapp=" + BuildConfig.VERSION_CODE;
 
     Uri hexToFlash;
 
@@ -77,9 +77,17 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
                 File hexToWrite;
                 FileOutputStream outputStream;
-                String[] data = url.split(",");
-                String hexName = data[0].replace("data:","").replace(";base64", "");
-                byte[] decode = Base64.decode(data[1], Base64.DEFAULT);
+                String hexName = "init";
+                byte[] decode = {};
+
+                if(url.contains("data:")) {
+                    String[] data = url.split(",");
+                    hexName = data[0].replace("data:", "").replace(";base64", "");
+                    decode = Base64.decode(data[1], Base64.DEFAULT);
+                } else if(url.contains("blob:")) {
+                    hexName = "blob";
+                    decode = new byte[]{0, 0, 0};
+                }
 
                 try {
                     hexToWrite = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + hexName);

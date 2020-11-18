@@ -121,6 +121,27 @@
             android:textColor="@android:color/black"
             android:textSize="@dimen/popup_round_ok_button_text_size"
             android:visibility="gone" />
+
+        <!-- V1 -->
+        <Button
+            android:id="@+id/buttonV1"
+            style="@style/pairing_step_button_style"
+            android:layout_marginEnd="@dimen/pairing_step_buttons_space_margin"
+            android:background="@drawable/green_btn"
+            android:onClick="onClick"
+            android:text="@string/v1_button_label"
+            android:visibility="gone" />
+
+        <!-- V2 -->
+        <Button
+            android:id="@+id/buttonV2"
+            style="@style/pairing_step_button_style"
+            android:layout_marginStart="@dimen/pairing_step_buttons_space_margin"
+            android:background="@drawable/green_btn"
+            android:onClick="onClick"
+            android:text="@string/v2_button_label"
+            android:visibility="gone" />
+
     </LinearLayout>
 </LinearLayout>
 

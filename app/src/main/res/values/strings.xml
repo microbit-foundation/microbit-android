@@ -144,7 +144,7 @@
     <string name="alert">Alert&#8230;</string>
 
     <!-- Connect Activity -->
-    <string name="previous_devices">Connect previously paired micro:bit</string>
+    <string name="previous_devices">Currently paired with micro:bit</string>
     <string name="desc_previous_devices">No previously paired micro:bits</string>
     <string name="new_devices_pattern_null">Enter the pattern</string>
     <string name="new_devices">Connect to a new device</string>
@@ -229,8 +229,8 @@
     <string name="flash">Flash</string>
     <string name="view">View</string>
     <string name="no_projects">No projects found!</string>
-    <string name="connected_to">Connected to</string>
-    <string name="not_connected">Not Connected</string>
+    <string name="connected_to">Paired With</string>
+    <string name="not_connected">Paired With</string>
     <string name="micro_bit_reset_msg">Please reset your micro:bit into pairing mode and try again.\n\nHOLD the A and B buttons and PRESS and RELEASE RESET to enter pairing mode</string>
     <string name="flashing_title">Flashing</string>
     <string name="pairing_title">Pairing</string>
@@ -273,7 +273,7 @@
     <string name="navigation_drawer_close">Close Menu</string>
     <string name="create_code">Create Code</string>
     <string name="flash_microbit">Flash</string>
-    <string name="connect_device">Connect</string>
+    <string name="connect_device">Pair</string>
     <string name="discover">Discover</string>
 
     <string name="email_body" formatted="false">
@@ -303,7 +303,7 @@
     <string name="desc_subtitle_manage_and_remove_microbits_label">Follow the on-screen instructions to</string>
     <string name="manage_and_remove_microbit">How do I remove a paired micro:bit?</string>
     <string name="desc_homescreen_logo_img">Hello</string>
-    <string name="desc_connect_btn">Connect</string>
+    <string name="desc_connect_btn">Pair</string>
     <string name="desc_flash_btn">Flash</string>
     <string name="desc_create_code">Create Code</string>
     <string name="desc_discover">Discover</string>
@@ -377,7 +377,9 @@
     <string name="reset_microbit_because_of_hex_file_wrong">. Please press RESET button!</string>
 
     <string name="dfu_what_hardware_title">Unable to determine your micro:bit type</string>
-    <string name="dfu_what_hardware">Try again, if the problem persists please attempt a USB flash</string>
+    <string name="dfu_what_hardware">Please select the board variant below</string>
+    <string name="v1_button_label">V1</string>
+    <string name="v2_button_label">V2</string>
 
 </resources>
 

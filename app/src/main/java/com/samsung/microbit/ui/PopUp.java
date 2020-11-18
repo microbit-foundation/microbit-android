@@ -37,7 +37,7 @@ public class PopUp {
     public static final int TYPE_SPINNER_NOT_CANCELABLE = 7;//0 button type spinner not cancelable (backpress disabled)
     public static final int TYPE_ALERT_LIGHT = 8;//Shows only once and do not leaves any history and cannot be recreated
     public static final int TYPE_NONE = 9;
-
+    public static final int TYPE_HARDWARE_CHOICE = 10;
 
     // Constants for giff animation options
     public static final int GIFF_ANIMATION_NONE = 0;
