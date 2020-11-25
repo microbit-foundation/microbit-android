@@ -154,6 +154,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     private boolean justPaired;
 
+    private final Object lock = new Object();
+
+    private int hardwareVersion = 0;
+
     /**
      * Occurs after successfully finished pairing process and
      * redirects to the first screen of the pairing activity.
@@ -223,7 +227,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         Log.e(TAG, "device code empty. State = " + state + ", prevState = " + prevState + ".");
                     } else {
                         ConnectedDevice newDev = new ConnectedDevice(newDeviceCode.toUpperCase(), newDeviceCode
-                                .toUpperCase(), false, newDeviceAddress, 0, null, System.currentTimeMillis(), 0);
+                                .toUpperCase(), false, newDeviceAddress, 0, null, System.currentTimeMillis(), hardwareVersion);
                         handlePairingSuccessful(newDev);
                     }
                 } else if(state == BluetoothDevice.BOND_NONE && prevState == BluetoothDevice.BOND_BONDING) {
@@ -1107,6 +1111,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
             case R.id.connected_device_status_button:
                 logi("onClick() :: connectBtn");
+                Toast.makeText(MBApp.getApp(), getString(R.string.no_longer_required_to_connect), Toast.LENGTH_LONG).show();
+
+                break;
+                /*
                 if(!BluetoothChecker.getInstance().isBluetoothON()) {
                     setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT);
                     enableBluetooth();
@@ -1114,6 +1122,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 }
                 toggleConnection();
                 break;
+                 */
 
             //TODO: there is no ability to delete paired device on Connect screen, so add or remove the case.
             // Delete Microbit
@@ -1396,7 +1405,12 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                                 tvSearchingStep.setText(R.string.searching_microbit_found_message);
                             }
                             tvSearchingInstructions.setText(R.string.searching_tip_text_instructions);
-                            startPairingSecureBle(device);
+                            try {
+                                startPairingSecureBle(device);
+                            } catch (InterruptedException e) {
+                                Log.v(TAG, "startPairingSecureBle Interrupted");
+                                e.printStackTrace();
+                            }
                         }
                     }
                 });
@@ -1413,7 +1427,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      *
      * @param device Device to pair with.
      */
-    private void startPairingSecureBle(BluetoothDevice device) {
+    private void startPairingSecureBle(BluetoothDevice device) throws InterruptedException {
         logi("###>>>>>>>>>>>>>>>>>>>>> startPairingSecureBle");
         // Service to connect
         //Check if the device is already bonded
@@ -1426,8 +1440,33 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
                 Log.v(TAG, "onConnectionStateChange");
                 if(newState == STATE_CONNECTED) {
-                    Log.v(TAG, "gattDiscoverServices");
-                    Log.v(TAG, String.valueOf(gatt.discoverServices()));
+
+                    final boolean success = gatt.discoverServices();
+
+                    /* Taken from Nordic. See reasoning here: https://github.com/NordicSemiconductor/Android-DFU-Library/blob/e0ab213a369982ae9cf452b55783ba0bdc5a7916/dfu/src/main/java/no/nordicsemi/android/dfu/DfuBaseService.java#L888 */
+                    if (gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
+                        Log.v(TAG, "Already bonded");
+                        synchronized (lock) {
+                            try {
+                                lock.wait(1600);
+
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            Log.v(TAG, "Bond timeout");
+                        }
+                        // After 1.6s the services are already discovered so the following gatt.discoverServices() finishes almost immediately.
+                        // NOTE: This also works with shorted waiting time. The gatt.discoverServices() must be called after the indication is received which is
+                        // about 600ms after establishing connection. Values 600 - 1600ms should be OK.
+                    }
+                    gatt.discoverServices();
+
+                    if (!success) {
+                        Log.e(TAG,"ERROR_SERVICE_DISCOVERY_NOT_STARTED");
+                    } else {
+                        // Wait for service discovery to clear lock
+                        return;
+                    }
                 }
 
                 if(newState == STATE_DISCONNECTED) {
@@ -1443,43 +1482,49 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 if(gatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb")) != null ) {
                     Log.v(TAG, "Hardware Type: V2");
                     cD.mhardwareVersion = 2;
+                    hardwareVersion = 2;
                 } else {
                     Log.v(TAG, "Hardware Type: V1");
                     cD.mhardwareVersion = 1;
+                    hardwareVersion = 1;
                 }
                 BluetoothUtils.setPairedMicroBit(MBApp.getApp(), cD);
-                gatt.disconnect();
+                synchronized (lock) {
+                    lock.notifyAll();
+                }
             }
         };
 
-        BluetoothGatt gatt = device.connectGatt(this, false, bluetoothGattCallback);
+        BluetoothGatt gatt = device.connectGatt(this, true, bluetoothGattCallback);
+        synchronized (lock) { // Wait for services to be discovered
+            lock.wait();
+        }
 
-        if(device.getBondState() == BluetoothDevice.BOND_BONDED) {
-            logi("Device is already bonded.");
             stopScanning();
 
-            // Rebond
+            /* Rebond */
+            Log.v(TAG, "rebond, just in case");
             try {
                 Method m = device.getClass().getMethod("removeBond", (Class[]) null);
                 m.invoke(device, (Object[]) null);
             } catch (Exception e) { Log.e(TAG, e.getMessage()); }
 
-            // Sleep for 200ms
+            // Sleep for 2000ms
             try {
-                Thread.sleep(200);
+                Thread.sleep(2000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            device.createBond();
+
+            // Create bond
+            boolean newbond = device.createBond();
+            Log.v(TAG, "create bond: newbond");
 
             //Get device name from the System settings if present and add to our list
             ConnectedDevice newDev = new ConnectedDevice(newDeviceCode.toUpperCase(),
                     newDeviceCode.toUpperCase(), false, newDeviceAddress, 0, null,
-                    System.currentTimeMillis(), 0);
+                    System.currentTimeMillis(), hardwareVersion);
             handlePairingSuccessful(newDev);
-        } else {
-            logi("device.createBond returns " + device.createBond());
-        }
     }
 
     @Override

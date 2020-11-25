@@ -1180,7 +1180,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
         }
 
-        if(flashingType == FLASH_TYPE_DFU || hardwareType == MICROBIT_V2) {
+        if(flashingType == FLASH_TYPE_DFU) {
 
             // Start DFU Service
             Log.v(TAG, "Start Full DFU");
@@ -1221,6 +1221,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             service = new Intent(application, PartialFlashingService.class);
             service.putExtra("deviceAddress", currentMicrobit.mAddress);
             service.putExtra("filepath", hexAbsolutePath); // a path or URI must be provided.
+            service.putExtra("hardwareType", hardwareType); // a path or URI must be provided.
             service.putExtra("pf", true); // Enable partial flashing
             application.startService(service);
         }
