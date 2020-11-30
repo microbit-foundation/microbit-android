@@ -1113,8 +1113,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 logi("onClick() :: connectBtn");
                 Toast.makeText(MBApp.getApp(), getString(R.string.no_longer_required_to_connect), Toast.LENGTH_LONG).show();
 
-                break;
-                /*
                 if(!BluetoothChecker.getInstance().isBluetoothON()) {
                     setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT);
                     enableBluetooth();
@@ -1122,7 +1120,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 }
                 toggleConnection();
                 break;
-                 */
 
             //TODO: there is no ability to delete paired device on Connect screen, so add or remove the case.
             // Delete Microbit
