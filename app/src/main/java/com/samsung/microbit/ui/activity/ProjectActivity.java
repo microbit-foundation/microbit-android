@@ -455,9 +455,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         boolean isShareableApp = cursor.getColumnIndex(DocumentsContract.Document
                                 .COLUMN_DOCUMENT_ID) != -1;
 
-                        fullPathOfFile = new File(Environment.getExternalStoragePublicDirectory(Environment
-                                .DIRECTORY_DOWNLOADS), selectedFileName).getAbsolutePath();
-
+                                                fullPathOfFile = new File(Environment.getExternalStoragePublicDirectory(Environment
+                                                        .DIRECTORY_DOWNLOADS), selectedFileName).getAbsolutePath();
                         if (isShareableApp) {
                             try {
                                 IOUtils.copy(getContentResolver().openInputStream(uri), new FileOutputStream(fullPathOfFile));
@@ -513,7 +512,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     private Project getLatestProjectFromFolder(long lengthOfSearchingFile) {
         File downloadDirectory = Environment.getExternalStoragePublicDirectory(Environment
-                .DIRECTORY_DOWNLOADS);
+                        .DIRECTORY_DOWNLOADS);
 
         FilenameFilter hexFilenameFilter = new FilenameFilter() {
             @Override
@@ -1132,7 +1131,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @RequiresApi(api = Build.VERSION_CODES.O)
     protected void startFlashing(int flashingType) {
 
-        logi(">>>>>>>>>>>>>>>>>>> startFlashing called  >>>>>>>>>>>>>>>>>>>  ");
+        logi(">>>>>>>>>>>>>>>>>>> startFlashing called >>>>>>>>>>>>>>>>>>>  ");
+        Log.v(TAG, "startFlashing: " + flashingType);
         //Reset all stats value
         m_BinSizeStats = "0";
         m_MicroBitFirmware = "0.0";
@@ -1310,6 +1310,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         ByteArrayOutputStream outputHex;
         outputHex = new ByteArrayOutputStream();
 
+        ByteArrayOutputStream test = new ByteArrayOutputStream();
+
         FileOutputStream outputStream;
 
         int application_size = 0;
@@ -1328,6 +1330,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             i = fis.read(bs);
 
             for (int b_x = 0; b_x < bs.length - 1; /* empty */) {
+
                 // Get record from following bytes
                 char b_type = (char) bs[b_x + 8];
 
@@ -1358,12 +1361,16 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         ByteArrayOutputStream currentELA = new ByteArrayOutputStream();
                         currentELA.write(bs, b_x, next);
 
+                        uses_ESA = false;
+
                         // If ELA has changed write
-                        if (!Arrays.equals(currentELA.toByteArray(), lastELA.toByteArray())) {
+                        if (!currentELA.toString().equals(lastELA.toString())) {
                             lastELA.reset();
                             lastELA.write(bs, b_x, next);
+                            Log.v(TAG, "TEST ELA " + lastELA.toString());
                             outputHex.write(bs, b_x, next);
                         }
+
                         break;
                     case '2':
                         uses_ESA = true;
@@ -1400,6 +1407,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             first_cr++;
                         }
 
+                        // Skip 1 word records
+                        // TODO: Pad this record for uPY FS scratch
+                        if(bs[b_x + 2] == '1') break;
+
                         // Recalculate checksum
                         int checksum = (charToInt((char) bs[b_x + first_cr - 2]) * 16) + charToInt((char) bs[b_x + first_cr - 1]) + 0xD;
                         String checksum_hex = Integer.toHexString(checksum);
@@ -1407,6 +1418,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         checksum_hex = checksum_hex.substring(checksum_hex.length() - 2);
                         bs[b_x + first_cr - 2] = (byte) checksum_hex.charAt(0);
                         bs[b_x + first_cr - 1] = (byte) checksum_hex.charAt(1);
+                    case '3':
                     case '5':
                     case '0':
                         // Copy record to hex
@@ -1427,7 +1439,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         int b_raddr = (charToInt((char) bs[b_x + 3]) << 12) | (charToInt((char) bs[b_x + 4]) << 8) | (charToInt((char) bs[b_x + 5]) << 4) | (charToInt((char) bs[b_x + 6]));
                         int b_addr = b_a | b_raddr;
 
-
                         int lower_bound = 0; int upper_bound = 0;
                         if(hardwareType == MICROBIT_V1) { lower_bound = 0x18000; upper_bound = 0x38000; }
                         if(hardwareType == MICROBIT_V2) { lower_bound = 0x1C000; upper_bound = 0x77000; }
@@ -1438,9 +1449,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         }
 
                         if ((records_wanted || !is_fat) && b_addr >= lower_bound && b_addr < upper_bound) {
+
                             outputHex.write(bs, b_x, next);
                             // Add to app size
                             application_size = application_size + charToInt((char) bs[b_x + 1]) * 16 + charToInt((char) bs[b_x + 2]);
+                        } else {
+                            // Log.v(TAG, "TEST " + Integer.toHexString(b_addr) + " BA " + b_a + " LELA " + lastELA.toString() + " " + uses_ESA);
+                            // test.write(bs, b_x, next);
                         }
 
                         break;
@@ -1458,9 +1473,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 } else {
                     b_x = b_x + next;
                 }
+
             }
 
             byte[] output = outputHex.toByteArray();
+            byte[] testBytes = test.toByteArray();
+
             Log.v(TAG, "Finished parsing HEX. Writing application HEX for flashing");
 
             try {

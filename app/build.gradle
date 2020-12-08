@@ -7,6 +7,7 @@ android {
         applicationId "com.samsung.microbit"
         minSdkVersion 21
         targetSdkVersion 29
+        // Once target SDK version is 30, requestLegacyStorage will no longer work
     }
     buildTypes {
         release {

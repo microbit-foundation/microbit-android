@@ -1024,7 +1024,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             logi("bluetoothPermissionOKHandler");
             PopUp.hide();
             //TODO: shouldn't it be BLUETOOTH permission?
-            String[] permissionsNeeded = {Manifest.permission.ACCESS_COARSE_LOCATION};
+            String[] permissionsNeeded = {Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION};
             requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED);
         }
     };
@@ -1262,6 +1262,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void scanLeDevice(final boolean enable) {
         logi("scanLeDevice() :: enable = " + enable);
+
         if(enable) {
             //Start scanning.
             if(!setupBleController()) {
@@ -1280,7 +1281,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 } else {
                     List<ScanFilter> filters = new ArrayList<>();
                     // TODO: play with ScanSettings further to ensure the Kit kat devices connectMaybeInit with higher success rate
-                    ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_BALANCED).build();
+                    ScanSettings settings = new ScanSettings.Builder().setLegacy(true).setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
                     leScanner.startScan(filters, settings, getNewScanCallback());
                 }
             }
