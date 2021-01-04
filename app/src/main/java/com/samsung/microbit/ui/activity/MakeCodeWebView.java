@@ -1,13 +1,17 @@
 package com.samsung.microbit.ui.activity;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.webkit.DownloadListener;
+import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -19,13 +23,16 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import static android.content.ContentValues.TAG;
+
 /**
  * Displays MakeCode
  */
 public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
-    public static String makecodeUrl = "https://makecode.microbit.org/beta?androidapp=" + BuildConfig.VERSION_CODE;
+    public static String makecodeUrl = "https://makecode.microbit.org/?androidapp=" + BuildConfig.VERSION_CODE;
+    public static Activity activityHandle = null;
 
     Uri hexToFlash;
 
@@ -47,6 +54,8 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        activityHandle = this;
+
         setContentView(R.layout.activity_help_web_view);
         webView = (WebView) findViewById(R.id.generalView);
 
@@ -63,10 +72,25 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webSettings.setDomStorageEnabled(true);
         webView.setWebContentsDebuggingEnabled(true);
 
+        webView.addJavascriptInterface(new JavaScriptInterface(this), "AndroidFunction");
+        webView.evaluateJavascript("javascript:(function f() { document.getElementsByClassName(\"brand\")[0].addEventListener(\"click\", function(e) { AndroidFunction.returnToHome(); e.preventDefault(); return false; }) })()", new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String s) {
+                Log.d(TAG, s);
+            }
+        });
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                Log.v(TAG, "url: " + url);
+                if(url.contains("https://microbit.org/")) activityHandle.finish();
                 return false;
+            }
+            @Override
+            public void onLoadResource (WebView view, String url) {
+                super.onLoadResource(view, url);
+                Log.v(TAG, "onLoadResource("+url+");");
             }
         });
 
@@ -74,6 +98,13 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             public void onDownloadStart(String url, String userAgent,
                                         String contentDisposition, String mimetype,
                                         long contentLength) {
+
+                webView.evaluateJavascript("javascript:(function f() { document.getElementsByClassName(\"close\")[0].click(); } )()", new ValueCallback<String>() {
+                    @Override
+                    public void onReceiveValue(String s) {
+                        Log.d(TAG, s);
+                    }
+                });
 
                 File hexToWrite;
                 FileOutputStream outputStream;
@@ -92,6 +123,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                 try {
                     hexToWrite = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + hexName);
 
+                    /*
                     // Append n to file until it doesn't exist
                     int i = 0;
 
@@ -99,6 +131,11 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                         hexName = hexName.replaceAll("-?\\d*\\.","-" + i + ".");
                         hexToWrite = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + hexName);
                         i++;
+                    }
+                     */
+                    // Replace existing file rather than creating *-n.hex
+                    if(hexToWrite.exists()) {
+                        hexToWrite.delete();
                     }
 
                     // Create file
@@ -142,5 +179,23 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         Intent i = new Intent(this, ProjectActivity.class);
         i.setData(hexToFlash);
         startActivity(i);
+    }
+}
+
+/* Javascript Interface */
+class JavaScriptInterface {
+    Context mContext;
+
+    JavaScriptInterface(Context c) {
+        mContext = c;
+    }
+
+    @JavascriptInterface
+    public void returnToHome() {
+        try {
+            MakeCodeWebView.activityHandle.finish();
+        } catch(Exception e) {
+            Log.v(TAG, e.toString());
+        }
     }
 }

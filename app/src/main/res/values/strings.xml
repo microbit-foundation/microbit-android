@@ -354,7 +354,7 @@
     <string name="storage_permission_for_programs">We need storage permission to list all the program files saved on your device.\n Proceed?</string>
     <string name="storage_permission_for_programs_error">Cannot display any program files.</string>
 
-    <string name="location_permission_pairing">We need location permission to search for and find your micro:bit.\n Proceed?</string>
+    <string name="location_permission_pairing">We need permission to use your background location to enable BLE. This allows the app to search for and find your micro:bit.\n Proceed?</string>
     <string name="location_permission_error">Cannot pair new micro:bit without having location permission.</string>
 
     <string name="camera_permission">micro:bit is trying to launch Camera. We need Camera permissions to complete this action. \n Proceed?</string>
@@ -381,7 +381,7 @@
     <string name="v1_button_label">V1</string>
     <string name="v2_button_label">V2</string>
 
-    <string name="no_longer_required_to_connect">It is not longer necessary to connect to your micro:bit before flashing</string>
+    <string name="no_longer_required_to_connect">It is no longer necessary to connect to your micro:bit before flashing</string>
 
 </resources>
 

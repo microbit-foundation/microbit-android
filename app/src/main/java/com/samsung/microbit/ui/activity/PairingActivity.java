@@ -1052,9 +1052,14 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      * proceed with using bluetooth otherwise.
      */
     private void checkBluetoothPermissions() {
+        Log.v(TAG, "checkBluetoothPermissions");
         //TODO: shouldn't it be BLUETOOTH permission?
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PermissionChecker.PERMISSION_GRANTED) {
+        if((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PermissionChecker.PERMISSION_GRANTED)
+        || (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                != PermissionChecker.PERMISSION_GRANTED)
+        || (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PermissionChecker.PERMISSION_GRANTED)) {
             PopUp.show(getString(R.string.location_permission_pairing),
                     getString(R.string.permissions_needed_title),
                     R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
@@ -1062,6 +1067,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     bluetoothPermissionOKHandler,
                     bluetoothPermissionCancelHandler);
         } else {
+            Log.v(TAG, "skipped");
             proceedAfterBlePermissionGranted();
         }
     }
@@ -1263,6 +1269,12 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     private void scanLeDevice(final boolean enable) {
         logi("scanLeDevice() :: enable = " + enable);
 
+        if(!BluetoothChecker.getInstance().isBluetoothON()) {
+            setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT);
+            enableBluetooth();
+            return;
+        }
+
         if(enable) {
             //Start scanning.
             if(!setupBleController()) {
@@ -1281,7 +1293,12 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 } else {
                     List<ScanFilter> filters = new ArrayList<>();
                     // TODO: play with ScanSettings further to ensure the Kit kat devices connectMaybeInit with higher success rate
-                    ScanSettings settings = new ScanSettings.Builder().setLegacy(true).setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+                    ScanSettings settings;
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        settings = new ScanSettings.Builder().setLegacy(true).setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+                    } else {
+                        settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+                    }
                     leScanner.startScan(filters, settings, getNewScanCallback());
                 }
             }
@@ -1495,24 +1512,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         BluetoothGatt gatt = device.connectGatt(this, true, bluetoothGattCallback);
         synchronized (lock) { // Wait for services to be discovered
-            lock.wait();
+            lock.wait(10000); // 10 second max
         }
 
             stopScanning();
-
-            /* Rebond */
-            Log.v(TAG, "rebond, just in case");
-            try {
-                Method m = device.getClass().getMethod("removeBond", (Class[]) null);
-                m.invoke(device, (Object[]) null);
-            } catch (Exception e) { Log.e(TAG, e.getMessage()); }
-
-            // Sleep for 2000ms
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
 
             // Create bond
             boolean newbond = device.createBond();

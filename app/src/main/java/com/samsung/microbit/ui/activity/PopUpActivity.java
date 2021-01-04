@@ -269,15 +269,19 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
     private void setLayout(Intent intent) {
         String title = intent.getStringExtra(INTENT_EXTRA_TITLE);
 
-        if(!title.isEmpty()) {
-            titleTxt.setText(title);
-            titleTxt.setVisibility(View.VISIBLE);
+        if(title != null) {
+            if (!title.isEmpty()) {
+                titleTxt.setText(title);
+                titleTxt.setVisibility(View.VISIBLE);
+            }
         }
 
         String message = intent.getStringExtra(INTENT_EXTRA_MESSAGE);
-        if(!message.isEmpty()) {
-            messageTxt.setText(message);
-            messageTxt.setVisibility(View.VISIBLE);
+        if(message != null) {
+            if (!message.isEmpty()) {
+                messageTxt.setText(message);
+                messageTxt.setVisibility(View.VISIBLE);
+            }
         }
 
         int imageResId = intent.getIntExtra(INTENT_EXTRA_ICON, 0);
