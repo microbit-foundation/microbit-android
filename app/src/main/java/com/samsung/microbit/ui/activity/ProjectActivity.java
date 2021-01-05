@@ -994,7 +994,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
         if(currentMicrobit.mPattern == null) {
+            // Start pairing activity and send current state to continue flashing once paired
             Intent intent = new Intent(this, PairingActivity.class);
+            intent.putExtra("hextoflash", mProgramToSend.filePath);
             startActivity(intent);
             /*
             while(pairingFailed = PENDING)

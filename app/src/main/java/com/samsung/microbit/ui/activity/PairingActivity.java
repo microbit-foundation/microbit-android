@@ -23,6 +23,7 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -63,6 +64,7 @@ import com.samsung.microbit.utils.BLEConnectionHandler;
 import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 
+import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -158,6 +160,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     private int hardwareVersion = 0;
 
+    String hextoflash = null;
+
     /**
      * Occurs after successfully finished pairing process and
      * redirects to the first screen of the pairing activity.
@@ -168,6 +172,13 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             logi("======successfulPairingHandler======");
             PopUp.hide();
             displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
+
+            // If pairing was prompted by flash reattempt flash
+            Intent i = new Intent(MBApp.getApp(), ProjectActivity.class);
+            File hexToWrite = new File(hextoflash);
+            i.setData(Uri.fromFile(hexToWrite));
+            startActivity(i);
+
         }
     };
 
@@ -529,6 +540,9 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         super.onCreate(savedInstanceState);
 
         MBApp application = MBApp.getApp();
+
+        // Check intent for hex path. If it exists we're partway through trying to flash
+        hextoflash = getIntent().getStringExtra("hextoflash");
 
         registerReceiver(pairReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
 
