@@ -54,8 +54,16 @@
         style="@style/main_activity_button_style"
         android:contentDescription="@string/desc_create_code"
         android:drawableEnd="@drawable/ic_create_code"
-        android:nextFocusDown="@+id/discover_btn"
+        android:nextFocusDown="@+id/create_code_python_btn"
         android:text="@string/create_code" />
+
+    <Button
+        android:id="@+id/create_code_python_btn"
+        style="@style/main_activity_button_style"
+        android:contentDescription="@string/desc_create_code_python"
+        android:drawableEnd="@drawable/ic_create_code"
+        android:nextFocusDown="@+id/discover_btn"
+        android:text="@string/create_code_python" />
 
     <!-- Discover -->
     <Button

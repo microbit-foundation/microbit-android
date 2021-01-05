@@ -151,6 +151,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         flashButton.setTypeface(typeface);
         Button createCodeButton = (Button) findViewById(R.id.create_code_btn);
         createCodeButton.setTypeface(typeface);
+        Button createCodePythonButton = (Button) findViewById(R.id.create_code_python_btn);
+        createCodePythonButton.setTypeface(typeface);
         Button discoverButton = (Button) findViewById(R.id.discover_btn);
         discoverButton.setTypeface(typeface);
     }
@@ -339,14 +341,14 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 builder.setTitle("Edit Editor URL");
 
                 final EditText editorURL = new EditText(this);
-                editorURL.setText(MakeCodeWebView.makecodeUrl);
+                editorURL.setText(EditorWebView.makecodeUrl);
                 editorURL.setInputType(InputType.TYPE_CLASS_TEXT);
                 builder.setView(editorURL);
 
                 builder.setPositiveButton("Set", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        MakeCodeWebView.setMakecodeUrl(editorURL.getText().toString());
+                        EditorWebView.setMakecodeUrl(editorURL.getText().toString());
                     }
                 });
                 builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -379,8 +381,15 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.create_code_btn: {
-                Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
-                startActivity(launchMakeCodeIntent);
+                Intent launchEditorIntent = new Intent(this, EditorWebView.class);
+                launchEditorIntent.putExtra("editor", "makecode");
+                startActivity(launchEditorIntent);
+            }
+            break;
+            case R.id.create_code_python_btn: {
+                Intent launchEditorIntent = new Intent(this, EditorWebView.class);
+                launchEditorIntent.putExtra("editor", "python");
+                startActivity(launchEditorIntent);
             }
             break;
             case R.id.flash_microbit_btn:

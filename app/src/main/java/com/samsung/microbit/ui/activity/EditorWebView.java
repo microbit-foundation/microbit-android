@@ -22,16 +22,19 @@ import com.samsung.microbit.R;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URLDecoder;
 
 import static android.content.ContentValues.TAG;
 
 /**
- * Displays MakeCode
+ * Displays Editor
  */
-public class MakeCodeWebView extends Activity implements View.OnClickListener {
+public class EditorWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
     public static String makecodeUrl = "https://makecode.microbit.org/?androidapp=" + BuildConfig.VERSION_CODE;
+    public static String pythonUrl = "http://python-editor-datauri-downloads-android-review.microbit.org.s3-website-eu-west-1.amazonaws.com/?androidapp=" + BuildConfig.VERSION_CODE;
+    public static String url = makecodeUrl;
     public static Activity activityHandle = null;
 
     Uri hexToFlash;
@@ -56,6 +59,12 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
         activityHandle = this;
 
+        if(getIntent().getStringExtra("editor").equals("makecode")) {
+            url = makecodeUrl;
+        } else {
+            url = pythonUrl;
+        }
+
         setContentView(R.layout.activity_help_web_view);
         webView = (WebView) findViewById(R.id.generalView);
 
@@ -73,6 +82,12 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webView.setWebContentsDebuggingEnabled(true);
 
         webView.addJavascriptInterface(new JavaScriptInterface(this), "AndroidFunction");
+        webView.evaluateJavascript("javascript:(function f() { document.getElementsByClassName(\"mb_logo\")[0].addEventListener(\"click\", function(e) { AndroidFunction.returnToHome(); e.preventDefault(); return false; }) })()", new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String s) {
+                Log.d(TAG, s);
+            }
+        });
         webView.evaluateJavascript("javascript:(function f() { document.getElementsByClassName(\"brand\")[0].addEventListener(\"click\", function(e) { AndroidFunction.returnToHome(); e.preventDefault(); return false; }) })()", new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String s) {
@@ -85,6 +100,8 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 Log.v(TAG, "url: " + url);
                 if(url.contains("https://microbit.org/")) activityHandle.finish();
+                if(url.contains("http://microbit.org/")) activityHandle.finish();
+                if(url.contains("blob://")) Log.v(TAG, "blob uri");
                 return false;
             }
             @Override
@@ -112,9 +129,15 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                 byte[] decode = {};
 
                 if(url.contains("data:")) {
-                    String[] data = url.split(",");
-                    hexName = data[0].replace("data:", "").replace(";base64", "");
-                    decode = Base64.decode(data[1], Base64.DEFAULT);
+                    if(url.contains("base64")) {
+                        String[] data = url.split(",");
+                        hexName = data[0].replace("data:", "").replace(";base64", "");
+                        decode = Base64.decode(data[1], Base64.DEFAULT);
+                    } else if(url.contains("octet")) {
+                        String[] data = url.split(",");
+                        hexName = "micropython_program.hex";
+                        decode = URLDecoder.decode(data[1]).getBytes();
+                    }
                 } else if(url.contains("blob:")) {
                     hexName = "blob";
                     decode = new byte[]{0, 0, 0};
@@ -157,7 +180,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
         //Check parameters Before load
         Intent intent = getIntent();
-        webView.loadUrl(makecodeUrl);
+        webView.loadUrl(url);
     }
 
     @Override
@@ -193,7 +216,7 @@ class JavaScriptInterface {
     @JavascriptInterface
     public void returnToHome() {
         try {
-            MakeCodeWebView.activityHandle.finish();
+            EditorWebView.activityHandle.finish();
         } catch(Exception e) {
             Log.v(TAG, e.toString());
         }
