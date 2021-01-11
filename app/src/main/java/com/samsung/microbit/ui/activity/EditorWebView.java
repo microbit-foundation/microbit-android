@@ -15,6 +15,7 @@ import android.webkit.ValueCallback;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ImageButton;
 
 import com.samsung.microbit.BuildConfig;
 import com.samsung.microbit.R;
@@ -33,11 +34,14 @@ public class EditorWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
     public static String makecodeUrl = "https://makecode.microbit.org/?androidapp=" + BuildConfig.VERSION_CODE;
-    public static String pythonUrl = "http://python-editor-datauri-downloads-android-review.microbit.org.s3-website-eu-west-1.amazonaws.com/?androidapp=" + BuildConfig.VERSION_CODE;
+    public static String pythonUrl = "https://python-editor-2-1-1.microbit.org/?androidapp=" + BuildConfig.VERSION_CODE;
     public static String url = makecodeUrl;
     public static Activity activityHandle = null;
 
     Uri hexToFlash;
+
+    ImageButton makecodeButton;
+    ImageButton pythonButton;
 
     public static void setMakecodeUrl(String url) {
         makecodeUrl = url;
@@ -59,14 +63,37 @@ public class EditorWebView extends Activity implements View.OnClickListener {
 
         activityHandle = this;
 
-        if(getIntent().getStringExtra("editor").equals("makecode")) {
-            url = makecodeUrl;
-        } else {
-            url = pythonUrl;
-        }
+        setContentView(R.layout.activity_editors_web_view);
 
-        setContentView(R.layout.activity_help_web_view);
         webView = (WebView) findViewById(R.id.generalView);
+
+        makecodeButton = (ImageButton)findViewById(R.id.makecodeButton);
+        makecodeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openWebView(makecodeUrl);
+            }
+        });
+
+        pythonButton = (ImageButton)findViewById(R.id.pythonButton);
+        pythonButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openWebView(pythonUrl);
+            }
+        });
+
+        makecodeButton.setVisibility(View.VISIBLE);
+        pythonButton.setVisibility(View.VISIBLE);
+        webView.setVisibility(View.GONE);
+
+    }
+
+    public void openWebView(String url) {
+
+        makecodeButton.setVisibility(View.GONE);
+        pythonButton.setVisibility(View.GONE);
+        webView.setVisibility(View.VISIBLE);
 
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 

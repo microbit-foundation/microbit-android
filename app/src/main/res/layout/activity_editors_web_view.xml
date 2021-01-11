@@ -1,0 +1,81 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="fill_parent"
+    android:layout_height="match_parent"
+    android:padding="0dp"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical"
+    tools:context="com.samsung.microbit.ui.activity.EditorWebView">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/AppTheme.AppBarOverlay">
+
+    <Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/main_gray_color"
+        android:importantForAccessibility="yes"
+        />
+
+        <ImageButton
+            android:id="@+id/backBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/desc_back_to_home_from_editor_btn"
+            android:nextFocusDown="@id/img_toolbar_logo"
+            android:onClick="onClick"
+            android:padding="@dimen/app_bar_back_btn_padding"
+            android:src="@drawable/ic_back_arrow" />
+
+    <ImageView
+        android:id="@+id/img_toolbar_logo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:contentDescription="@string/content_description_toolbar_logo"
+        android:src="@drawable/microbit_app_bar_logo" />
+
+    </RelativeLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@drawable/bg"
+        >
+
+    <ImageButton
+        android:id="@+id/makecodeButton"
+        android:scaleType="centerCrop"
+        android:layout_width="match_parent"
+        android:layout_weight="1"
+        android:src="@drawable/makecode"
+        android:background="@null"
+        android:visibility="gone"
+        android:layout_height="wrap_content" />
+
+    <ImageButton
+        android:id="@+id/pythonButton"
+        android:scaleType="centerCrop"
+        android:layout_width="match_parent"
+        android:layout_weight="1"
+        android:background="@null"
+        android:src="@drawable/python"
+        android:visibility="gone"
+        android:layout_height="wrap_content" />
+
+    <WebView
+        android:id="@+id/generalView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="0dp"
+        android:hardwareAccelerated="true"
+        android:windowSoftInputMode="adjustResize" />
+
+    </LinearLayout>
+</LinearLayout>

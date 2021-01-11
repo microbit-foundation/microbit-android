@@ -151,8 +151,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         flashButton.setTypeface(typeface);
         Button createCodeButton = (Button) findViewById(R.id.create_code_btn);
         createCodeButton.setTypeface(typeface);
-        Button createCodePythonButton = (Button) findViewById(R.id.create_code_python_btn);
-        createCodePythonButton.setTypeface(typeface);
         Button discoverButton = (Button) findViewById(R.id.discover_btn);
         discoverButton.setTypeface(typeface);
     }
