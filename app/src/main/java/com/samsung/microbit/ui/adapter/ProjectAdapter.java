@@ -386,7 +386,7 @@ public class ProjectAdapter extends BaseAdapter {
             appNameEdit.setVisibility(View.VISIBLE);
 
             appNameEdit.setText(project.name);
-            appNameEdit.setSelection(project.name.length());
+            // appNameEdit.setSelection(project.name.length()); Causes crash
             appNameEdit.requestFocus();
             appNameButton.setVisibility(View.INVISIBLE);
 
