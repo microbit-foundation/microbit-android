@@ -383,6 +383,8 @@
     <string name="v2_button_label">V2</string>
 
     <string name="no_longer_required_to_connect">It is no longer necessary to connect to your micro:bit before flashing</string>
+    <string name="editor_btn_makecode">Go to MakeCode Editor</string>
+    <string name="editor_btn_python">Go to Python Editor</string>
 
 </resources>
 

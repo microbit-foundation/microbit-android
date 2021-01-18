@@ -38,7 +38,8 @@
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
         android:contentDescription="@string/content_description_toolbar_logo"
-        android:src="@drawable/microbit_app_bar_logo" />
+        android:src="@drawable/microbit_app_bar_logo"
+        />
 
     </RelativeLayout>
 
@@ -49,33 +50,64 @@
         android:background="@drawable/bg"
         >
 
-    <ImageButton
-        android:id="@+id/makecodeButton"
-        android:scaleType="centerCrop"
-        android:layout_width="match_parent"
-        android:layout_weight="1"
-        android:src="@drawable/makecode"
-        android:background="@null"
-        android:visibility="gone"
-        android:layout_height="wrap_content" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="20dp"
+            android:background="@drawable/editor_btn"
+            android:padding="10dp"
+            android:orientation="vertical">
 
-    <ImageButton
-        android:id="@+id/pythonButton"
-        android:scaleType="centerCrop"
-        android:layout_width="match_parent"
-        android:layout_weight="1"
-        android:background="@null"
-        android:src="@drawable/python"
-        android:visibility="gone"
-        android:layout_height="wrap_content" />
+            <ImageButton
+                android:id="@+id/makecodeButton"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:background="@null"
+                android:scaleType="fitStart"
+                android:src="@drawable/makecode"
+                android:visibility="visible"
+                tools:ignore="NestedWeights" />
 
-    <WebView
-        android:id="@+id/generalView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginBottom="0dp"
-        android:hardwareAccelerated="true"
-        android:windowSoftInputMode="adjustResize" />
+            <Button
+                style="@style/main_activity_button_style"
+                android:layout_width="match_parent"
+                android:text="@string/editor_btn_makecode"
+                />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="20dp"
+            android:background="@drawable/editor_btn"
+            android:padding="10dp"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/pythonButton"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:background="@null"
+                android:scaleType="fitStart"
+                android:src="@drawable/python"
+                android:visibility="visible"
+                tools:ignore="NestedWeights" />
+
+            <Button
+                style="@style/main_activity_button_style"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/editor_btn_python" />
+        </LinearLayout>
+
+        <WebView
+            android:id="@+id/generalView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginBottom="0dp"
+            android:hardwareAccelerated="true"
+            android:visibility="gone"
+            android:windowSoftInputMode="adjustResize" />
 
     </LinearLayout>
 </LinearLayout>
