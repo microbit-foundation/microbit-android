@@ -15,7 +15,10 @@ import android.webkit.ValueCallback;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.ImageButton;
+
+import androidx.cardview.widget.CardView;
 
 import com.samsung.microbit.BuildConfig;
 import com.samsung.microbit.R;
@@ -40,8 +43,12 @@ public class EditorWebView extends Activity implements View.OnClickListener {
 
     Uri hexToFlash;
 
-    ImageButton makecodeButton;
-    ImageButton pythonButton;
+    CardView makecodeCard;
+    CardView pythonCard;
+    ImageButton makecodeImageButton;
+    ImageButton pythonImageButton;
+    Button makecodeButton;
+    Button pythonButton;
 
     public static void setMakecodeUrl(String url) {
         makecodeUrl = url;
@@ -67,7 +74,10 @@ public class EditorWebView extends Activity implements View.OnClickListener {
 
         webView = (WebView) findViewById(R.id.generalView);
 
-        makecodeButton = (ImageButton)findViewById(R.id.makecodeButton);
+        makecodeCard = (CardView)findViewById(R.id.makecodeCard);
+        pythonCard = (CardView)findViewById(R.id.pythonCard);
+
+        makecodeButton = (Button) findViewById(R.id.makecodeButton);
         makecodeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -75,7 +85,15 @@ public class EditorWebView extends Activity implements View.OnClickListener {
             }
         });
 
-        pythonButton = (ImageButton)findViewById(R.id.pythonButton);
+        makecodeImageButton = (ImageButton)findViewById(R.id.makecodeImageButton);
+        makecodeImageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openWebView(makecodeUrl);
+            }
+        });
+
+        pythonButton = (Button)findViewById(R.id.pythonButton);
         pythonButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -83,16 +101,24 @@ public class EditorWebView extends Activity implements View.OnClickListener {
             }
         });
 
-        makecodeButton.setVisibility(View.VISIBLE);
-        pythonButton.setVisibility(View.VISIBLE);
+        pythonImageButton = (ImageButton)findViewById(R.id.pythonImageButton);
+        pythonImageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openWebView(pythonUrl);
+            }
+        });
+
+        makecodeCard.setVisibility(View.VISIBLE);
+        pythonCard.setVisibility(View.VISIBLE);
         webView.setVisibility(View.GONE);
 
     }
 
     public void openWebView(String url) {
 
-        makecodeButton.setVisibility(View.GONE);
-        pythonButton.setVisibility(View.GONE);
+        makecodeCard.setVisibility(View.GONE);
+        pythonCard.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
 
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);

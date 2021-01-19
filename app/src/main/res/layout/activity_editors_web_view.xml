@@ -2,6 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="fill_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:padding="0dp"
     android:fitsSystemWindows="true"
     android:orientation="vertical"
@@ -50,55 +51,76 @@
         android:background="@drawable/bg"
         >
 
-        <LinearLayout
+        <androidx.cardview.widget.CardView
+            android:id="@+id/makecodeCard"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="20dp"
-            android:background="@drawable/editor_btn"
-            android:padding="10dp"
-            android:orientation="vertical">
+            android:layout_margin="10dp"
+            app:cardBackgroundColor="@color/white_color"
+            app:cardCornerRadius="10dp">
 
-            <ImageButton
-                android:id="@+id/makecodeButton"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:background="@null"
-                android:scaleType="fitStart"
-                android:src="@drawable/makecode"
-                android:visibility="visible"
-                tools:ignore="NestedWeights" />
-
-            <Button
-                style="@style/main_activity_button_style"
-                android:layout_width="match_parent"
-                android:text="@string/editor_btn_makecode"
-                />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="20dp"
-            android:background="@drawable/editor_btn"
-            android:padding="10dp"
-            android:orientation="vertical">
-
-            <ImageButton
-                android:id="@+id/pythonButton"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:background="@null"
-                android:scaleType="fitStart"
-                android:src="@drawable/python"
-                android:visibility="visible"
-                tools:ignore="NestedWeights" />
-
-            <Button
-                style="@style/main_activity_button_style"
-                android:layout_width="match_parent"
+            <LinearLayout
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/editor_btn_python" />
-        </LinearLayout>
+                android:orientation="vertical">
+
+                <ImageButton
+                    android:id="@+id/makecodeImageButton"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:scaleType="fitXY"
+                    android:adjustViewBounds="true"
+                    android:src="@drawable/makecode"
+                    android:visibility="visible"
+                    tools:ignore="NestedWeights" />
+
+
+                <Button
+                    android:id="@+id/makecodeButton"
+                    style="@style/main_activity_button_style"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:layout_margin="10dp"
+                    android:text="@string/editor_btn_makecode" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/pythonCard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            app:cardBackgroundColor="@color/white_color"
+            app:cardCornerRadius="10dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <ImageButton
+                    android:id="@+id/pythonImageButton"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:src="@drawable/python"
+                    android:visibility="visible"
+                    android:adjustViewBounds="true"
+                    android:scaleType="fitXY"
+                    tools:ignore="NestedWeights" />
+
+                <Button
+                    android:id="@+id/pythonButton"
+                    style="@style/main_activity_button_style"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/button_height"
+                    android:layout_margin="10dp"
+                    android:text="@string/editor_btn_python" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
         <WebView
             android:id="@+id/generalView"
