@@ -1,0 +1,25 @@
+<shape
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle"   >
+
+    <solid
+        android:color="@color/white_color" >
+    </solid>
+
+    <stroke
+        android:width="1dp"
+        android:color="@color/main_gray_transparent_color">
+    </stroke>
+
+    <padding
+        android:left="5dp"
+        android:top="5dp"
+        android:right="5dp"
+        android:bottom="5dp"    >
+    </padding>
+
+    <corners
+        android:radius="20dp"   >
+    </corners>
+
+</shape>

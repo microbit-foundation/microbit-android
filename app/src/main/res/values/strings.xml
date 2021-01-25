@@ -271,8 +271,7 @@
 
     <string name="navigation_drawer_open">Open Menu</string>
     <string name="navigation_drawer_close">Close Menu</string>
-    <string name="create_code">MakeCode</string>
-    <string name="create_code_python">Python Editor</string>
+    <string name="create_code">Create Code</string>
     <string name="flash_microbit">Flash</string>
     <string name="connect_device">Pair</string>
     <string name="discover">Discover</string>
@@ -306,10 +305,10 @@
     <string name="desc_homescreen_logo_img">Hello</string>
     <string name="desc_connect_btn">Pair</string>
     <string name="desc_flash_btn">Flash</string>
-    <string name="desc_create_code">Create Code In MakeCode</string>
-    <string name="desc_create_code_python">Create Code In Python</string>
+    <string name="desc_create_code">Create Code</string>
     <string name="desc_discover">Discover</string>
     <string name="desc_back_to_home_from_flash_btn">Back to Menu</string>
+    <string name="desc_back_to_home_from_editor_btn">Back to Menu</string>
     <string name="desc_flash_toolbar_header">Flash</string>
     <string name="desc_go_to_bluetooth_settings">Go to bluetooth settings</string>
     <string name="tv_go_to_bluetooth_Settings">Go to bluetooth settings</string>
@@ -384,6 +383,8 @@
     <string name="v2_button_label">V2</string>
 
     <string name="no_longer_required_to_connect">It is no longer necessary to connect to your micro:bit before flashing</string>
+    <string name="editor_btn_makecode">Go to MakeCode Editor</string>
+    <string name="editor_btn_python">Go to Python Editor</string>
 
 </resources>
 
