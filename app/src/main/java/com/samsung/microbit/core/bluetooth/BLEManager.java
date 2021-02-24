@@ -8,9 +8,14 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
-import android.support.annotation.Nullable;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
+import com.samsung.microbit.MBApp;
+import com.samsung.microbit.data.model.ConnectedDevice;
+
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,6 +54,7 @@ public class BLEManager {
     public static final int OP_RELIABLE_WRITE_COMPLETED = 8;
     public static final int OP_READ_REMOTE_RSSI = 9;
     public static final int OP_MTU_CHANGED = 10;
+
 
     /**
      * It represents ble device state.
@@ -200,6 +206,7 @@ public class BLEManager {
      * @return Connection result with an appropriate error code if connection is failed.
      */
     public int connect(boolean autoReconnect) {
+
         int rc = BLE_ERROR_NOOP;
 
         if(gatt == null) {
@@ -252,8 +259,14 @@ public class BLEManager {
         if(DEBUG) {
             logi("connectMaybeInit() :: rc = " + rc);
         }
+
+
+        // Attempt to rebond
+        bluetoothDevice.createBond();
+
         return rc;
     }
+
 
     /**
      * Trigger connection to remote GATT device.
@@ -294,6 +307,7 @@ public class BLEManager {
                         if(DEBUG) {
                             logi("gattConnect() :: remote device = " + gatt.getDevice().getAddress());
                         }
+
 
                         if(!callbackCompleted) {
                             logi("BLE_ERROR_FAIL | BLE_ERROR_TIMEOUT");
@@ -386,6 +400,17 @@ public class BLEManager {
 
                 inBleOp = OP_DISCOVER_SERVICES;
                 error = 0;
+
+                try {
+                    // BluetoothGatt gatt
+                    final Method refresh = gatt.getClass().getMethod("refresh");
+                    if (refresh != null) {
+                        refresh.invoke(gatt);
+                    }
+                } catch (Exception e) {
+                    // Log it
+                }
+
                 try {
                     callbackCompleted = false;
                     if(gatt.discoverServices()) {
@@ -663,6 +688,8 @@ public class BLEManager {
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             super.onConnectionStateChange(gatt, status, newState);
 
+            gatt.discoverServices();
+
             if(DEBUG) {
                 logi("BluetoothGattCallback.onConnectionStateChange() :: start : status = " + status + " newState = " +
                         "" + newState);
@@ -749,8 +776,16 @@ public class BLEManager {
                     }
 
                     if(status == BluetoothGatt.GATT_SUCCESS) {
+                        ConnectedDevice cD = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+                        if(gatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb")) != null ) {
+                            Log.v(TAG, "Hardware Type: V2");
+                            cD.mhardwareVersion = 2;
+                        } else {
+                            Log.v(TAG, "Hardware Type: V1");
+                            cD.mhardwareVersion = 1;
+                        }
+                        BluetoothUtils.setPairedMicroBit(MBApp.getApp(), cD);
                         bleState |= state;
-
                     } else {
                         bleState &= (~state);
                     }

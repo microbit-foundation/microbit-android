@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.os.Bundle;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -17,9 +16,10 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.utils.Utils;
 
@@ -64,6 +64,9 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
     private Button cancelButton;
     private Button affirmationOKButton;
     private LinearLayout layoutBottom;
+
+    private Button v1Button;
+    private Button v2Button;
 
     private boolean isCancelable;
 
@@ -123,6 +126,10 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
         okButton.setTypeface(MBApp.getApp().getRobotoTypeface());
         messageTxt.setTypeface(MBApp.getApp().getRobotoTypeface());
         titleTxt.setTypeface(MBApp.getApp().getTypefaceBold());
+
+        v1Button.setTypeface(MBApp.getApp().getRobotoTypeface());
+        v2Button.setTypeface(MBApp.getApp().getRobotoTypeface());
+
     }
 
     private void initViews() {
@@ -135,6 +142,10 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
         okButton = (Button) findViewById(R.id.imageButtonOk);
         cancelButton = (Button) findViewById(R.id.imageButtonCancel);
         affirmationOKButton = (Button) findViewById(R.id.affirmationOKBtn);
+
+        v1Button = (Button) findViewById(R.id.buttonV1);
+        v2Button = (Button) findViewById(R.id.buttonV2);
+
         // Error / Flash animation
         gifImageView = (GifImageView) findViewById(R.id.pop_up_gif_image_view);
 
@@ -168,13 +179,17 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
 
         Utils.unbindDrawables(gifImageView);
         gifImageView = null;
+
+        Utils.unbindDrawables(v1Button);
+        v1Button = null;
+        Utils.unbindDrawables(v2Button);
+        v2Button = null;
+
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        GoogleAnalyticsManager.getInstance().sendViewEventStats(PopUpActivity.class.getSimpleName());
 
         Log.d("PopUpActivity", "onCreate() popuptype = " + getIntent().getIntExtra(INTENT_EXTRA_TYPE, PopUp.TYPE_NONE));
         setContentView(R.layout.activity_popup);
@@ -204,13 +219,11 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
     @Override
     protected void onStart() {
         super.onStart();
-        GoogleAnalyticsManager.getInstance().activityStart(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        GoogleAnalyticsManager.getInstance().activityStop(this);
     }
 
     @Override
@@ -244,6 +257,8 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
         affirmationOKButton.setVisibility(View.GONE);
         progressBar.setVisibility(View.GONE);
         spinnerBar.setVisibility(View.GONE);
+        v1Button.setVisibility(View.GONE);
+        v2Button.setVisibility(View.GONE);
     }
 
     /**
@@ -254,15 +269,19 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
     private void setLayout(Intent intent) {
         String title = intent.getStringExtra(INTENT_EXTRA_TITLE);
 
-        if(!title.isEmpty()) {
-            titleTxt.setText(title);
-            titleTxt.setVisibility(View.VISIBLE);
+        if(title != null) {
+            if (!title.isEmpty()) {
+                titleTxt.setText(title);
+                titleTxt.setVisibility(View.VISIBLE);
+            }
         }
 
         String message = intent.getStringExtra(INTENT_EXTRA_MESSAGE);
-        if(!message.isEmpty()) {
-            messageTxt.setText(message);
-            messageTxt.setVisibility(View.VISIBLE);
+        if(message != null) {
+            if (!message.isEmpty()) {
+                messageTxt.setText(message);
+                messageTxt.setVisibility(View.VISIBLE);
+            }
         }
 
         int imageResId = intent.getIntExtra(INTENT_EXTRA_ICON, 0);
@@ -317,6 +336,11 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
                 okButton.setVisibility(View.VISIBLE);
                 cancelButton.setVisibility(View.VISIBLE);
                 break;
+            case PopUp.TYPE_HARDWARE_CHOICE:
+                layoutBottom.setVisibility(View.VISIBLE);
+                v1Button.setVisibility(View.VISIBLE);
+                v2Button.setVisibility(View.VISIBLE);
+                break;
             case PopUp.TYPE_ALERT:
             case PopUp.TYPE_ALERT_LIGHT:
                 layoutBottom.setVisibility(View.VISIBLE);
@@ -368,11 +392,13 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
 
         switch(v.getId()) {
             case R.id.imageButtonOk:
+            case R.id.buttonV2:
                 intent.setAction(INTENT_ACTION_OK_PRESSED);
                 break;
 
             case R.id.imageButtonCancel:
             case R.id.affirmationOKBtn:
+            case R.id.buttonV1:
                 intent.setAction(INTENT_ACTION_CANCEL_PRESSED);
                 break;
         }

@@ -1,12 +1,14 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.google.gms.google-services'
 
 android {
-    compileSdkVersion 26
-    buildToolsVersion '28.0.3'
+    compileSdkVersion 29
+    buildToolsVersion '29.0.2'
     defaultConfig {
         applicationId "com.samsung.microbit"
-        minSdkVersion 19
-        targetSdkVersion 26
+        minSdkVersion 21
+        targetSdkVersion 29
+        // Once target SDK version is 30, requestLegacyStorage will no longer work
     }
     buildTypes {
         release {
@@ -23,12 +25,15 @@ android {
 
 dependencies {
     testImplementation 'junit:junit:4.12'
-    implementation 'com.android.support:appcompat-v7:23.1.0'
-    implementation 'com.android.support:design:23.1.0'
-    implementation project(':dfuLibrary')
-    implementation 'com.android.support:cardview-v7:23.1.0'
-    implementation 'com.android.support:recyclerview-v7:23.1.0'
-    implementation project(':android-gif-drawable-1.1.13')
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.recyclerview:recyclerview:1.0.0'
+    implementation 'pl.droidsonroids.gif:android-gif-drawable:1.2.19'
+    implementation 'no.nordicsemi.android:dfu:1.11.1'
+    implementation project(':pfLibrary')
     implementation 'com.google.android.gms:play-services-analytics:9.2.0'
     implementation 'com.google.code.gson:gson:2.8.2'
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
+    implementation 'com.google.firebase:firebase-analytics:17.4.1'
 }

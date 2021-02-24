@@ -44,7 +44,6 @@ import android.widget.Toast;
 import com.samsung.microbit.BuildConfig;
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.data.constants.Constants;
 import com.samsung.microbit.data.constants.FileConstants;
 import com.samsung.microbit.data.constants.InternalPaths;
@@ -528,7 +527,6 @@ public class CameraActivity_OldAPI extends Activity {
         logi("onCreate() :: Start");
         super.onCreate(savedInstanceState);
 
-        GoogleAnalyticsManager.getInstance().sendViewEventStats(CameraActivity_OldAPI.class.getSimpleName());
 
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
@@ -876,13 +874,11 @@ public class CameraActivity_OldAPI extends Activity {
         CmdArg cmd = new CmdArg(0, "Camera on");
         ServiceUtils.sendReplyCommand(PluginService.CAMERA, cmd);
         super.onStart();
-        GoogleAnalyticsManager.getInstance().activityStart(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        GoogleAnalyticsManager.getInstance().activityStop(this);
     }
 
     @Override

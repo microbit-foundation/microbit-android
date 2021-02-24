@@ -13,7 +13,6 @@ import android.widget.TextView;
 
 
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
 
 import pl.droidsonroids.gif.GifDrawable;
 import pl.droidsonroids.gif.GifImageView;
@@ -49,8 +48,6 @@ public class SplashScreenActivity extends Activity implements View.OnClickListen
 
         setContentView(R.layout.activity_splash_screen);
         initViews();
-
-        GoogleAnalyticsManager.getInstance().sendAppStats(SplashScreenActivity.class.getSimpleName());
     }
 
     private void initViews() {
@@ -284,13 +281,11 @@ public class SplashScreenActivity extends Activity implements View.OnClickListen
     @Override
     protected void onStart() {
         super.onStart();
-        GoogleAnalyticsManager.getInstance().activityStart(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        GoogleAnalyticsManager.getInstance().activityStop(this);
     }
 
     @Override

@@ -8,6 +8,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.util.Log;
 
 import com.samsung.microbit.core.bluetooth.BluetoothUtils;
 import com.samsung.microbit.data.constants.EventCategories;
@@ -22,6 +23,8 @@ import java.util.Map;
  * Class is used to make connection between {@link IPCService} and other services, will be used in IPC interaction.
  */
 public class ServiceConnector {
+
+    private static final String TAG = ServiceConnector.class.getSimpleName();
 
     private static final int COUNT_SERVICES_FOR_BINDING = 3;
 
@@ -97,7 +100,11 @@ public class ServiceConnector {
                 if(connectedDevice.mStatus) {
                     Intent intent = new Intent(mCtx, IPCService.class);
                     intent.putExtra(IPCConstants.INTENT_TYPE, EventCategories.IPC_BLE_CONNECT);
-                    mCtx.startService(intent);
+                    try {
+                        mCtx.startService(intent);
+                    } catch(Exception e){
+                        Log.v(TAG, "Failed to start service: " + e.toString());
+                    }
                 }
             }
 

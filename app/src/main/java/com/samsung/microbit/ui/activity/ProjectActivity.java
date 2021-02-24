@@ -14,27 +14,29 @@ import android.content.res.AssetFileDescriptor;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.DocumentsContract;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.LocalBroadcastManager;
-import android.support.v4.content.PermissionChecker;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.Window;
-import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.PermissionChecker;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.core.bluetooth.BluetoothUtils;
 import com.samsung.microbit.data.constants.Constants;
 import com.samsung.microbit.data.constants.EventCategories;
@@ -46,6 +48,7 @@ import com.samsung.microbit.data.model.Project;
 import com.samsung.microbit.data.model.ui.FlashActivityState;
 import com.samsung.microbit.service.BLEService;
 import com.samsung.microbit.service.DfuService;
+import com.samsung.microbit.service.PartialFlashingService;
 import com.samsung.microbit.ui.BluetoothChecker;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.ui.adapter.ProjectAdapter;
@@ -56,18 +59,42 @@ import com.samsung.microbit.utils.ProjectsHelper;
 import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
+import no.nordicsemi.android.dfu.DfuBaseService;
+import no.nordicsemi.android.dfu.DfuServiceController;
+import no.nordicsemi.android.dfu.DfuServiceInitiator;
 import no.nordicsemi.android.error.GattError;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
+import static com.samsung.microbit.ui.PopUp.TYPE_ALERT;
+import static com.samsung.microbit.ui.PopUp.TYPE_HARDWARE_CHOICE;
+import static com.samsung.microbit.ui.PopUp.TYPE_PROGRESS_NOT_CANCELABLE;
+import static com.samsung.microbit.ui.PopUp.TYPE_SPINNER_NOT_CANCELABLE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_LAYOUT;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_ACTION_UPDATE_PROGRESS;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_MESSAGE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TITLE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TYPE;
+import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_GIFF_ANIMATION_CODE;
+import static com.samsung.microbit.utils.FileUtils.getFileSize;
+
+// import com.samsung.microbit.core.GoogleAnalyticsManager;
 
 /**
  * Represents the Flash screen that contains a list of project samples
@@ -90,12 +117,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private String m_MicroBitFirmware = "0.0";
 
     private DFUResultReceiver dfuResultReceiver;
+    private pfResultReceiver pfResultReceiver;
 
     private List<Integer> mRequestPermissions = new ArrayList<>();
 
     private int mRequestingPermission = -1;
 
     private int mActivityState;
+
+    Intent service;
 
     private BroadcastReceiver connectionChangedReceiver = BLEConnectionHandler.bleConnectionChangedReceiver(this);
 
@@ -106,6 +136,16 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private boolean notAValidFlashHexFile;
 
     private boolean minimumPermissionsGranted;
+
+    private boolean previousPartialFlashFailed = false;
+
+    private int FLASH_TYPE_DFU = 0;
+    private int FLASH_TYPE_PF  = 1;
+
+    private int MICROBIT_V1 = 1;
+    private int MICROBIT_V2 = 2;
+
+    BLEService bleService;
 
     private final Runnable tryToConnectAgain = new Runnable() {
 
@@ -214,7 +254,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     getString(R.string.permissions_needed_title),
                     R.drawable.error_face, R.drawable.red_btn,
                     PopUp.GIFF_ANIMATION_ERROR,
-                    PopUp.TYPE_ALERT,
+                    TYPE_ALERT,
                     checkMorePermissionsNeeded, checkMorePermissionsNeeded);
         }
     };
@@ -222,13 +262,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     protected void onStart() {
         super.onStart();
-        GoogleAnalyticsManager.getInstance().activityStart(this);
+        startBluetooth();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        GoogleAnalyticsManager.getInstance().activityStop(this);
     }
 
     @Override
@@ -357,9 +396,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         logi("onCreate() :: ");
 
-        // Make sure to call this before any other userActionEvent is sent
-        GoogleAnalyticsManager.getInstance().sendViewEventStats(ProjectActivity.class.getSimpleName());
-
         //Remove title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
@@ -420,9 +456,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         boolean isShareableApp = cursor.getColumnIndex(DocumentsContract.Document
                                 .COLUMN_DOCUMENT_ID) != -1;
 
-                        fullPathOfFile = new File(Environment.getExternalStoragePublicDirectory(Environment
-                                .DIRECTORY_DOWNLOADS), selectedFileName).getAbsolutePath();
-
+                                                fullPathOfFile = new File(Environment.getExternalStoragePublicDirectory(Environment
+                                                        .DIRECTORY_DOWNLOADS), selectedFileName).getAbsolutePath();
                         if (isShareableApp) {
                             try {
                                 IOUtils.copy(getContentResolver().openInputStream(uri), new FileOutputStream(fullPathOfFile));
@@ -466,6 +501,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 startBluetooth();
             } else {
                 adviceOnMicrobitState();
+                finish();
             }
         } else {
             if (isOpenByOtherApp) {
@@ -477,7 +513,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     private Project getLatestProjectFromFolder(long lengthOfSearchingFile) {
         File downloadDirectory = Environment.getExternalStoragePublicDirectory(Environment
-                .DIRECTORY_DOWNLOADS);
+                        .DIRECTORY_DOWNLOADS);
 
         FilenameFilter hexFilenameFilter = new FilenameFilter() {
             @Override
@@ -599,7 +635,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 getString(R.string.permissions_needed_title),
                 R.drawable.error_face, R.drawable.red_btn,
                 PopUp.GIFF_ANIMATION_ERROR,
-                PopUp.TYPE_ALERT,
+                TYPE_ALERT,
                 okMorePermissionNeededHandler,
                 okMorePermissionNeededHandler);
     }
@@ -624,7 +660,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             getString(R.string.permissions_needed_title),
                             R.drawable.error_face, R.drawable.red_btn,
                             PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_ALERT,
+                            TYPE_ALERT,
                             checkMorePermissionsNeeded, checkMorePermissionsNeeded);
                 } else {
                     if(!mRequestPermissions.isEmpty()) {
@@ -639,7 +675,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             getString(R.string.permissions_needed_title),
                             R.drawable.error_face, R.drawable.red_btn,
                             PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_ALERT,
+                            TYPE_ALERT,
                             checkMorePermissionsNeeded, checkMorePermissionsNeeded);
                 } else {
                     if(!mRequestPermissions.isEmpty()) {
@@ -693,7 +729,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         deviceName.setContentDescription(deviceName.getText());
         deviceName.setTypeface(MBApp.getApp().getRobotoTypeface());
         deviceName.setOnClickListener(this);
-        ImageView connectedIndicatorIcon = (ImageView) findViewById(R.id.connectedIndicatorIcon);
+        // ImageView connectedIndicatorIcon = (ImageView) findViewById(R.id.connectedIndicatorIcon);
 
         //Override the connection Icon in case of active flashing
         if(mActivityState == FlashActivityState.FLASH_STATE_FIND_DEVICE
@@ -702,14 +738,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 || mActivityState == FlashActivityState.FLASH_STATE_INIT_DEVICE
                 || mActivityState == FlashActivityState.FLASH_STATE_PROGRESS
                 ) {
-            connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
+            // connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
             connectedIndicatorText.setText(getString(R.string.connected_to));
 
             return;
         }
         ConnectedDevice device = BluetoothUtils.getPairedMicrobit(this);
         if(!device.mStatus) {
-            connectedIndicatorIcon.setImageResource(R.drawable.device_status_disconnected);
+            // connectedIndicatorIcon.setImageResource(R.drawable.device_status_disconnected);
             connectedIndicatorText.setText(getString(R.string.not_connected));
             if(device.mName != null) {
                 deviceName.setText(device.mName);
@@ -717,7 +753,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 deviceName.setText("");
             }
         } else {
-            connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
+            //  connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
             connectedIndicatorText.setText(getString(R.string.connected_to));
             if(device.mName != null) {
                 deviceName.setText(device.mName);
@@ -853,7 +889,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         "",
                         R.drawable.error_face, R.drawable.red_btn,
                         PopUp.GIFF_ANIMATION_ERROR,
-                        PopUp.TYPE_ALERT,
+                        TYPE_ALERT,
                         null, null);
             }
         }
@@ -917,12 +953,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     public void onClick(final View v) {
         switch(v.getId()) {
             case R.id.createProject: {
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(ProjectActivity.class.getSimpleName(), "my-scripts");
-
+                Intent launchMakeCodeIntent = new Intent(this, EditorWebView.class);
+                startActivity(launchMakeCodeIntent);
+                /*
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setData(Uri.parse(getString(R.string.my_scripts_url)));
                 startActivity(intent);
+                 */
             }
             break;
 
@@ -932,15 +969,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 startActivity(intentHomeActivity);
                 finish();
                 break;
-
-            case R.id.connectedIndicatorIcon:
-                if(!BluetoothChecker.getInstance().isBluetoothON()) {
-                    setActivityState(FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT);
-                    startBluetooth();
-                } else {
-                    toggleConnection();
-                }
-                break;
+//
+//            case R.id.connectedIndicatorIcon:
+//                if(!BluetoothChecker.getInstance().isBluetoothON()) {
+//                    setActivityState(FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT);
+//                    startBluetooth();
+//                } else {
+//                    toggleConnection();
+//                }
+//                break;
             case R.id.deviceName:
                 // Toast.makeText(this, "Back to connectMaybeInit screen", Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(this, PairingActivity.class);
@@ -958,36 +995,61 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
         if(currentMicrobit.mPattern == null) {
-            PopUp.show(getString(R.string.flashing_failed_no_microbit), //message
-                    getString(R.string.flashing_error), //title
-                    R.drawable.error_face,//image icon res id
-                    R.drawable.red_btn,
-                    PopUp.GIFF_ANIMATION_ERROR,
-                    PopUp.TYPE_ALERT, //type of popup.
-                    new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            PopUp.hide();
-                        }
-                    },//override click listener for ok button
-                    null);//pass null to use default listeneronClick
+            // Start pairing activity and send current state to continue flashing once paired
+            Intent intent = new Intent(this, PairingActivity.class);
+            intent.putExtra("hextoflash", mProgramToSend.filePath);
+            startActivity(intent);
+            /*
+            while(pairingFailed = PENDING)
+            if PASS
+            if FAIL cancel
+            */
         } else {
+            Log.v(TAG, "Start flash!");
             flashingChecks();
         }
     }
 
     private void flashingChecks() {
-        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
+          ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
 
-        if(mProgramToSend == null || mProgramToSend.filePath == null) {
-            PopUp.show(getString(R.string.internal_error_msg),
-                    "",
+          if(currentMicrobit.mhardwareVersion != MICROBIT_V1 && currentMicrobit.mhardwareVersion != MICROBIT_V2 ) {
+              PopUp.show(getString(R.string.dfu_what_hardware_title),
+                    getString(R.string.dfu_what_hardware),
                     R.drawable.error_face, R.drawable.red_btn,
                     PopUp.GIFF_ANIMATION_ERROR,
-                    PopUp.TYPE_ALERT,
-                    null, null);
+                      TYPE_HARDWARE_CHOICE,
+                      new View.OnClickListener() {
+                          @Override
+                          public void onClick(View v) {
+                              ConnectedDevice temp = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+                              temp.mhardwareVersion = MICROBIT_V2;
+                              BluetoothUtils.setPairedMicroBit(MBApp.getApp(), temp);
+                              PopUp.hide();
+                          }
+                      },new View.OnClickListener() {
+                          @Override
+                          public void onClick(View v) {
+                              ConnectedDevice temp = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+                              temp.mhardwareVersion = MICROBIT_V1;
+                              BluetoothUtils.setPairedMicroBit(MBApp.getApp(), temp);
+                              PopUp.hide();
+                          }
+                      }
+              );
             return;
-        }
+          }
+//
+//        if(mProgramToSend == null || mProgramToSend.filePath == null) {
+//            PopUp.show(getString(R.string.internal_error_msg),
+//                    "",
+//                    R.drawable.error_face, R.drawable.red_btn,
+//                    PopUp.GIFF_ANIMATION_ERROR,
+//                    TYPE_ALERT,
+//                    null, null);
+//            return;
+//        }
+
         if(mActivityState == FlashActivityState.FLASH_STATE_FIND_DEVICE
                 || mActivityState == FlashActivityState.FLASH_STATE_VERIFY_DEVICE
                 || mActivityState == FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT
@@ -1000,10 +1062,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     "",
                     R.drawable.flash_face, R.drawable.blue_btn,
                     PopUp.GIFF_ANIMATION_FLASH,
-                    PopUp.TYPE_ALERT,
+                    TYPE_ALERT,
                     null, null);
             return;
         }
+
         if(mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
                 mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST) {
             //Check final device from user and start flashing
@@ -1024,6 +1087,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         @Override
                         public void onClick(View v) {
                             PopUp.hide();
+                            finish();
                         }
                     });//pass null to use default listeneronClick
         } else {
@@ -1042,38 +1106,429 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
             dfuResultReceiver = null;
         }
+
+        /* Pop up for flash init */
+
         setActivityState(FlashActivityState.FLASH_STATE_FIND_DEVICE);
         registerCallbacksForFlashing();
-        startFlashing();
+
+        // Attempt Partial Flashing first
+        startFlashing(FLASH_TYPE_PF);
+    }
+
+    /**
+     * Convert a HEX char to int
+     */
+    int charToInt(char in) {
+        // 0 - 9
+        if(in - '0' >= 0 && in - '0' < 10) return (in - '0');
+
+        // A - F
+        return in - 55;
     }
 
     /**
      * Creates and starts service to flash a program to a micro:bit board.
+     * int FLASH_TYPE_DFU
      */
-    protected void startFlashing() {
-        logi(">>>>>>>>>>>>>>>>>>> startFlashing called  >>>>>>>>>>>>>>>>>>>  ");
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    protected void startFlashing(int flashingType) {
+
+        FirebaseAnalytics mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+        Bundle params = new Bundle();
+        params.putString("startFlashing", (flashingType == FLASH_TYPE_DFU) ? "FULL" : "PARTIAL");
+        mFirebaseAnalytics.logEvent("flash", params);
+
+        logi(">>>>>>>>>>>>>>>>>>> startFlashing called >>>>>>>>>>>>>>>>>>>  ");
+        Log.v(TAG, "startFlashing: " + flashingType);
         //Reset all stats value
         m_BinSizeStats = "0";
         m_MicroBitFirmware = "0.0";
-        m_HexFileSizeStats = FileUtils.getFileSize(mProgramToSend.filePath);
+        m_HexFileSizeStats = getFileSize(mProgramToSend.filePath);
+
+
+        PopUp.show(getString(R.string.dfu_status_starting_msg),
+                "",
+                R.drawable.flash_face, R.drawable.blue_btn,
+                PopUp.GIFF_ANIMATION_FLASH,
+                TYPE_SPINNER_NOT_CANCELABLE,
+                null, null);
 
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
         MBApp application = MBApp.getApp();
+        int hardwareType = currentMicrobit.mhardwareVersion;
 
-        final Intent service = new Intent(application, DfuService.class);
-        service.putExtra(DfuService.EXTRA_DEVICE_ADDRESS, currentMicrobit.mAddress);
-        service.putExtra(DfuService.EXTRA_DEVICE_NAME, currentMicrobit.mPattern);
-        service.putExtra(DfuService.EXTRA_DEVICE_PAIR_CODE, currentMicrobit.mPairingCode);
-        service.putExtra(DfuService.EXTRA_FILE_MIME_TYPE, DfuService.MIME_TYPE_OCTET_STREAM);
-        service.putExtra(DfuService.EXTRA_FILE_PATH, mProgramToSend.filePath); // a path or URI must be provided.
-        service.putExtra(DfuService.EXTRA_KEEP_BOND, false);
-        service.putExtra(DfuService.INTENT_REQUESTED_PHASE, 2);
-        if(notAValidFlashHexFile) {
-            service.putExtra(DfuService.EXTRA_WAIT_FOR_INIT_DEVICE_FIRMWARE, Constants.JUST_PAIRED_DELAY_ON_CONNECTION);
+        // Create tmp hex for V1 or V2
+        String[] ret = universalHexToDFU(mProgramToSend.filePath, hardwareType);
+        String hexAbsolutePath = ret[0];
+        int applicationSize = Integer.parseInt(ret[1]);
+
+        if(applicationSize == -1) {
+            // V1 Hex on a V2
+            PopUp.show(getString(R.string.v1_hex_v2_hardware),
+                    "",
+                    R.drawable.message_face, R.drawable.red_btn,
+                    PopUp.GIFF_ANIMATION_ERROR,
+                    TYPE_ALERT,
+                    null, null);
+            return;
         }
 
-        application.startService(service);
+        // If V2 create init packet
+        String initPacketAbsolutePath = "-1";
+        if(hardwareType == MICROBIT_V2) {
+            try {
+                initPacketAbsolutePath = createDFUInitPacket(applicationSize);
+                String[] files = new String[]{initPacketAbsolutePath, hexAbsolutePath};
+                createDFUZip(files);
+            } catch (IOException e) {
+                Log.v(TAG, "Failed to create init packet");
+                e.printStackTrace();
+            }
+        }
+
+        if(flashingType == FLASH_TYPE_DFU) {
+
+            // Start DFU Service
+            Log.v(TAG, "Start Full DFU");
+            Log.v(TAG, "DFU hex: " + hexAbsolutePath);
+            if(hardwareType == MICROBIT_V2) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    DfuServiceInitiator.createDfuNotificationChannel(this);
+                }
+
+                final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+                        .setUnsafeExperimentalButtonlessServiceInSecureDfuEnabled(true)
+                        .setDeviceName(currentMicrobit.mName)
+                        .setPacketsReceiptNotificationsEnabled(true)
+                        .setNumberOfRetries(2)
+                        .setDisableNotification(true)
+                        .setRestoreBond(true)
+                        .setKeepBond(true)
+                        .setForeground(true)
+                        .setZip(this.getCacheDir() + "/update.zip");
+                final DfuServiceController controller = starter.start(this, DfuService.class);
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    DfuServiceInitiator.createDfuNotificationChannel(this);
+                }
+                final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+                        .setDeviceName(currentMicrobit.mName)
+                        .setKeepBond(true)
+                        .setForceDfu(true)
+                        .setPacketsReceiptNotificationsEnabled(true)
+                        .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexAbsolutePath);
+                final DfuServiceController controller = starter.start(this, DfuService.class);
+            }
+
+        } else if(flashingType == FLASH_TYPE_PF) {
+            // Attempt a partial flash
+            Log.v(TAG, "Send Partial Flashing Intent");
+            if(service != null) {
+                application.stopService(service);
+            }
+            service = new Intent(application, PartialFlashingService.class);
+            service.putExtra("deviceAddress", currentMicrobit.mAddress);
+            service.putExtra("filepath", hexAbsolutePath); // a path or URI must be provided.
+            service.putExtra("hardwareType", hardwareType); // a path or URI must be provided.
+            service.putExtra("pf", true); // Enable partial flashing
+            application.startService(service);
+        }
+    }
+
+    /**
+     * Create zip for DFU
+     */
+    private String createDFUZip(String[] srcFiles ) throws IOException {
+        byte[] buffer = new byte[1024];
+
+        File zipFile = new File(this.getCacheDir() + "/update.zip");
+        if (zipFile.exists()) {
+            zipFile.delete();
+        }
+        zipFile.createNewFile();
+
+        FileOutputStream fileOutputStream = new FileOutputStream(this.getCacheDir() + "/update.zip");
+        ZipOutputStream zipOutputStream = new ZipOutputStream(fileOutputStream);
+
+        for (int i=0; i < srcFiles.length; i++) {
+
+            File srcFile = new File(srcFiles[i]);
+            FileInputStream fileInputStream = new FileInputStream(srcFile);
+            zipOutputStream.putNextEntry(new ZipEntry(srcFile.getName()));
+
+            int length;
+            while ((length = fileInputStream.read(buffer)) > 0) {
+                zipOutputStream.write(buffer, 0, length);
+            }
+
+            zipOutputStream.closeEntry();
+            fileInputStream.close();
+
+        }
+
+        // close the ZipOutputStream
+        zipOutputStream.close();
+
+        return this.getCacheDir() + "/update.zip";
+    }
+
+    /**
+     * Create DFU init packet from HEX
+     * @param hexLength
+     */
+    private String createDFUInitPacket(int hexLength) throws IOException {
+        ByteArrayOutputStream outputInitPacket;
+        outputInitPacket = new ByteArrayOutputStream();
+
+        Log.v(TAG, "DFU App Length: " + hexLength);
+
+        outputInitPacket.write("microbit_app".getBytes()); // "microbit_app"
+        outputInitPacket.write(new byte[]{0x1, 0, 0, 0});  // Init packet version
+        outputInitPacket.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(hexLength).array());  // App size
+        outputInitPacket.write(new byte[]{0, 0, 0, 0x0});  // Hash Size. 0: Ignore Hash
+        outputInitPacket.write(new byte[]{
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0
+        }); // Hash
+
+        // Write to temp file
+        File initPacket = new File(this.getCacheDir() + "/application.dat");
+        if (initPacket.exists()) {
+            initPacket.delete();
+        }
+        initPacket.createNewFile();
+
+        FileOutputStream outputStream;
+        outputStream = new FileOutputStream(initPacket);
+        outputStream.write(outputInitPacket.toByteArray());
+        outputStream.flush();
+
+        // Should return from here
+        return initPacket.getAbsolutePath();
+    }
+
+    /**
+     * Process Universal Hex
+     * @return
+     */
+    private String[] universalHexToDFU(String inputPath, int hardwareType) {
+        FileInputStream fis;
+        ByteArrayOutputStream outputHex;
+        outputHex = new ByteArrayOutputStream();
+
+        ByteArrayOutputStream test = new ByteArrayOutputStream();
+
+        FileOutputStream outputStream;
+
+        int application_size = 0;
+        int next = 0;
+        boolean records_wanted = true;
+        boolean is_fat = false;
+        boolean is_v2 = false;
+        boolean uses_ESA = false;
+        ByteArrayOutputStream lastELA = new ByteArrayOutputStream();
+        ByteArrayOutputStream lastESA = new ByteArrayOutputStream();
+
+        try {
+            fis = new FileInputStream(inputPath);
+            byte[] bs = new byte[Integer.valueOf(FileUtils.getFileSize(inputPath))];
+            int i = 0;
+            i = fis.read(bs);
+
+            for (int b_x = 0; b_x < bs.length - 1; /* empty */) {
+
+                // Get record from following bytes
+                char b_type = (char) bs[b_x + 8];
+
+                // Find next record start, or EOF
+                next = 1;
+                while ((b_x + next) < i && bs[b_x + next] != ':') {
+                    next++;
+                }
+
+                // Switch type and determine what to do with this record
+                switch (b_type) {
+                    case 'A': // Block start
+                        is_fat = true;
+                        records_wanted = false;
+
+                        // Check data for id
+                        if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '0') {
+                            records_wanted = (hardwareType == MICROBIT_V1);
+                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
+                            records_wanted = (hardwareType == MICROBIT_V1);
+                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '3') {
+                            records_wanted = (hardwareType == MICROBIT_V2);
+                        }
+                        break;
+                    case 'E':
+                        break;
+                    case '4':
+                        ByteArrayOutputStream currentELA = new ByteArrayOutputStream();
+                        currentELA.write(bs, b_x, next);
+
+                        uses_ESA = false;
+
+                        // If ELA has changed write
+                        if (!currentELA.toString().equals(lastELA.toString())) {
+                            lastELA.reset();
+                            lastELA.write(bs, b_x, next);
+                            Log.v(TAG, "TEST ELA " + lastELA.toString());
+                            outputHex.write(bs, b_x, next);
+                        }
+
+                        break;
+                    case '2':
+                        uses_ESA = true;
+
+                        ByteArrayOutputStream currentESA = new ByteArrayOutputStream();
+                        currentESA.write(bs, b_x, next);
+
+                        // If ESA has changed write
+                        if (!Arrays.equals(currentESA.toByteArray(), lastESA.toByteArray())) {
+                            lastESA.reset();
+                            lastESA.write(bs, b_x, next);
+                            outputHex.write(bs, b_x, next);
+                        }
+                        break;
+                    case '1':
+                        // EOF
+                        // Ensure KV storage is erased
+                        if(hardwareType == MICROBIT_V1) {
+                            String kv_address = ":020000040003F7\n";
+                            String kv_data = ":1000000000000000000000000000000000000000F0\n";
+                            outputHex.write(kv_address.getBytes());
+                            outputHex.write(kv_data.getBytes());
+                        }
+
+                        // Write final block
+                        outputHex.write(bs, b_x, next);
+                        break;
+                    case 'D': // V2 section of Universal Hex
+                        // Remove D
+                        bs[b_x + 8] = '0';
+                        // Find first \n. PXT adds in extra padding occasionally
+                        int first_cr = 0;
+                        while(bs[b_x + first_cr] != '\n') {
+                            first_cr++;
+                        }
+
+                        // Skip 1 word records
+                        // TODO: Pad this record for uPY FS scratch
+                        if(bs[b_x + 2] == '1') break;
+
+                        // Recalculate checksum
+                        int checksum = (charToInt((char) bs[b_x + first_cr - 2]) * 16) + charToInt((char) bs[b_x + first_cr - 1]) + 0xD;
+                        String checksum_hex = Integer.toHexString(checksum);
+                        checksum_hex = "00" + checksum_hex.toUpperCase(); // Pad to ensure we have 2 characters
+                        checksum_hex = checksum_hex.substring(checksum_hex.length() - 2);
+                        bs[b_x + first_cr - 2] = (byte) checksum_hex.charAt(0);
+                        bs[b_x + first_cr - 1] = (byte) checksum_hex.charAt(1);
+                    case '3':
+                    case '5':
+                    case '0':
+                        // Copy record to hex
+                        // Record starts at b_x, next long
+                        // Calculate address of record
+                        int b_a = 0;
+                        if(lastELA.size() > 0 && !uses_ESA) {
+                            b_a = 0;
+                            b_a = (charToInt((char) lastELA.toByteArray()[9]) << 12) | (charToInt((char) lastELA.toByteArray()[10]) << 8) | (charToInt((char) lastELA.toByteArray()[11]) << 4) | (charToInt((char) lastELA.toByteArray()[12]));
+                            b_a = b_a << 16;
+                        }
+                        if(lastESA.size() > 0 && uses_ESA) {
+                            b_a = 0;
+                            b_a = (charToInt((char) lastESA.toByteArray()[9]) << 12) | (charToInt((char) lastESA.toByteArray()[10]) << 8) | (charToInt((char) lastESA.toByteArray()[11]) << 4) | (charToInt((char) lastESA.toByteArray()[12]));
+                            b_a = b_a * 16;
+                        }
+
+                        int b_raddr = (charToInt((char) bs[b_x + 3]) << 12) | (charToInt((char) bs[b_x + 4]) << 8) | (charToInt((char) bs[b_x + 5]) << 4) | (charToInt((char) bs[b_x + 6]));
+                        int b_addr = b_a | b_raddr;
+
+                        int lower_bound = 0; int upper_bound = 0;
+                        if(hardwareType == MICROBIT_V1) { lower_bound = 0x18000; upper_bound = 0x38000; }
+                        if(hardwareType == MICROBIT_V2) { lower_bound = 0x1C000; upper_bound = 0x77000; }
+
+                        // Check for Cortex-M4 Vector Table
+                        if(b_addr == 0x10 && bs[b_x + 41] != 'E' && bs[b_x + 42] != '0') { // Vectors exist
+                            is_v2 = true;
+                        }
+
+                        if ((records_wanted || !is_fat) && b_addr >= lower_bound && b_addr < upper_bound) {
+
+                            outputHex.write(bs, b_x, next);
+                            // Add to app size
+                            application_size = application_size + charToInt((char) bs[b_x + 1]) * 16 + charToInt((char) bs[b_x + 2]);
+                        } else {
+                            // Log.v(TAG, "TEST " + Integer.toHexString(b_addr) + " BA " + b_a + " LELA " + lastELA.toString() + " " + uses_ESA);
+                            // test.write(bs, b_x, next);
+                        }
+
+                        break;
+                    case 'C':
+                    case 'B':
+                        records_wanted = false;
+                        break;
+                    default:
+                        Log.e(TAG, "Record type not recognised; TYPE: " + b_type);
+                }
+
+                // Record handled. Move to next ':'
+                if ((b_x + next) >= i) {
+                    break;
+                } else {
+                    b_x = b_x + next;
+                }
+
+            }
+
+            byte[] output = outputHex.toByteArray();
+            byte[] testBytes = test.toByteArray();
+
+            Log.v(TAG, "Finished parsing HEX. Writing application HEX for flashing");
+
+            try {
+                File hexToFlash = new File(this.getCacheDir() + "/application.hex");
+                if (hexToFlash.exists()) {
+                    hexToFlash.delete();
+                }
+                hexToFlash.createNewFile();
+
+                outputStream = new FileOutputStream(hexToFlash);
+                outputStream.write(output);
+                outputStream.flush();
+
+                // Should return from here
+                Log.v(TAG, hexToFlash.getAbsolutePath());
+                String[] ret = new String[2];
+                ret[0] = hexToFlash.getAbsolutePath();
+                ret[1] = Integer.toString(application_size);
+
+                /*
+                if(hardwareType == MICROBIT_V2 && (!is_v2 && !is_fat)) {
+                    ret[1] = Integer.toString(-1); // Invalidate hex file
+                }
+                 */
+
+                return ret;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        } catch (FileNotFoundException e) {
+            Log.v(TAG, "File not found.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            Log.v(TAG, "IO Exception.");
+            e.printStackTrace();
+        }
+
+        // Should not reach this
+        return new String[]{"-1", "-1"};
     }
 
     /**
@@ -1087,6 +1542,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         filter.addAction(DfuService.BROADCAST_LOG);
         dfuResultReceiver = new DFUResultReceiver();
 
+        IntentFilter pfFilter = new IntentFilter();
+        pfFilter.addAction(PartialFlashingService.BROADCAST_START);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PROGRESS);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_COMPLETE);
+        pfResultReceiver = new pfResultReceiver();
+
+        LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(pfResultReceiver, pfFilter);
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(dfuResultReceiver, filter);
     }
 
@@ -1113,6 +1577,73 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     /**
      * Represents a broadcast receiver that allows to handle states of
+     * partial flashing process.
+     */
+    class pfResultReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            MBApp application = MBApp.getApp();
+            LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(application);
+
+            String message = "Broadcast intent detected " + intent.getAction();
+            logi("PFResultReceiver.onReceive :: " + message);
+            if(intent.getAction().equals(PartialFlashingService.BROADCAST_PROGRESS)) {
+                // Update UI
+                Intent progressUpdate = new Intent();
+                progressUpdate.setAction(INTENT_ACTION_UPDATE_PROGRESS);
+                int currentProgess = intent.getIntExtra(PartialFlashingService.EXTRA_PROGRESS, 0);
+                PopUp.updateProgressBar(currentProgess);
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_COMPLETE)) {
+                // Success Message
+                Intent flashSuccess = new Intent();
+                flashSuccess.setAction(INTENT_ACTION_UPDATE_LAYOUT);
+                flashSuccess.putExtra(INTENT_EXTRA_TITLE, "Flash Complete");
+                flashSuccess.putExtra(INTENT_EXTRA_MESSAGE, "");
+                flashSuccess.putExtra(INTENT_GIFF_ANIMATION_CODE, 1);
+                flashSuccess.putExtra(INTENT_EXTRA_TYPE, TYPE_ALERT);
+                localBroadcastManager.sendBroadcast( flashSuccess );
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_START)) {
+                // Display progress
+                PopUp.show("",
+                        getString(R.string.send_project),
+                        R.drawable.flash_face,
+                        R.drawable.blue_btn,
+                        PopUp.GIFF_ANIMATION_FLASH,
+                        TYPE_PROGRESS_NOT_CANCELABLE,
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                //Do nothing. As this is non-cancellable pop-up
+
+                            }
+                        },//override click listener for ok button
+                        null);//pass null to use default listener
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU)) {
+                Log.v(TAG, "Use Nordic DFU");
+                startFlashing(FLASH_TYPE_DFU);
+            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
+
+                Log.v(TAG, "Partial flashing failed");
+                previousPartialFlashFailed = true;
+
+                // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU automatically
+                // Set flag to avoid partial flash next time
+                PopUp.show(getString(R.string.could_not_connect), //message
+                        getString(R.string.could_not_connect_title),
+                        R.drawable.error_face, R.drawable.red_btn,
+                        PopUp.GIFF_ANIMATION_PAIRING,
+                        TYPE_ALERT, //type of popup.
+                        popupOkHandler,//override click listener for ok button
+                        popupOkHandler);//pass null to use default listener
+            }
+
+        }
+    }
+
+    /**
+     * Represents a broadcast receiver that allows to handle states of
      * flashing process.
      */
     class DFUResultReceiver extends BroadcastReceiver {
@@ -1126,18 +1657,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             public void onClick(View v) {
                 logi("popupOkHandler");
                 PopUp.hide();
-
-                //Show dialog to reconnect to a board if auto reconnect feature is disabled.
-                if(!BLEService.AUTO_RECONNECT) {
-                    PopUp.show(getString(R.string.reconnect_text),
-                            getString(R.string.reconnect_title),
-                            R.drawable.message_face,
-                            R.drawable.green_btn,
-                            PopUp.GIFF_ANIMATION_NONE,
-                            PopUp.TYPE_CHOICE,
-                            reconnectHandler,
-                            null);
-                }
             }
         };
 
@@ -1146,7 +1665,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             String message = "Broadcast intent detected " + intent.getAction();
             logi("DFUResultReceiver.onReceive :: " + message);
             if(intent.getAction().equals(DfuService.BROADCAST_PROGRESS)) {
-
                 int state = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
                 if(state < 0) {
                     logi("DFUResultReceiver.onReceive :: state -- " + state);
@@ -1168,24 +1686,29 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     null);//pass null to use default listener
                             break;
                         case DfuService.PROGRESS_COMPLETED:
-                            if(!isCompleted) {
+                            if (!isCompleted) {
                                 setActivityState(FlashActivityState.STATE_IDLE);
 
                                 MBApp application = MBApp.getApp();
 
                                 LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
                                 dfuResultReceiver = null;
-                                //Update Stats
+                                /* Update Stats
                                 GoogleAnalyticsManager.getInstance().sendFlashStats(
                                         ProjectActivity.class.getSimpleName(),
                                         true, mProgramToSend.name,
                                         m_HexFileSizeStats,
                                         m_BinSizeStats, m_MicroBitFirmware);
+                                        */
+                                ServiceUtils.sendConnectDisconnectMessage(false);
+
+                                previousPartialFlashFailed = false;
+
                                 PopUp.show(getString(R.string.flashing_success_message), //message
                                         getString(R.string.flashing_success_title), //title
                                         R.drawable.message_face, R.drawable.blue_btn,
                                         PopUp.GIFF_ANIMATION_NONE,
-                                        PopUp.TYPE_ALERT, //type of popup.
+                                        TYPE_ALERT, //type of popup.
                                         okFinishFlashingHandler,//override click listener for ok button
                                         okFinishFlashingHandler);//pass null to use default listener
                             }
@@ -1200,7 +1723,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             break;
 
                         case DfuService.PROGRESS_CONNECTING:
-                            if((!inInit) && (!isCompleted)) {
+                            if ((!inInit) && (!isCompleted)) {
                                 setActivityState(FlashActivityState.FLASH_STATE_INIT_DEVICE);
                                 PopUp.show(getString(R.string.init_connection), //message
                                         getString(R.string.send_project), //title
@@ -1220,7 +1743,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                                 long delayForCheckOnConnection = Constants.TIME_FOR_CONNECTION_COMPLETED;
 
-                                if(notAValidFlashHexFile) {
+                                if (notAValidFlashHexFile) {
                                     notAValidFlashHexFile = false;
                                     delayForCheckOnConnection += Constants.JUST_PAIRED_DELAY_ON_CONNECTION;
                                 }
@@ -1247,7 +1770,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     },//override click listener for ok button
                                     null);//pass null to use default listener
                             break;
-                        case DfuService.PROGRESS_WAITING_REBOOT:
+
+                        case DfuService.PROGRESS_ENABLING_DFU_MODE:
                             setActivityState(FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT);
                             PopUp.show(getString(R.string.waiting_reboot), //message
                                     getString(R.string.send_project), //title
@@ -1263,7 +1787,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     },//override click listener for ok button
                                     null);//pass null to use default listener
                             break;
-                        case DfuService.PROGRESS_VALIDATION_FAILED:
+                        /*
+                        case DfuService.PROGRESS_VALIDATING:
                             setActivityState(FlashActivityState.STATE_IDLE);
 
                             MBApp application = MBApp.getApp();
@@ -1285,22 +1810,25 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
                             dfuResultReceiver = null;
                             break;
+                        */
                         case DfuService.PROGRESS_ABORTED:
                             setActivityState(FlashActivityState.STATE_IDLE);
 
-                            application = MBApp.getApp();
+                            MBApp application = MBApp.getApp();
 
                             //Update Stats
+                            /*
                             GoogleAnalyticsManager.getInstance().sendFlashStats(
                                     ProjectActivity.class.getSimpleName(),
                                     false, mProgramToSend.name,
                                     m_HexFileSizeStats,
                                     m_BinSizeStats, m_MicroBitFirmware);
+                                    */
                             PopUp.show(getString(R.string.flashing_aborted), //message
                                     getString(R.string.flashing_aborted_title),
                                     R.drawable.error_face, R.drawable.red_btn,
                                     PopUp.GIFF_ANIMATION_ERROR,
-                                    PopUp.TYPE_ALERT, //type of popup.
+                                    TYPE_ALERT, //type of popup.
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
 
@@ -1308,6 +1836,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             dfuResultReceiver = null;
                             removeReconnectionRunnable();
                             break;
+                        /*
                         case DfuService.PROGRESS_SERVICE_NOT_FOUND:
                             Log.e(TAG, "service not found");
                             setActivityState(FlashActivityState.STATE_IDLE);
@@ -1332,19 +1861,23 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             dfuResultReceiver = null;
                             removeReconnectionRunnable();
                             break;
-
+                            */
+                        default:
+                            Log.v(TAG, "No handler!: " + state);
                     }
+
                 } else if((state > 0) && (state < 100)) {
                     if(!inProgress) {
                         setActivityState(FlashActivityState.FLASH_STATE_PROGRESS);
 
                         MBApp application = MBApp.getApp();
 
+                        PopUp.hide();
                         PopUp.show(application.getString(R.string.flashing_progress_message),
                                 String.format(application.getString(R.string.flashing_project), mProgramToSend.name),
                                 R.drawable.flash_modal_emoji, 0,
                                 PopUp.GIFF_ANIMATION_FLASH,
-                                PopUp.TYPE_PROGRESS_NOT_CANCELABLE, null, null);
+                                TYPE_PROGRESS_NOT_CANCELABLE, null, null);
 
                         inProgress = true;
 
@@ -1377,10 +1910,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
                 dfuResultReceiver = null;
                 //Update Stats
+                /*
                 GoogleAnalyticsManager.getInstance().sendFlashStats(
                         ProjectActivity.class.getSimpleName(),
                         false, mProgramToSend.name, m_HexFileSizeStats,
                         m_BinSizeStats, m_MicroBitFirmware);
+                        */
 
                 //Check for GATT ERROR - prompt user to enter bluetooth mode
                 if(errorCode == 0x0085) {
@@ -1398,11 +1933,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             },
                             popupOkHandler);
                 } else {
-                    PopUp.show(error_message, //message
+                    PopUp.show(error_message + "\n\n" + getString(R.string.connect_tip_text), //message
                             getString(R.string.flashing_failed_title), //title
                             R.drawable.error_face, R.drawable.red_btn,
                             PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_ALERT, //type of popup.
+                            TYPE_ALERT, //type of popup.
                             popupOkHandler,//override click listener for ok button
                             popupOkHandler);//pass null to use default listener
                 }
@@ -1411,6 +1946,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 //Only used for Stats at the moment
                 String data;
                 int logLevel = intent.getIntExtra(DfuService.EXTRA_LOG_LEVEL, 0);
+                /*
                 switch(logLevel) {
                     case DfuService.LOG_LEVEL_BINARY_SIZE:
                         data = intent.getStringExtra(DfuService.EXTRA_DATA);
@@ -1421,6 +1957,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         m_MicroBitFirmware = data;
                         break;
                 }
+                */
             }
         }
 

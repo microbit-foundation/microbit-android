@@ -1,0 +1,3 @@
+[submodule "Android-DFU-Library"]
+	path = dfuLibrary
+	url = https://github.com/NordicSemiconductor/Android-DFU-Library

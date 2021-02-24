@@ -4,8 +4,6 @@ import android.app.Application;
 import android.graphics.Typeface;
 import android.util.Log;
 
-import com.samsung.microbit.core.GoogleAnalyticsManager;
-
 /**
  * Represents a custom class of the app.
  * Provides some resources that use along app modules,
@@ -26,7 +24,6 @@ public class MBApp extends Application {
         super.onCreate();
         app = this;
         initTypefaces();
-        GoogleAnalyticsManager.createInstance(this);
 
         Log.d("MBApp", "App Created");
     }

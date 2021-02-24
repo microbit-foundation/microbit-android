@@ -46,26 +46,28 @@ public class ProjectsHelper {
         int totalPrograms = 0;
         if(sdcardDownloads.exists()) {
             File files[] = sdcardDownloads.listFiles();
-            for(File file : files) {
-                String fileName = file.getName();
-                if(fileName.endsWith(".hex")) {
+            if (files != null) {
+                for (File file : files) {
+                    String fileName = file.getName();
+                    if (fileName.endsWith(".hex")) {
 
-                    //Beautify the filename
-                    String parsedFileName;
-                    int dot = fileName.lastIndexOf(".");
-                    parsedFileName = fileName.substring(0, dot);
-                    parsedFileName = parsedFileName.replace('_', ' ');
+                        //Beautify the filename
+                        String parsedFileName;
+                        int dot = fileName.lastIndexOf(".");
+                        parsedFileName = fileName.substring(0, dot);
+                        parsedFileName = parsedFileName.replace('_', ' ');
 
-                    if(prettyFileNameMap != null) {
-                        prettyFileNameMap.put(parsedFileName, fileName);
+                        if (prettyFileNameMap != null) {
+                            prettyFileNameMap.put(parsedFileName, fileName);
+                        }
+
+                        if (list != null) {
+                            list.add(new Project(parsedFileName, file.getAbsolutePath(), file.lastModified(),
+                                    null, false));
+                        }
+
+                        ++totalPrograms;
                     }
-
-                    if(list != null) {
-                        list.add(new Project(parsedFileName, file.getAbsolutePath(), file.lastModified(),
-                                null, false));
-                    }
-
-                    ++totalPrograms;
                 }
             }
         }

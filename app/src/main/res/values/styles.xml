@@ -291,4 +291,8 @@
     <style name="pairing_searching_horizontal_progress_bar_style" parent="Theme.AppCompat.Light">
         <item name="colorAccent">@android:color/white</item>
     </style>
+
+    <style name="AlertDialogDarkButtons" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="android:textColor">@color/black_color</item>
+    </style>
 </resources>

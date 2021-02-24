@@ -15,16 +15,16 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="com.samsung.microbit"
-          android:versionCode="16"
-          android:versionName="2.4">
+          android:versionCode="38"
+          android:versionName="2.8.8">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS"  android:protectionLevel="signature"/>
@@ -32,15 +32,18 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
     <uses-permission android:name="android.permission.CAMERA"/>
-
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
 
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.flash" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     <uses-feature android:name="android.hardware.telephony" android:required="false"/>
+
 
 
     <supports-screens android:normalScreens="true" />
@@ -52,7 +55,10 @@
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme.NoActionBar">
+        android:theme="@style/AppTheme.NoActionBar"
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true">
+
         <activity
             android:name=".ui.activity.HomeActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
@@ -140,6 +146,14 @@
             android:launchMode="singleTask"
             android:screenOrientation="portrait"/>
         <activity
+            android:name=".ui.activity.EditorWebView"
+            android:configChanges="orientation|screenSize"
+            android:label="Editor Webview"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:screenOrientation="portrait"/>
+
+        <activity
             android:name=".ui.activity.CameraActivityPermissionChecker"
             android:label="@string/title_activity_camera_activity_permission_checker"
             android:screenOrientation="portrait"
@@ -165,6 +179,12 @@
             android:enabled="true"
             android:exported="false"/>
 
+        <service
+            android:name=".service.PartialFlashingService"
+            android:enabled="true"
+            android:launchMode="singleInstance"
+        />
+
         <activity
             android:name=".ui.activity.SplashScreenActivity"
             android:screenOrientation="locked"
@@ -182,6 +202,7 @@
                 <action android:name="com.samsung.microbit.core.SHOWFROMSERVICE"/>
             </intent-filter>
         </receiver>
+
     </application>
 
 </manifest>

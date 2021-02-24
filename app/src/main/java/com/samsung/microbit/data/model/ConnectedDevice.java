@@ -14,6 +14,7 @@ public class ConnectedDevice {
     public int mPairingCode;
     public String mfirmware_version;
     public long mlast_connection_time;
+    public int mhardwareVersion;
 
     public ConnectedDevice() {
     }
@@ -21,7 +22,7 @@ public class ConnectedDevice {
     public ConnectedDevice(String name, String pattern,
                            boolean status, String address,
                            int pairingCode, String firmware,
-                           long connectionTime) {
+                           long connectionTime, int hardwareVersion) {
         this.mName = name;
         this.mPattern = pattern;
         this.mStatus = status;
@@ -29,5 +30,6 @@ public class ConnectedDevice {
         this.mPairingCode = pairingCode;
         this.mfirmware_version = firmware;
         this.mlast_connection_time = connectionTime;
+        this.mhardwareVersion = hardwareVersion;
     }
 }
