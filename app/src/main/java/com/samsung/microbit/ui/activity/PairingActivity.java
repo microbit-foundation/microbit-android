@@ -174,10 +174,12 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
 
             // If pairing was prompted by flash reattempt flash
-            Intent i = new Intent(MBApp.getApp(), ProjectActivity.class);
-            File hexToWrite = new File(hextoflash);
-            i.setData(Uri.fromFile(hexToWrite));
-            startActivity(i);
+            if(hextoflash != null) {
+                Intent i = new Intent(MBApp.getApp(), ProjectActivity.class);
+                File hexToWrite = new File(hextoflash);
+                i.setData(Uri.fromFile(hexToWrite));
+                startActivity(i);
+            }
 
         }
     };

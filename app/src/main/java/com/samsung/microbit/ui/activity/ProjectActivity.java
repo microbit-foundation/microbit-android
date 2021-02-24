@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
 import com.samsung.microbit.core.bluetooth.BluetoothUtils;
@@ -1132,6 +1133,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
     protected void startFlashing(int flashingType) {
+
+        FirebaseAnalytics mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+        Bundle params = new Bundle();
+        params.putString("startFlashing", (flashingType == FLASH_TYPE_DFU) ? "FULL" : "PARTIAL");
+        mFirebaseAnalytics.logEvent("flash", params);
 
         logi(">>>>>>>>>>>>>>>>>>> startFlashing called >>>>>>>>>>>>>>>>>>>  ");
         Log.v(TAG, "startFlashing: " + flashingType);
