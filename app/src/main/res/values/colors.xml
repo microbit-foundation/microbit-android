@@ -20,6 +20,10 @@
     <color name="ok_button_up">#00EC00</color>
     <color name="ok_button_down">#3A871F</color>
 
+    <color name="green">#00C800</color>
+    <color name="blue">#3EB6FD</color>
+
+
     <color name="cancel_button_up">#FD645B</color>
     <color name="cancel_button_down">#AA6666</color>
     <color name="cancel_button">#FD645B</color>
