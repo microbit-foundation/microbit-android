@@ -147,6 +147,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     BLEService bleService;
 
+    FirebaseAnalytics mFirebaseAnalytics;
+
     private final Runnable tryToConnectAgain = new Runnable() {
 
         @Override
@@ -1134,7 +1136,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @RequiresApi(api = Build.VERSION_CODES.O)
     protected void startFlashing(int flashingType) {
 
-        FirebaseAnalytics mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
         Bundle params = new Bundle();
         params.putString("startFlashing", (flashingType == FLASH_TYPE_DFU) ? "FULL" : "PARTIAL");
         mFirebaseAnalytics.logEvent("flash", params);
@@ -1184,6 +1186,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 createDFUZip(files);
             } catch (IOException e) {
                 Log.v(TAG, "Failed to create init packet");
+
                 e.printStackTrace();
             }
         }
@@ -1628,6 +1631,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 Log.v(TAG, "Partial flashing failed");
                 previousPartialFlashFailed = true;
 
+                mFirebaseAnalytics = FirebaseAnalytics.getInstance(MBApp.getApp());
+                Bundle params = new Bundle();
+                params.putString("partialFlashingFailed", "Partial flashing failed");
+                mFirebaseAnalytics.logEvent("partialFlashingFailed", params);
+
                 // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU automatically
                 // Set flag to avoid partial flash next time
                 PopUp.show(getString(R.string.could_not_connect), //message
@@ -1712,6 +1720,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         okFinishFlashingHandler,//override click listener for ok button
                                         okFinishFlashingHandler);//pass null to use default listener
                             }
+
+
+                            mFirebaseAnalytics = FirebaseAnalytics.getInstance(MBApp.getApp());
+                            Bundle params = new Bundle();
+                            params.putString("flash", "Flash completed");
+                            mFirebaseAnalytics.logEvent("flash", params);
 
                             isCompleted = true;
                             inInit = false;
@@ -1815,6 +1829,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             setActivityState(FlashActivityState.STATE_IDLE);
 
                             MBApp application = MBApp.getApp();
+
+
+                            mFirebaseAnalytics = FirebaseAnalytics.getInstance(MBApp.getApp());
+                            Bundle p = new Bundle();
+                            p.putString("dfuFailed", "DFU flashing failed");
+                            mFirebaseAnalytics.logEvent("dfuFailed", p);
 
                             //Update Stats
                             /*

@@ -386,5 +386,9 @@
     <string name="editor_btn_makecode">Go to MakeCode Editor</string>
     <string name="editor_btn_python">Go to Python Editor</string>
 
+    <string name="metrics_disabled">Metrics Disabled</string>
+    <string name="metrics_enabled">Metrics Enabled</string>
+
+
 </resources>
 

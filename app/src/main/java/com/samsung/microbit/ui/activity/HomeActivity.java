@@ -23,6 +23,7 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
@@ -35,6 +36,7 @@ import androidx.core.content.PermissionChecker;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
 import com.samsung.microbit.data.constants.PermissionCodes;
@@ -71,6 +73,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     /* Debug code ends*/
 
     private String emailBodyString;
+    private ToggleButton metricsToggle;
 
     /**
      * Provides simplified way to log informational messages.
@@ -153,6 +156,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         createCodeButton.setTypeface(typeface);
         Button discoverButton = (Button) findViewById(R.id.discover_btn);
         discoverButton.setTypeface(typeface);
+        metricsToggle = (ToggleButton) findViewById(R.id.metrics_toggle);
+        metricsToggle.setTypeface(typeface);
     }
 
     /**
@@ -398,6 +403,11 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setData(Uri.parse(getString(R.string.discover_url)));
                 startActivity(intent);
+                break;
+            case R.id.metrics_toggle:
+                boolean check = metricsToggle.isChecked();
+                FirebaseAnalytics.getInstance(MBApp.getApp()).setAnalyticsCollectionEnabled(check);
+                Log.v(TAG, "Setting analytics state to: " + check);
                 break;
 
             // TODO: HACK - Navigation View items from drawer here instead of [onNavigationItemSelected]

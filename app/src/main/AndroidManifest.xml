@@ -15,8 +15,8 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="com.samsung.microbit"
-          android:versionCode="38"
-          android:versionName="2.8.8">
+          android:versionCode="41"
+          android:versionName="2.9.2">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
@@ -44,8 +44,6 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     <uses-feature android:name="android.hardware.telephony" android:required="false"/>
 
-
-
     <supports-screens android:normalScreens="true" />
     <supports-screens android:largeScreens="true" />
     <supports-screens android:xlargeScreens="true" />
@@ -58,6 +56,8 @@
         android:theme="@style/AppTheme.NoActionBar"
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true">
+
+        <meta-data android:name="firebase_analytics_collection_enabled" android:value="false" />
 
         <activity
             android:name=".ui.activity.HomeActivity"
