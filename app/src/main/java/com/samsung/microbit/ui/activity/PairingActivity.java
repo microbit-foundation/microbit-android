@@ -8,12 +8,6 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothManager;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanFilter;
-import android.bluetooth.le.ScanRecord;
-import android.bluetooth.le.ScanResult;
-import android.bluetooth.le.ScanSettings;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -73,6 +67,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import no.nordicsemi.android.support.v18.scanner.BluetoothLeScannerCompat;
+import no.nordicsemi.android.support.v18.scanner.ScanCallback;
+import no.nordicsemi.android.support.v18.scanner.ScanFilter;
+import no.nordicsemi.android.support.v18.scanner.ScanRecord;
+import no.nordicsemi.android.support.v18.scanner.ScanResult;
+import no.nordicsemi.android.support.v18.scanner.ScanSettings;
 import pl.droidsonroids.gif.GifImageView;
 
 import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
@@ -146,7 +146,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     private volatile boolean scanning;
 
     private int currentOrientation;
-    private BluetoothLeScanner leScanner;
+    private BluetoothLeScannerCompat leScanner;
 
     private List<Integer> requestPermissions = new ArrayList<>();
 
@@ -604,7 +604,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             if(bluetoothAdapter == null) {
                 retvalue = false;
             } else {
-                leScanner = bluetoothAdapter.getBluetoothLeScanner();
+                leScanner = BluetoothLeScannerCompat.getScanner();
                 if(leScanner == null)
                     retvalue = false;
             }
@@ -1340,7 +1340,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     private ScanCallback getNewScanCallback() {
         if(newScanCallback == null) {
             newScanCallback = new ScanCallback() {
-                @Override
                 public void onScanResult(int callbackType, ScanResult result) {
                     super.onScanResult(callbackType, result);
                     Log.i("callbackType = ", String.valueOf(callbackType));
@@ -1352,7 +1351,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     }
                 }
 
-                @Override
                 public void onBatchScanResults(List<ScanResult> results) {
                     super.onBatchScanResults(results);
                     for(ScanResult sr : results) {
@@ -1360,7 +1358,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     }
                 }
 
-                @Override
                 public void onScanFailed(int errorCode) {
                     super.onScanFailed(errorCode);
                     Log.i("Scan failed", "Error Code : " + errorCode);
