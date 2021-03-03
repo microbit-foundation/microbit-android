@@ -310,7 +310,7 @@ public class BLEService extends Service {
      */
     private BluetoothGattCharacteristic readCharacteristic(BluetoothGattCharacteristic characteristic) {
         if(bleManager != null) {
-            int rc = bleManager.readCharacteristic(characteristic);
+            int rc = bleManager.readCharacteristic1(characteristic);
             rc = interpretCode(rc);
             if(rc == ERROR_NONE) {
                 return bleManager.getLastCharacteristic();

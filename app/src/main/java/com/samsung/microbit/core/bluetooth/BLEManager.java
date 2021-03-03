@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.samsung.microbit.MBApp;
@@ -19,6 +20,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.UUID;
 
+import no.nordicsemi.android.ble.BleManager;
 import no.nordicsemi.android.error.GattError;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
@@ -27,7 +29,7 @@ import static com.samsung.microbit.BuildConfig.DEBUG;
  * Bluetooth low energy manager. Provides methods to establish
  * and manage bluetooth low energy connection.
  */
-public class BLEManager {
+public class BLEManager extends BleManager {
     private static final String TAG = BLEManager.class.getSimpleName();
 
     public static final int BLE_DISCONNECTED = 0x0000;
@@ -101,6 +103,7 @@ public class BLEManager {
 
     public BLEManager(Context context, BluetoothDevice bluetoothDevice, CharacteristicChangeListener
             characteristicChangeListener, UnexpectedConnectionEventListener unexpectedDisconnectionListener) {
+        super(context);
         if(DEBUG) {
             logi("start1");
         }
@@ -331,54 +334,6 @@ public class BLEManager {
     }
 
     /**
-     * Trigger closing active connection with remote GATT.
-     * <p/>
-     * Simulating of synchronous request from asynchronous. For description of that process,
-     * and result encoding see {@link BLEManager#connect(boolean)}
-     *
-     * @return Disconnection result.
-     * @see BLEManager#connect(boolean)
-     * @see BLEManager#discoverServices()
-     */
-    public int disconnect() {
-        if(DEBUG) {
-            logi("disconnect() :: start");
-        }
-
-        int rc = BLE_ERROR_NOOP;
-
-        synchronized(locker) {
-            if(gatt != null && inBleOp == OP_NOOP) {
-
-                inBleOp = OP_CONNECT;
-                try {
-                    error = 0;
-                    if(bleState != BLE_DISCONNECTED) {
-                        callbackCompleted = false;
-                        gatt.disconnect();
-                        locker.wait(BLE_WAIT_TIMEOUT);
-                        if(!callbackCompleted) {
-                            error = (BLE_ERROR_FAIL | BLE_ERROR_TIMEOUT);
-                        }
-                    }
-
-                    rc = error | bleState;
-                } catch(InterruptedException e) {
-                    Log.e(TAG, e.toString());
-                }
-
-                inBleOp = OP_NOOP;
-            }
-        }
-
-        if(DEBUG) {
-            logi("disconnect() :: rc = " + rc);
-        }
-
-        return rc;
-    }
-
-    /**
      * Trigger service discovering.
      * <p/>
      * Simulating of synchronous request from asynchronous. For description of that process,
@@ -436,9 +391,10 @@ public class BLEManager {
         return rc;
     }
 
-    public boolean isConnected() {
-        return bleState == BLE_CONNECTED || bleState == BLE_SERVICES_DISCOVERED || bleState == (BLE_CONNECTED |
-                BLE_SERVICES_DISCOVERED);
+    @NonNull
+    @Override
+    protected BleManagerGattCallback getGattCallback() {
+        return null;
     }
 
     /**
@@ -500,6 +456,7 @@ public class BLEManager {
      * @return Result of descriptor reading.
      * @see BLEManager#connect(boolean)
      */
+    /*
     public int readDescriptor(BluetoothGattDescriptor descriptor) {
         if(DEBUG) {
             logi("readDescriptor() :: start");
@@ -537,6 +494,8 @@ public class BLEManager {
 
         return rc;
     }
+
+     */
 
     /**
      * Write characteristic to connected GATT device.
@@ -604,7 +563,8 @@ public class BLEManager {
      * @return Result of characteristic reading.
      * @see BLEManager#connect(boolean)
      */
-    public int readCharacteristic(BluetoothGattCharacteristic characteristic) {
+
+    public int readCharacteristic1(BluetoothGattCharacteristic characteristic) {
         if(DEBUG) {
             logi("readCharacteristic() :: start");
         }
