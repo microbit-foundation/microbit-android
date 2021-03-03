@@ -1202,7 +1202,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         .setUnsafeExperimentalButtonlessServiceInSecureDfuEnabled(true)
                         .setDeviceName(currentMicrobit.mName)
                         .setPacketsReceiptNotificationsEnabled(true)
-                        .setNumberOfRetries(2)
                         .setDisableNotification(true)
                         .setRestoreBond(true)
                         .setKeepBond(true)
