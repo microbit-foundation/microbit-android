@@ -9,12 +9,15 @@ micro:bit Android application
     
     * [Gradle](https://gradle.org/gradle-download/) (Minimum version [4.6+](https://developer.android.com/studio/releases/gradle-plugin.html#updating-gradle))
 
-* Go to root directory and run `gradle build`. After build is finished, apk file can be found under `~/app/build/outputs/apk/app-debug.apk`
+* Fetch submodules `git submodule update --init --recursive`
 
-* Or run `gradle installDebug` to build and install app on plugged android device
+* Go to root directory and run `./gradlew assembleDebug`. After build is finished, apk file can be found under `~/app/build/outputs/apk/app-debug.apk`
+
+* Or run `./gradlew installDebug` to build and install app on plugged android device
 
 
 ## Libraries
 
  * [Android-DFU-Library](https://github.com/NordicSemiconductor/Android-DFU-Library)
+ * [android-partial-flashing-lib](https://github.com/microbit-foundation/android-partial-flashing-lib)
  * [android-gif-drawable](https://github.com/koral--/android-gif-drawable)
