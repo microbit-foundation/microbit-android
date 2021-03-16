@@ -128,18 +128,6 @@
             android:theme="@style/PopUpTheme"
             android:windowSoftInputMode="adjustPan"/>
         <activity
-            android:name=".ui.activity.AudioRecorderActivity"
-            android:configChanges="orientation|screenSize"
-            android:label="Audio Recorder"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait"/>
-        <activity
-            android:name=".ui.activity.CameraActivity_OldAPI"
-            android:label="Camera Microbit"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait"
-            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"/>
-        <activity
             android:name=".ui.activity.HelpWebView"
             android:configChanges="orientation|screenSize"
             android:label="Help Webview"
@@ -153,26 +141,9 @@
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
             android:screenOrientation="portrait"/>
 
-        <activity
-            android:name=".ui.activity.CameraActivityPermissionChecker"
-            android:label="@string/title_activity_camera_activity_permission_checker"
-            android:screenOrientation="portrait"
-            android:theme="@style/AppTheme.NoActionBar"/>
-
         <service
             android:name=".service.DfuService"
             android:enabled="true"/>
-
-        <service
-            android:name=".service.PluginService"
-            android:enabled="true"
-            android:exported="false"
-            android:process=":PluginService"/>
-        <service
-            android:name=".service.BLEService"
-            android:enabled="true"
-            android:exported="false"
-            android:process=":BLEService"/>
 
         <service
             android:name=".service.IPCService"
@@ -195,13 +166,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <receiver android:name=".core.PopUpServiceReceiver"
-                  android:exported="false">
-            <intent-filter>
-                <action android:name="com.samsung.microbit.core.SHOWFROMSERVICE"/>
-            </intent-filter>
-        </receiver>
 
     </application>
 

@@ -50,12 +50,10 @@ import com.samsung.microbit.data.constants.PermissionCodes;
 import com.samsung.microbit.data.constants.RequestCodes;
 import com.samsung.microbit.data.model.ConnectedDevice;
 import com.samsung.microbit.data.model.ui.PairingActivityState;
-import com.samsung.microbit.service.BLEService;
 import com.samsung.microbit.ui.BluetoothChecker;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.ui.adapter.LEDAdapter;
 import com.samsung.microbit.utils.BLEConnectionHandler;
-import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 
 import java.io.File;
@@ -217,9 +215,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     private final BroadcastReceiver gattForceClosedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(intent.getAction().equals(BLEService.GATT_FORCE_CLOSED)) {
-                updatePairedDeviceCard();
-            }
         }
     };
 
@@ -560,8 +555,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             IntentFilter broadcastIntentFilter = new IntentFilter(IPCConstants.INTENT_BLE_NOTIFICATION);
             localBroadcastManager.registerReceiver(connectionChangedReceiver, broadcastIntentFilter);
 
-            localBroadcastManager.registerReceiver(gattForceClosedReceiver, new IntentFilter(BLEService
-                    .GATT_FORCE_CLOSED));
         } else {
             pairingState = (PAIRING_STATE) savedInstanceState.getSerializable(PAIRING_STATE_KEY);
         }
@@ -948,7 +941,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         PopUp.TYPE_SPINNER,
                         null, null);
 
-                ServiceUtils.sendConnectDisconnectMessage(true);
             } else {
                 setActivityState(PairingActivityState.STATE_DISCONNECTING);
                 PopUp.show(getString(R.string.disconnecting),
@@ -958,7 +950,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         PopUp.TYPE_SPINNER,
                         null, null);
 
-                ServiceUtils.sendConnectDisconnectMessage(false);
             }
         }
     }

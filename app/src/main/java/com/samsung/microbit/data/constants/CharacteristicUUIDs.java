@@ -1,7 +1,5 @@
 package com.samsung.microbit.data.constants;
 
-import com.samsung.microbit.service.BLEService;
-import com.samsung.microbit.service.PluginService;
 import com.samsung.microbit.utils.Utils;
 
 import java.util.UUID;

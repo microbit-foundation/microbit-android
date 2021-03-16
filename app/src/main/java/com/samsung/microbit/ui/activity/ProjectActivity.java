@@ -46,7 +46,6 @@ import com.samsung.microbit.data.constants.RequestCodes;
 import com.samsung.microbit.data.model.ConnectedDevice;
 import com.samsung.microbit.data.model.Project;
 import com.samsung.microbit.data.model.ui.FlashActivityState;
-import com.samsung.microbit.service.BLEService;
 import com.samsung.microbit.service.DfuService;
 import com.samsung.microbit.service.PartialFlashingService;
 import com.samsung.microbit.ui.BluetoothChecker;
@@ -56,7 +55,6 @@ import com.samsung.microbit.utils.BLEConnectionHandler;
 import com.samsung.microbit.utils.FileUtils;
 import com.samsung.microbit.utils.IOUtils;
 import com.samsung.microbit.utils.ProjectsHelper;
-import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 
 import java.io.ByteArrayOutputStream;
@@ -73,6 +71,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -93,6 +92,12 @@ import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TITLE;
 import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TYPE;
 import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_GIFF_ANIMATION_CODE;
 import static com.samsung.microbit.utils.FileUtils.getFileSize;
+import static org.microbit.android.partialflashing.PartialFlashingBaseService.BROADCAST_COMPLETE;
+import static org.microbit.android.partialflashing.PartialFlashingBaseService.BROADCAST_PF_ATTEMPT_DFU;
+import static org.microbit.android.partialflashing.PartialFlashingBaseService.BROADCAST_PF_FAILED;
+import static org.microbit.android.partialflashing.PartialFlashingBaseService.BROADCAST_PROGRESS;
+import static org.microbit.android.partialflashing.PartialFlashingBaseService.BROADCAST_START;
+import static org.microbit.android.partialflashing.PartialFlashingBaseService.EXTRA_PROGRESS;
 
 // import com.samsung.microbit.core.GoogleAnalyticsManager;
 
@@ -145,7 +150,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private int MICROBIT_V1 = 1;
     private int MICROBIT_V2 = 2;
 
-    BLEService bleService;
+    private static final UUID MICROBIT_DFU_SERVICE = UUID.fromString("e95d93b0-251d-470a-a062-fa1922dfa9a8");
+    private static final UUID MICROBIT_SECURE_DFU_SERVICE = UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb");
+    private static final UUID MICROBIT_DFU_CHARACTERISTIC = UUID.fromString("e95d93b1-251d-470a-a062-fa1922dfa9a8");
+    private static final UUID MICROBIT_SECURE_DFU_CHARACTERISTIC = UUID.fromString("8ec90004-f315-4f60-9fb8-838830daea50");
 
     FirebaseAnalytics mFirebaseAnalytics;
 
@@ -195,9 +203,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private final BroadcastReceiver gattForceClosedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if(intent.getAction().equals(BLEService.GATT_FORCE_CLOSED)) {
-                setConnectedDeviceText();
-            }
+
         }
     };
 
@@ -392,8 +398,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             IntentFilter broadcastIntentFilter = new IntentFilter(IPCConstants.INTENT_BLE_NOTIFICATION);
             localBroadcastManager.registerReceiver(connectionChangedReceiver, broadcastIntentFilter);
 
-            localBroadcastManager.registerReceiver(gattForceClosedReceiver, new IntentFilter(BLEService
-                    .GATT_FORCE_CLOSED));
         }
 
         logi("onCreate() :: ");
@@ -920,7 +924,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         PopUp.GIFF_ANIMATION_NONE,
                         PopUp.TYPE_SPINNER,
                         null, null);
-                ServiceUtils.sendConnectDisconnectMessage(false);
             } else {
                 mRequestPermissions.clear();
                 setActivityState(FlashActivityState.STATE_CONNECTING);
@@ -931,7 +934,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         PopUp.TYPE_SPINNER,
                         null, null);
 
-                ServiceUtils.sendConnectDisconnectMessage(true);
             }
         }
     }
@@ -1179,7 +1181,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         // If V2 create init packet
         String initPacketAbsolutePath = "-1";
-        if(hardwareType == MICROBIT_V2) {
             try {
                 initPacketAbsolutePath = createDFUInitPacket(applicationSize);
                 String[] files = new String[]{initPacketAbsolutePath, hexAbsolutePath};
@@ -1189,7 +1190,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                 e.printStackTrace();
             }
-        }
 
         if(flashingType == FLASH_TYPE_DFU) {
 
@@ -1204,9 +1204,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
                         .setUnsafeExperimentalButtonlessServiceInSecureDfuEnabled(true)
                         .setDeviceName(currentMicrobit.mName)
-                        .setPacketsReceiptNotificationsEnabled(true)
                         .setDisableNotification(true)
-                        .setRestoreBond(true)
                         .setKeepBond(true)
                         .setForeground(true)
                         .setZip(this.getCacheDir() + "/update.zip");
@@ -1217,9 +1215,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 }
                 final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
                         .setDeviceName(currentMicrobit.mName)
+                        .setMbrSize(0x1000)
+                        .setPrepareDataObjectDelay(10)
                         .setKeepBond(true)
                         .setForceDfu(true)
-                        .setPacketsReceiptNotificationsEnabled(true)
+                        // .setZip(this.getCacheDir() + "/update.zip");
                         .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexAbsolutePath);
                 final DfuServiceController controller = starter.start(this, DfuService.class);
             }
@@ -1545,11 +1545,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         dfuResultReceiver = new DFUResultReceiver();
 
         IntentFilter pfFilter = new IntentFilter();
-        pfFilter.addAction(PartialFlashingService.BROADCAST_START);
-        pfFilter.addAction(PartialFlashingService.BROADCAST_PROGRESS);
-        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
-        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU);
-        pfFilter.addAction(PartialFlashingService.BROADCAST_COMPLETE);
+        pfFilter.addAction(BROADCAST_START);
+        pfFilter.addAction(BROADCAST_PROGRESS);
+        pfFilter.addAction(BROADCAST_PF_FAILED);
+        pfFilter.addAction(BROADCAST_PF_ATTEMPT_DFU);
+        pfFilter.addAction(BROADCAST_COMPLETE);
         pfResultReceiver = new pfResultReceiver();
 
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(pfResultReceiver, pfFilter);
@@ -1591,13 +1591,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
             String message = "Broadcast intent detected " + intent.getAction();
             logi("PFResultReceiver.onReceive :: " + message);
-            if(intent.getAction().equals(PartialFlashingService.BROADCAST_PROGRESS)) {
+            if(intent.getAction().equals(BROADCAST_PROGRESS)) {
                 // Update UI
                 Intent progressUpdate = new Intent();
                 progressUpdate.setAction(INTENT_ACTION_UPDATE_PROGRESS);
-                int currentProgess = intent.getIntExtra(PartialFlashingService.EXTRA_PROGRESS, 0);
+                int currentProgess = intent.getIntExtra(EXTRA_PROGRESS, 0);
                 PopUp.updateProgressBar(currentProgess);
-            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_COMPLETE)) {
+            } else if(intent.getAction().equals(BROADCAST_COMPLETE)) {
                 // Success Message
                 Intent flashSuccess = new Intent();
                 flashSuccess.setAction(INTENT_ACTION_UPDATE_LAYOUT);
@@ -1606,7 +1606,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 flashSuccess.putExtra(INTENT_GIFF_ANIMATION_CODE, 1);
                 flashSuccess.putExtra(INTENT_EXTRA_TYPE, TYPE_ALERT);
                 localBroadcastManager.sendBroadcast( flashSuccess );
-            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_START)) {
+            } else if(intent.getAction().equals(BROADCAST_START)) {
                 // Display progress
                 PopUp.show("",
                         getString(R.string.send_project),
@@ -1622,10 +1622,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             }
                         },//override click listener for ok button
                         null);//pass null to use default listener
-            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU)) {
-                Log.v(TAG, "Use Nordic DFU");
+            } else if(intent.getAction().equals(BROADCAST_PF_ATTEMPT_DFU)) {
+                Log.v(TAG, "Use Nordic Dfu");
                 startFlashing(FLASH_TYPE_DFU);
-            } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
+            } else if(intent.getAction().equals(BROADCAST_PF_FAILED)) {
 
                 Log.v(TAG, "Partial flashing failed");
                 previousPartialFlashFailed = true;
@@ -1707,7 +1707,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         m_HexFileSizeStats,
                                         m_BinSizeStats, m_MicroBitFirmware);
                                         */
-                                ServiceUtils.sendConnectDisconnectMessage(false);
 
                                 previousPartialFlashFailed = false;
 

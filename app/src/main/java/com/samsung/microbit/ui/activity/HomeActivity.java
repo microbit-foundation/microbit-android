@@ -40,7 +40,6 @@ import com.google.firebase.analytics.FirebaseAnalytics;
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
 import com.samsung.microbit.data.constants.PermissionCodes;
-import com.samsung.microbit.service.IPCService;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.utils.FileUtils;
 import com.samsung.microbit.utils.Utils;
@@ -123,10 +122,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         logi("onCreate() :: ");
 
         setContentView(R.layout.activity_home);
-
-        if(savedInstanceState == null) {
-            startService(new Intent(this, IPCService.class));
-        }
 
         setupDrawer();
         setupButtonsFontStyle();
