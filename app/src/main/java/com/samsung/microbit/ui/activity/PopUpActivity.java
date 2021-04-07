@@ -353,6 +353,7 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
             case PopUp.TYPE_NOBUTTON:
                 break;
             case PopUp.TYPE_SPINNER:
+                cancelButton.setVisibility(View.VISIBLE);
             case PopUp.TYPE_SPINNER_NOT_CANCELABLE:
                 spinnerBar.setVisibility(View.VISIBLE);
                 break;

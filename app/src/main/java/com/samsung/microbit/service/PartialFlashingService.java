@@ -2,9 +2,11 @@ package com.samsung.microbit.service;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.samsung.microbit.ui.activity.NotificationActivity;
 
@@ -36,11 +38,12 @@ public class PartialFlashingService extends PartialFlashingBaseService {
     @Override
     public void onDeviceFailedToConnect(@NonNull BluetoothDevice device, int reason) {
         Log.v(TAG, "onDeviceFailedToConnect");
+        LocalBroadcastManager.getInstance(this).sendBroadcast(new Intent(BROADCAST_PF_ATTEMPT_DFU));
     }
 
     @Override
     public void onDeviceReady(@NonNull BluetoothDevice device) {
-        Log.v(TAG, "onDeviceReady");
+
     }
 
     @Override

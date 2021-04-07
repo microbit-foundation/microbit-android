@@ -147,35 +147,6 @@ public class BluetoothUtils {
             String pairedDeviceString = pairedDevicePref.getString(PREFERENCES_PAIREDDEV_KEY, null);
             Gson gson = new Gson();
             sConnectedDevice = gson.fromJson(pairedDeviceString, ConnectedDevice.class);
-            //Check if the microbit is still paired with our mobile
-            BluetoothAdapter mBluetoothAdapter = ((BluetoothManager) MBApp.getApp().getSystemService(Context
-                    .BLUETOOTH_SERVICE)).getAdapter();
-            if(mBluetoothAdapter.isEnabled()) {
-                Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-                for(BluetoothDevice bt : pairedDevices) {
-                    if(bt.getAddress().equals(sConnectedDevice.mAddress)) {
-                        pairedMicrobitInSystemList = true;
-                        break;
-                    }
-                }
-            } else {
-                //Do not change the list until the Bluetooth is back ON again
-                pairedMicrobitInSystemList = true;
-            }
-
-            if(!pairedMicrobitInSystemList) {
-                Log.e("BluetoothUtils", "The last paired microbit is no longer in the system list. Hence removing it");
-                //Return a NULL device & update preferences
-                sConnectedDevice.mPattern = null;
-                sConnectedDevice.mName = null;
-                sConnectedDevice.mStatus = false;
-                sConnectedDevice.mAddress = null;
-                sConnectedDevice.mPairingCode = 0;
-                sConnectedDevice.mfirmware_version = null;
-                sConnectedDevice.mlast_connection_time = 0;
-
-                setPairedMicroBit(ctx, null);
-            }
         } else {
             sConnectedDevice.mPattern = null;
             sConnectedDevice.mName = null;
@@ -187,6 +158,7 @@ public class BluetoothUtils {
         SharedPreferences pairedDevicePref = ctx.getApplicationContext().getSharedPreferences(PREFERENCES_KEY,
                 Context.MODE_MULTI_PROCESS);
         SharedPreferences.Editor editor = pairedDevicePref.edit();
+        Log.v(TAG, "setPairedMicroBit: " + newDevice.mName);
         if(newDevice == null) {
             editor.clear();
         } else {

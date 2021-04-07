@@ -59,7 +59,6 @@ public class BLEConnectionHandler {
                             if(!bleConnectionManager.arePermissionsGranted()) {
                                 bleConnectionManager.setActivityState(BaseActivityState.STATE_IDLE);
                                 PopUp.hide();
-                                bleConnectionManager.checkTelephonyPermissions();
                                 return;
                             }
                         } else {
@@ -102,8 +101,6 @@ public class BLEConnectionHandler {
         int getActivityState();
 
         void logi(String message);
-
-        void checkTelephonyPermissions();
 
         void addPermissionRequest(int permission);
 

@@ -157,45 +157,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     FirebaseAnalytics mFirebaseAnalytics;
 
-    private final Runnable tryToConnectAgain = new Runnable() {
-
-        @Override
-        public void run() {
-            if(sentPause) {
-                countOfReconnecting++;
-            }
-
-            final LocalBroadcastManager localBroadcastManager = LocalBroadcastManager
-                    .getInstance(ProjectActivity.this);
-
-            if(countOfReconnecting == Constants.MAX_COUNT_OF_RE_CONNECTIONS_FOR_DFU) {
-                countOfReconnecting = 0;
-                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
-                intent.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_ABORT);
-                localBroadcastManager.sendBroadcast(intent);
-            } else {
-                final int nextAction;
-                final long delayForNewlyBroadcast;
-
-                if(sentPause) {
-                    nextAction = DfuService.ACTION_RESUME;
-                    delayForNewlyBroadcast = Constants.TIME_FOR_CONNECTION_COMPLETED;
-                } else {
-                    nextAction = DfuService.ACTION_PAUSE;
-                    delayForNewlyBroadcast = Constants.DELAY_BETWEEN_PAUSE_AND_RESUME;
-                }
-
-                sentPause = !sentPause;
-
-                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
-                intent.putExtra(DfuService.EXTRA_ACTION, nextAction);
-                localBroadcastManager.sendBroadcast(intent);
-
-                handler.postDelayed(this, delayForNewlyBroadcast);
-            }
-        }
-    };
-
     /**
      * Allows to handle forced closing of the bluetooth service and
      * update information and UI about currently paired device.
@@ -234,11 +195,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     View.OnClickListener checkMorePermissionsNeeded = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            if(!mRequestPermissions.isEmpty()) {
-                checkTelephonyPermissions();
-            } else {
                 PopUp.hide();
-            }
         }
     };
 
@@ -303,27 +260,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     public void logi(String message) {
         if(DEBUG) {
             Log.i(TAG, "### " + Thread.currentThread().getId() + " # " + message);
-        }
-    }
-
-    @Override
-    public void checkTelephonyPermissions() {
-        if(!mRequestPermissions.isEmpty()) {
-            if(ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
-                    != PermissionChecker.PERMISSION_GRANTED ||
-                    (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
-                            != PermissionChecker.PERMISSION_GRANTED)) {
-                mRequestingPermission = mRequestPermissions.get(0);
-                mRequestPermissions.remove(0);
-                PopUp.show((mRequestingPermission == EventCategories.IPC_BLE_NOTIFICATION_INCOMING_CALL)
-                                ? getString(R.string.telephony_permission)
-                                : getString(R.string.sms_permission),
-                        getString(R.string.permissions_needed_title),
-                        R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
-                        PopUp.TYPE_CHOICE,
-                        notificationOKHandler,
-                        notificationCancelHandler);
-            }
         }
     }
 
@@ -582,8 +518,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     protected void onDestroy() {
 
-        handler.removeCallbacks(tryToConnectAgain);
-
         MBApp application = MBApp.getApp();
 
         LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(application);
@@ -668,25 +602,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             PopUp.GIFF_ANIMATION_ERROR,
                             TYPE_ALERT,
                             checkMorePermissionsNeeded, checkMorePermissionsNeeded);
-                } else {
-                    if(!mRequestPermissions.isEmpty()) {
-                        checkTelephonyPermissions();
-                    }
-                }
-            }
-            break;
-            case PermissionCodes.INCOMING_SMS_PERMISSIONS_REQUESTED: {
-                if(grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                    PopUp.show(getString(R.string.sms_permission_error),
-                            getString(R.string.permissions_needed_title),
-                            R.drawable.error_face, R.drawable.red_btn,
-                            PopUp.GIFF_ANIMATION_ERROR,
-                            TYPE_ALERT,
-                            checkMorePermissionsNeeded, checkMorePermissionsNeeded);
-                } else {
-                    if(!mRequestPermissions.isEmpty()) {
-                        checkTelephonyPermissions();
-                    }
                 }
             }
             break;
@@ -1204,7 +1119,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
                         .setUnsafeExperimentalButtonlessServiceInSecureDfuEnabled(true)
                         .setDeviceName(currentMicrobit.mName)
-                        .setDisableNotification(true)
+                        .setNumberOfRetries(3)
                         .setKeepBond(true)
                         .setForeground(true)
                         .setZip(this.getCacheDir() + "/update.zip");
@@ -1216,9 +1131,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
                         .setDeviceName(currentMicrobit.mName)
                         .setMbrSize(0x1000)
-                        .setPrepareDataObjectDelay(10)
+                        .setPrepareDataObjectDelay(5)
                         .setKeepBond(true)
-                        .setForceDfu(true)
                         // .setZip(this.getCacheDir() + "/update.zip");
                         .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexAbsolutePath);
                 final DfuServiceController controller = starter.start(this, DfuService.class);
@@ -1624,6 +1538,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         null);//pass null to use default listener
             } else if(intent.getAction().equals(BROADCAST_PF_ATTEMPT_DFU)) {
                 Log.v(TAG, "Use Nordic Dfu");
+                LocalBroadcastManager.getInstance(application).unregisterReceiver(pfResultReceiver);
                 startFlashing(FLASH_TYPE_DFU);
             } else if(intent.getAction().equals(BROADCAST_PF_FAILED)) {
 
@@ -1759,8 +1674,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     notAValidFlashHexFile = false;
                                     delayForCheckOnConnection += Constants.JUST_PAIRED_DELAY_ON_CONNECTION;
                                 }
-
-                                handler.postDelayed(tryToConnectAgain, delayForCheckOnConnection);
                             }
 
                             inInit = true;
@@ -1789,7 +1702,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     getString(R.string.send_project), //title
                                     R.drawable.flash_face, R.drawable.blue_btn,
                                     PopUp.GIFF_ANIMATION_FLASH,
-                                    PopUp.TYPE_SPINNER_NOT_CANCELABLE, //type of popup.
+                                    PopUp.TYPE_SPINNER, //type of popup.
                                     new View.OnClickListener() {
                                         @Override
                                         public void onClick(View v) {
@@ -1797,51 +1710,21 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                                         }
                                     },//override click listener for ok button
-                                    null);//pass null to use default listener
+                                    new View.OnClickListener() {
+                                        @Override
+                                        public void onClick(View v) {
+                                        }
+                                    });//pass null to use default listener
                             break;
-                        /*
-                        case DfuService.PROGRESS_VALIDATING:
-                            setActivityState(FlashActivityState.STATE_IDLE);
-
-                            MBApp application = MBApp.getApp();
-
-                            //Update Stats
-                            GoogleAnalyticsManager.getInstance().sendFlashStats(
-                                    ProjectActivity.class.getSimpleName(),
-                                    false, mProgramToSend.name,
-                                    m_HexFileSizeStats,
-                                    m_BinSizeStats, m_MicroBitFirmware);
-                            PopUp.show(getString(R.string.flashing_verifcation_failed), //message
-                                    getString(R.string.flashing_verifcation_failed_title),
-                                    R.drawable.error_face, R.drawable.red_btn,
-                                    PopUp.GIFF_ANIMATION_ERROR,
-                                    PopUp.TYPE_ALERT, //type of popup.
-                                    popupOkHandler,//override click listener for ok button
-                                    popupOkHandler);//pass null to use default listener
-
-                            LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                            dfuResultReceiver = null;
-                            break;
-                        */
                         case DfuService.PROGRESS_ABORTED:
+                            Log.e(TAG, "PROGRESS_ABORTED");
                             setActivityState(FlashActivityState.STATE_IDLE);
-
-                            MBApp application = MBApp.getApp();
-
 
                             mFirebaseAnalytics = FirebaseAnalytics.getInstance(MBApp.getApp());
                             Bundle p = new Bundle();
                             p.putString("dfuFailed", "DFU flashing failed");
                             mFirebaseAnalytics.logEvent("dfuFailed", p);
 
-                            //Update Stats
-                            /*
-                            GoogleAnalyticsManager.getInstance().sendFlashStats(
-                                    ProjectActivity.class.getSimpleName(),
-                                    false, mProgramToSend.name,
-                                    m_HexFileSizeStats,
-                                    m_BinSizeStats, m_MicroBitFirmware);
-                                    */
                             PopUp.show(getString(R.string.flashing_aborted), //message
                                     getString(R.string.flashing_aborted_title),
                                     R.drawable.error_face, R.drawable.red_btn,
@@ -1850,36 +1733,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
 
-                            LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
+                            LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
                             dfuResultReceiver = null;
-                            removeReconnectionRunnable();
+
                             break;
-                        /*
-                        case DfuService.PROGRESS_SERVICE_NOT_FOUND:
-                            Log.e(TAG, "service not found");
-                            setActivityState(FlashActivityState.STATE_IDLE);
-
-                            application = MBApp.getApp();
-
-                            //Update Stats
-                            GoogleAnalyticsManager.getInstance().sendFlashStats(
-                                    ProjectActivity.class.getSimpleName(),
-                                    false, mProgramToSend.name,
-                                    m_HexFileSizeStats,
-                                    m_BinSizeStats, m_MicroBitFirmware);
-                            PopUp.show(getString(R.string.flashing_aborted), //message
-                                    getString(R.string.flashing_aborted_title),
-                                    R.drawable.error_face, R.drawable.red_btn,
-                                    PopUp.GIFF_ANIMATION_ERROR,
-                                    PopUp.TYPE_ALERT, //type of popup.
-                                    popupOkHandler,//override click listener for ok button
-                                    popupOkHandler);//pass null to use default listener
-
-                            LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                            dfuResultReceiver = null;
-                            removeReconnectionRunnable();
-                            break;
-                            */
                         default:
                             Log.v(TAG, "No handler!: " + state);
                     }
@@ -1899,7 +1756,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                         inProgress = true;
 
-                        removeReconnectionRunnable();
                     }
 
                     PopUp.updateProgressBar(state);
@@ -1907,6 +1763,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 }
             } else if(intent.getAction().equals(DfuService.BROADCAST_ERROR)) {
                 int errorCode = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
+                int errorType = intent.getIntExtra(DfuService.EXTRA_ERROR_TYPE, 0);
+
+
+                if(errorType == 0 || (errorCode == 3 && errorType == 2)) {
+                    // Not a critical error
+                    return;
+                }
 
                 if(errorCode == DfuService.ERROR_FILE_INVALID) {
                     notAValidFlashHexFile = true;
@@ -1951,6 +1814,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             },
                             popupOkHandler);
                 } else {
+
                     PopUp.show(error_message + "\n\n" + getString(R.string.connect_tip_text), //message
                             getString(R.string.flashing_failed_title), //title
                             R.drawable.error_face, R.drawable.red_btn,
@@ -1959,8 +1823,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             popupOkHandler,//override click listener for ok button
                             popupOkHandler);//pass null to use default listener
                 }
-                removeReconnectionRunnable();
             } else if(intent.getAction().equals(DfuService.BROADCAST_LOG)) {
+                // Log.v(TAG, intent.getStringExtra(DfuService.EXTRA_DATA));
                 //Only used for Stats at the moment
                 String data;
                 int logLevel = intent.getIntExtra(DfuService.EXTRA_LOG_LEVEL, 0);
@@ -1979,12 +1843,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
         }
 
-    }
-
-    private void removeReconnectionRunnable() {
-        handler.removeCallbacks(tryToConnectAgain);
-        countOfReconnecting = 0;
-        sentPause = false;
     }
 
     @Override
