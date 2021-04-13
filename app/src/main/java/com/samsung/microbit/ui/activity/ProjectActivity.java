@@ -82,6 +82,7 @@ import no.nordicsemi.android.error.GattError;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
 import static com.samsung.microbit.ui.PopUp.TYPE_ALERT;
+import static com.samsung.microbit.ui.PopUp.TYPE_CHOICE;
 import static com.samsung.microbit.ui.PopUp.TYPE_HARDWARE_CHOICE;
 import static com.samsung.microbit.ui.PopUp.TYPE_PROGRESS_NOT_CANCELABLE;
 import static com.samsung.microbit.ui.PopUp.TYPE_SPINNER_NOT_CANCELABLE;
@@ -1066,8 +1067,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         m_HexFileSizeStats = getFileSize(mProgramToSend.filePath);
 
 
-        PopUp.show(getString(R.string.dfu_status_starting_msg),
-                "",
+        PopUp.show("If this is taking a long time, try re-entering pairing mode (Hold A + B and reset)",
+                getString(R.string.dfu_status_starting_msg),
                 R.drawable.flash_face, R.drawable.blue_btn,
                 PopUp.GIFF_ANIMATION_FLASH,
                 TYPE_SPINNER_NOT_CANCELABLE,
@@ -1119,7 +1120,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
                         .setUnsafeExperimentalButtonlessServiceInSecureDfuEnabled(true)
                         .setDeviceName(currentMicrobit.mName)
-                        .setNumberOfRetries(3)
+                        .setNumberOfRetries(2)
                         .setKeepBond(true)
                         .setForeground(true)
                         .setZip(this.getCacheDir() + "/update.zip");
@@ -1133,6 +1134,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         .setMbrSize(0x1000)
                         .setPrepareDataObjectDelay(5)
                         .setKeepBond(true)
+                        .setNumberOfRetries(3)
                         // .setZip(this.getCacheDir() + "/update.zip");
                         .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexAbsolutePath);
                 final DfuServiceController controller = starter.start(this, DfuService.class);
@@ -1506,7 +1508,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             String message = "Broadcast intent detected " + intent.getAction();
             logi("PFResultReceiver.onReceive :: " + message);
             if(intent.getAction().equals(BROADCAST_PROGRESS)) {
-                // Update UI
+                Log.v(TAG, "BROADCAST_PROGRESS!");
                 Intent progressUpdate = new Intent();
                 progressUpdate.setAction(INTENT_ACTION_UPDATE_PROGRESS);
                 int currentProgess = intent.getIntExtra(EXTRA_PROGRESS, 0);
@@ -1539,7 +1541,19 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             } else if(intent.getAction().equals(BROADCAST_PF_ATTEMPT_DFU)) {
                 Log.v(TAG, "Use Nordic Dfu");
                 LocalBroadcastManager.getInstance(application).unregisterReceiver(pfResultReceiver);
-                startFlashing(FLASH_TYPE_DFU);
+                PopUp.show("Use full flash?", "Quick flash not possible",
+                        0,
+                        0,
+                        0,
+                        TYPE_CHOICE,
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                startFlashing(FLASH_TYPE_DFU);
+                            }
+                        },
+                        null
+                );
             } else if(intent.getAction().equals(BROADCAST_PF_FAILED)) {
 
                 Log.v(TAG, "Partial flashing failed");
@@ -1743,6 +1757,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                 } else if((state > 0) && (state < 100)) {
                     if(!inProgress) {
+                        Log.v(TAG, "Show Progress PopUp");
                         setActivityState(FlashActivityState.FLASH_STATE_PROGRESS);
 
                         MBApp application = MBApp.getApp();
@@ -1765,10 +1780,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 int errorCode = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
                 int errorType = intent.getIntExtra(DfuService.EXTRA_ERROR_TYPE, 0);
 
-
-                if(errorType == 0 || (errorCode == 3 && errorType == 2)) {
+                if(errorCode == 3 && errorType == 2) {
                     // Not a critical error
-                    return;
+                    Log.v(TAG, "Ignore Error ? " + errorType + " " + errorCode);
+                    // return;
                 }
 
                 if(errorCode == DfuService.ERROR_FILE_INVALID) {
@@ -1799,9 +1814,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         */
 
                 //Check for GATT ERROR - prompt user to enter bluetooth mode
-                if(errorCode == 0x0085) {
-                    PopUp.show(getString(R.string.connect_tip_text),
-                            "Remember to enter bluetooth mode",
+                if(errorCode == 0x0085 || (errorType == 2 && errorCode == 3)) {
+                    PopUp.show("This is often due to the Bluetooth hardware being slow to refresh it's cache, and may work on a second attempt. Try again?",
+                            "Bluetooth GATT Error",
                             R.drawable.message_face, R.drawable.red_btn,
                             PopUp.GIFF_ANIMATION_PAIRING,
                             PopUp.TYPE_CHOICE,
@@ -1809,7 +1824,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                 @Override
                                 public void onClick(View v) {
                                     PopUp.hide();
-                                    flashingChecks();
+                                    IntentFilter filter = new IntentFilter();
+                                    filter.addAction(DfuService.BROADCAST_PROGRESS);
+                                    filter.addAction(DfuService.BROADCAST_ERROR);
+                                    filter.addAction(DfuService.BROADCAST_LOG);
+                                    dfuResultReceiver = new DFUResultReceiver();
+
+                                    LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(dfuResultReceiver, filter);
+
+                                    startFlashing(FLASH_TYPE_DFU);
                                 }
                             },
                             popupOkHandler);

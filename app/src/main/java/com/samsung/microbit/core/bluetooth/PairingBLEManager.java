@@ -36,7 +36,15 @@ public class PairingBLEManager extends BleManager {
         return new pairingGattCallback();
     }
 
+    public void refresh() {
+        refreshDeviceCache().enqueue();
+    }
+
     private class pairingGattCallback extends BleManagerGattCallback {
+
+        protected pairingGattCallback() {
+            super();
+        }
 
         @Override
         protected boolean isRequiredServiceSupported(@NonNull BluetoothGatt gatt) {
@@ -77,6 +85,7 @@ public class PairingBLEManager extends BleManager {
         protected void initialize() {
             super.initialize();
             ensureBond().enqueue();
+            Log.v(TAG, "ensureBond queued()");
         }
 
         @Override

@@ -185,9 +185,11 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     void connect(@NonNull final BluetoothDevice device) {
         manager = new PairingBLEManager(MBApp.getApp());
         manager.setBondingObserver(this);
-
+        manager.refresh();
         manager.connect(device)
                 .enqueue();
+
+        Log.v(TAG, "Pairing with: " + device.getAddress());
     }
 
     /**
