@@ -13,7 +13,7 @@
     <ImageView
         style="@style/custom_button_image"
         android:contentDescription="@string/txt_my_scripts_btn"
-        android:src="@drawable/ic_my_scripts" />
+        android:src="@drawable/ic_discover" />
 
     <TextView
         android:id="@+id/custom_button_text"

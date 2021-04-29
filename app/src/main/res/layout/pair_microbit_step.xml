@@ -2,6 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/pairTipButtonText"
+    android:background="@color/grey_transparent_highlight"
     style="@style/pairing_step_tip_layout_style"
     tools:showIn="@layout/view_pairing_step_1">
 

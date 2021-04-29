@@ -37,8 +37,8 @@
                     android:gravity="center_vertical"
                     android:nextFocusDown="@id/flash_projects_title_txt"
                     android:text="@string/manage_microbit_txt_one_line"
-                    android:textColor="@android:color/black"
-                    android:textSize="@dimen/connection_description_text_size"/>
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/connection_description_text_size" />
 
                 <TextView
                     android:id="@+id/connect_microbit_problems_message"

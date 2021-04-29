@@ -21,7 +21,7 @@
             android:id="@+id/enter_pattern_step_2_gridview"
             android:layout_width="@dimen/led_grid_width"
             android:layout_height="@dimen/led_grid_width"
-            android:cacheColorHint="@color/cancel_button_up"
+            android:cacheColorHint="@color/black_color"
             android:gravity="center"
             android:horizontalSpacing="@dimen/led_gap"
             android:numColumns="5"
@@ -40,7 +40,7 @@
             android:id="@+id/cancel_enter_pattern_step_2_btn"
             style="@style/pairing_step_button_style"
             android:layout_marginEnd="@dimen/pairing_step_buttons_space_margin"
-            android:background="@drawable/cancel_btn"
+            android:background="@drawable/white_btn"
             android:drawableEnd="@drawable/cancel_step_pairing_btn"
             android:text="@string/txt_cancel_btn"
             android:visibility="invisible" />
@@ -49,7 +49,7 @@
             android:id="@+id/ok_enter_pattern_step_2_btn"
             style="@style/pairing_step_button_style"
             android:layout_marginStart="@dimen/pairing_step_buttons_space_margin"
-            android:background="@drawable/green_btn"
+            android:background="@drawable/white_btn"
             android:drawableEnd="@drawable/ic_done_black"
             android:text="@string/txt_pair_btn"
             android:visibility="invisible" />

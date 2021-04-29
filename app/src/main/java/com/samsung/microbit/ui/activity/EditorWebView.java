@@ -109,9 +109,14 @@ public class EditorWebView extends Activity implements View.OnClickListener {
             }
         });
 
+        // Hide Python
+        openWebView(makecodeUrl);
+
+        /*
         makecodeCard.setVisibility(View.VISIBLE);
         pythonCard.setVisibility(View.VISIBLE);
         webView.setVisibility(View.GONE);
+         */
 
     }
 
