@@ -8,7 +8,7 @@
     android:layout_marginEnd="@dimen/custom_button_end_margin"
     android:layout_marginStart="@dimen/custom_button_start_margin"
     android:layout_weight="1"
-    android:background="@drawable/blue_btn"
+    android:background="@drawable/white_btn"
 
     tools:showIn="@layout/project_items">
 
@@ -20,6 +20,7 @@
     <TextView
         android:id="@+id/project_item_text"
         style="@style/custom_button_text"
+        android:textColor="@color/black_color"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"

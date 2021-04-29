@@ -90,11 +90,11 @@
 
         <!-- User Cancel  -->
         <Button
-            android:id="@+id/imageButtonCancel"
             style="@style/pairing_step_button_style"
-            android:layout_marginEnd="@dimen/pairing_step_buttons_space_margin"
-            android:background="@drawable/cancel_btn"
-            android:drawableEnd="@drawable/cancel_step_pairing_btn"
+            android:id="@+id/imageButtonCancel"
+            android:background="@drawable/black_button"
+            android:drawableEnd="@drawable/ic_action_notify_cancel"
+            android:textColor="@android:color/white"
             android:onClick="onClick"
             android:text="@string/txt_cancel_btn"
             android:visibility="gone" />
@@ -104,21 +104,23 @@
             android:id="@+id/imageButtonOk"
             style="@style/pairing_step_button_style"
             android:layout_marginStart="@dimen/pairing_step_buttons_space_margin"
-            android:background="@drawable/green_btn"
-            android:drawableEnd="@drawable/ic_done_black"
+            android:background="@drawable/black_button"
+            android:textColor="@android:color/white"
+            android:drawableEnd="@drawable/ic_done_white"
             android:onClick="onClick"
             android:text="@string/ok_button_label"
             android:visibility="gone" />
 
         <!-- User OK  -->
         <Button
+            style="@style/pairing_step_button_style"
             android:id="@+id/affirmationOKBtn"
             android:layout_width="@dimen/popup_round_ok_button_size"
             android:layout_height="@dimen/popup_round_ok_button_size"
-            android:background="@drawable/popup_ok_button"
+            android:background="@drawable/black_button"
             android:onClick="onClick"
             android:text="@string/ok_button_label"
-            android:textColor="@android:color/black"
+            android:textColor="@android:color/white"
             android:textSize="@dimen/popup_round_ok_button_text_size"
             android:visibility="gone" />
 
@@ -127,7 +129,8 @@
             android:id="@+id/buttonV1"
             style="@style/pairing_step_button_style"
             android:layout_marginEnd="@dimen/pairing_step_buttons_space_margin"
-            android:background="@drawable/green_btn"
+            android:background="@drawable/black_button"
+            android:textColor="@android:color/white"
             android:onClick="onClick"
             android:text="@string/v1_button_label"
             android:visibility="gone" />
@@ -137,7 +140,8 @@
             android:id="@+id/buttonV2"
             style="@style/pairing_step_button_style"
             android:layout_marginStart="@dimen/pairing_step_buttons_space_margin"
-            android:background="@drawable/green_btn"
+            android:background="@drawable/black_button"
+            android:textColor="@android:color/white"
             android:onClick="onClick"
             android:text="@string/v2_button_label"
             android:visibility="gone" />

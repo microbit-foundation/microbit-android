@@ -17,28 +17,21 @@
     <color name="grey_highlight">#424242</color>
     <color name="grey_transparent_highlight">#d0424242</color>
     <color name="grey_trans_20_opacity_container_highlight">#33424242</color>
-    <color name="ok_button_up">#00EC00</color>
-    <color name="ok_button_down">#3A871F</color>
+    <color name="ok_button_up">#000000</color>
+    <color name="ok_button_down">#333333</color>
 
-    <color name="green">#00C800</color>
-    <color name="blue">#3EB6FD</color>
+    <color name="cancel_button_up">#ffffff</color>
+    <color name="cancel_button_down">#a0a0a0</color>
+    <color name="cancel_button">#ffffff</color>
 
-
-    <color name="cancel_button_up">#FD645B</color>
-    <color name="cancel_button_down">#AA6666</color>
-    <color name="cancel_button">#FD645B</color>
-
-    <color name="blue_button_up">#3bddff</color>
-    <color name="blue_button_flash">#1CC6FD</color>
-    <color name="blue_button_down">#37abff</color>
-    <color name="progress_bar_progressed">#16cffd</color>
+    <color name="progress_bar_progressed">#ffffff</color>
     <color name="progress_bar_not_progressed">#333333</color>
 
-    <color name="yellow_button_up">#ffCC31</color>
-    <color name="yellow_button_down">#d3a331</color>
-    <color name="accent_material_light_1">#d7dbdb</color>
-    <color name="gray_green">#394535</color>
+    <color name="custom_button_text">#000000</color>
+    <color name="splash_screen_text_color">#000000</color>
+    <color name="blue">#3eb6fd</color>
+    <color name="green">#00c800</color>
+    <color name="red">#e6615a</color>
 
-    <color name="custom_button_text">#525252</color>
-    <color name="splash_screen_text_color">#14289f</color>
+
 </resources>

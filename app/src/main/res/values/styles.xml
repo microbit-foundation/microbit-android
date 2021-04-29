@@ -102,7 +102,7 @@
     <style name="custom_button_text">
         <item name="android:textSize">@dimen/p1_font_size</item>
         <item name="android:textAllCaps">true</item>
-        <item name="android:textColor">@android:color/black</item>
+        <item name="android:textColor">@android:color/white</item>
         <item name="android:textAppearance">?android:textAppearance</item>
     </style>
 
@@ -146,7 +146,6 @@
     </style>
 
     <style name="connection_description_and_smile_layout_style" parent="match_width_parent_wrap_height_content">
-        <item name="android:background">@android:color/transparent</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:paddingBottom">@dimen/description_and_smile_layout_padding</item>
         <item name="android:paddingTop">@dimen/description_and_smile_layout_padding</item>
@@ -195,6 +194,7 @@
         <item name="android:layout_weight">1</item>
         <item name="android:layout_height">@dimen/pairing_step_button_height</item>
         <item name="android:gravity">center_vertical</item>
+        <item name="background">@drawable/white_btn</item>
         <item name="android:textSize">@dimen/pairing_step_button_text_size</item>
         <item name="android:textColor">@android:color/black</item>
         <item name="android:textAllCaps">true</item>
@@ -204,6 +204,7 @@
 
     <style name="pairing_step_buttons_layout_style" parent="match_width_parent_wrap_height_content">
         <item name="android:gravity">center</item>
+        <item name="android:background">@color/grey_transparent_highlight</item>
         <item name="android:layout_gravity">bottom</item>
         <item name="android:padding">@dimen/pairing_step_button_layout_padding</item>
     </style>
@@ -222,9 +223,9 @@
 
     <!-- Pairing step layout styles -->
     <style name="pairing_step_layout_style">
+        <item name="android:background">@color/grey_transparent_highlight</item>
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">match_parent</item>
-        <item name="android:background">@color/black_color</item>
         <item name="android:orientation">vertical</item>
     </style>
 
@@ -247,10 +248,8 @@
     <style name="popup_layout_style">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">match_parent</item>
-        <item name="android:background">@color/pop_up_background</item>
+        <item name="android:background">@drawable/bg</item>
         <item name="android:orientation">vertical</item>
-        <item name="android:paddingEnd">@dimen/popup_layout_padding</item>
-        <item name="android:paddingStart">@dimen/popup_layout_padding</item>
     </style>
 
     <style name="popup_images_layout_style">
@@ -259,6 +258,7 @@
         <item name="android:gravity">bottom|center_horizontal</item>
         <item name="android:orientation">vertical</item>
         <item name="android:layout_weight">3</item>
+        <item name="android:background">@color/grey_transparent_highlight</item>
     </style>
 
     <style name="popup_image_style">
@@ -283,16 +283,20 @@
         <item name="android:orientation">vertical</item>
         <item name="android:paddingStart">@dimen/pairing_step_tip_layout_width_padding</item>
         <item name="android:paddingEnd">@dimen/pairing_step_tip_layout_width_padding</item>
+        <item name="android:background">@color/grey_transparent_highlight</item>
     </style>
 
     <style name="popup_buttons_layout_style">
+        <item name="android:background">@color/grey_transparent_highlight</item>
     </style>
 
     <style name="pairing_searching_horizontal_progress_bar_style" parent="Theme.AppCompat.Light">
         <item name="colorAccent">@android:color/white</item>
+        <item name="android:background">@color/grey_transparent_highlight</item>
     </style>
 
     <style name="AlertDialogDarkButtons" parent="Theme.AppCompat.Light.Dialog.Alert">
         <item name="android:textColor">@color/black_color</item>
+        <item name="android:background">@color/grey_transparent_highlight</item>
     </style>
 </resources>

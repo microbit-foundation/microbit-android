@@ -5,10 +5,6 @@
             <solid android:color="@color/black_overlay" />
             <stroke android:width="1dp" android:color="@color/black_color" />
             <corners android:radius="@dimen/button_background_radius" />
-            <padding android:bottom="@dimen/button_background_padding"
-                android:left="@dimen/button_background_padding"
-                android:right="@dimen/button_background_padding"
-                android:top="@dimen/button_background_padding" />
         </shape>
     </item>
     <item android:state_pressed="false">
@@ -19,11 +15,6 @@
                 android:startColor="@color/black_color" />
             <stroke android:width="1dp" android:color="@color/black_color" />
             <corners android:radius="@dimen/button_background_radius" />
-            <padding
-                android:bottom="@dimen/button_background_padding"
-                android:left="@dimen/button_background_padding"
-                android:right="@dimen/button_background_padding"
-                android:top="@dimen/button_background_padding" />
         </shape>
     </item>
 </selector>

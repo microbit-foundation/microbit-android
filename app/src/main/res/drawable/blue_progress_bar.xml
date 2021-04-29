@@ -16,8 +16,8 @@
             <shape>
                 <gradient
                     android:angle="0"
-                    android:endColor="@color/blue_button_up"
-                    android:startColor="@color/blue_button_up"/>
+                    android:endColor="@color/white_color"
+                    android:startColor="@color/white_color"/>
             </shape>
         </clip>
     </item>
