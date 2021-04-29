@@ -388,6 +388,7 @@
 
     <string name="metrics_disabled">Metrics Disabled</string>
     <string name="metrics_enabled">Metrics Enabled</string>
+    <string name="check_firebase_permissions">Share statistics with the Microbit Educational Foundation? This information will only be used to analyse and improve the performance of this app</string>
 
 
 </resources>
