@@ -1732,7 +1732,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     TYPE_ALERT, //type of popup.
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
-                            
+
                             LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
                             dfuResultReceiver = null;
 

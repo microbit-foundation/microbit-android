@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.gesture.Gesture;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
@@ -14,8 +15,11 @@ import android.os.Bundle;
 import android.text.Html;
 import android.text.InputType;
 import android.util.Log;
+import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnLongClickListener;
 import android.widget.Button;
@@ -177,7 +181,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
 
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                (Activity) this, (DrawerLayout) mDrawer, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                (Activity) this, (DrawerLayout) mDrawer, (Toolbar) toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
 
         boolean shareStats = false;
         mPrefs = getSharedPreferences("com.samsung.microbit", MODE_PRIVATE);
@@ -225,7 +229,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         shareStatsDescription.setTypeface(MBApp.getApp().getRobotoTypeface());
         mShareStatsCheckBox = (CheckBox) findViewById(R.id.share_statistics_status);
         mShareStatsCheckBox.setOnClickListener(this);
-        // mShareStatsCheckBox.setChecked(shareStats);
+        mShareStatsCheckBox.setChecked(shareStats);
+
     }
 
     /**
@@ -422,7 +427,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             break;
             case R.id.btn_help: {
                 Intent launchHelpIntent = new Intent(this, HelpWebView.class);
-                launchHelpIntent.putExtra("url", "file:///android_asset/help.html");
+                launchHelpIntent.putExtra("url", "https://support.microbit.org/support/home");
                 startActivity(launchHelpIntent);
                 // Close drawer
                 drawer.closeDrawer(GravityCompat.START);
@@ -482,6 +487,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             return;
         }
         boolean shareStatistics = mShareStatsCheckBox.isChecked();
+
+        FirebaseAnalytics.getInstance(MBApp.getApp()).setAnalyticsCollectionEnabled(shareStatistics);
 
         mPrefs.edit().putBoolean(getString(R.string.prefs_share_stats_status), shareStatistics).apply();
         logi("shareStatistics = " + shareStatistics);
@@ -579,6 +586,20 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     private void checkMinimumPermissionsForThisScreen() {
         //Check reading permissions & writing permission to populate the HEX files & show program list
         if(mPrefs.getBoolean(FIRST_RUN, true)) {
+            PopUp.show(getString(R.string.check_firebase_permissions),
+                    getString(R.string.permissions_needed_title),
+                    R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
+                    PopUp.TYPE_CHOICE,
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View view) {
+                            mShareStatsCheckBox.setChecked(true);
+                            FirebaseAnalytics.getInstance(MBApp.getApp()).setAnalyticsCollectionEnabled(true);
+                            mPrefs.edit().putBoolean(getString(R.string.prefs_share_stats_status), true).apply();                        PopUp.hide();
+                        }
+                    },
+                    null);
+
             if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PermissionChecker.PERMISSION_GRANTED ||
                     (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
