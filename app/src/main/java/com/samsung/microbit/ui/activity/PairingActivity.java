@@ -27,6 +27,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcelable;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -154,7 +155,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     private boolean justPaired;
 
-    private final Object lock = new Object();
+    private final Object pairingLock = new Object();
+
+    private BluetoothGatt pairingGatt = null;
+    private BluetoothDevice pairingDevice = null;
 
     private int hardwareVersion = 0;
 
@@ -329,41 +333,27 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
 
-            if(BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
+            if ( BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
+                final BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (device == null) {
+                    Log.e(TAG, "pairReceiver - no device");
+                    return;
+                }
+                final String name = device.getName();
+                final String addr = device.getAddress();
                 final int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR);
                 final int prevState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR);
-
-                logi(" pairReceiver - state = " + state + " prevState = " + prevState);
-                if(state == BluetoothDevice.BOND_BONDED && prevState == BluetoothDevice.BOND_BONDING) {
-                    if(newDeviceCode.isEmpty()) {
-                        Log.e(TAG, "device code empty. State = " + state + ", prevState = " + prevState + ".");
-                    } else {
-                        ConnectedDevice newDev = new ConnectedDevice(newDeviceCode.toUpperCase(), newDeviceCode
-                                .toUpperCase(), false, newDeviceAddress, 0, null, System.currentTimeMillis(), hardwareVersion);
-                        handlePairingSuccessful(newDev);
+                logi(" pairReceiver -" + " name = " + name + " addr = " + addr + " state = " + state + " prevState = " + prevState);
+                if (name.isEmpty() || addr.isEmpty()) {
+                    return;
+                }
+		// Check the changed device is the one we are trying to pair 
+                if ( pairingGatt != null && nameIsMicrobitWithCode(device.getName(), newDeviceCode)) {
+                    if (state == BluetoothDevice.BOND_BONDED) {
+                        pairingSuccess();
+                    } else if (state == BluetoothDevice.BOND_NONE) {
+                        pairingFail();
                     }
-                } else if(state == BluetoothDevice.BOND_NONE && prevState == BluetoothDevice.BOND_BONDING) {
-                    stopScanning();
-                    PopUp.show(getString(R.string.pairing_failed_message), //message
-                            getString(R.string.pairing_failed_title), //title
-                            R.drawable.error_face, //image icon res id
-                            R.drawable.red_btn,
-                            PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_CHOICE, //type of popup.
-                            new View.OnClickListener() {
-                                @Override
-                                public void onClick(View v) {
-                                    PopUp.hide();
-                                    displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_1);
-                                }
-                            },//override click listener for ok button
-                            new View.OnClickListener() {
-                                @Override
-                                public void onClick(View v) {
-                                    PopUp.hide();
-                                    displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
-                                }
-                            });
                 }
             }
         }
@@ -1306,11 +1296,23 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     /**
-     * Shows a dialog windows that indicates that pairing has failed and
+     * Shows a dialog windows that indicates that pairing has timed out and
      * allows to retry pairing or terminate it.
      */
-    private void handlePairingFailed() {
-        logi("handlePairingFailed() :: Start");
+    private void popupScanningTimeout() {
+        logi("popupScanningTimeout() :: Start");
+        PopUp.show(getString(R.string.pairingErrorMessage), //message
+                getString(R.string.timeOut), //title
+                R.drawable.error_face, //image icon res id
+                R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_CHOICE, //type of popup.
+                retryPairing,//override click listener for ok button
+                failedPairingHandler);
+    }
+
+    private void popupPairingTimeout() {
+        logi("popupPairingTimeout() :: Start");
         PopUp.show(getString(R.string.pairingErrorMessage), //message
                 getString(R.string.timeOut), //title
                 R.drawable.error_face, //image icon res id
@@ -1322,13 +1324,48 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     /**
+     * Shows a dialog windows that indicates that pairing has failed and
+     * allows to retry pairing or terminate it.
+     */
+    private void popupPairingFailed() {
+        logi("popupPairingFailed() :: Start");
+        PopUp.show(getString(R.string.pairing_failed_message), //message
+                getString(R.string.pairing_failed_title), //title
+                R.drawable.error_face, //image icon res id
+                R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_CHOICE, //type of popup.
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        PopUp.hide();
+                        displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_1);
+                    }
+                },//override click listener for ok button
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        PopUp.hide();
+                        displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
+                    }
+                });
+    }
+
+    /**
      * Updates information about a new paired device, updates connection status UI
      * and shows a notification window about successful pairing.
-     *
-     * @param newDev New paired device.
      */
-    private void handlePairingSuccessful(final ConnectedDevice newDev) {
+    private void handlePairingSuccessful() {
         logi("handlePairingSuccessful()");
+        ConnectedDevice newDev = new ConnectedDevice(
+                newDeviceCode.toUpperCase(),
+                newDeviceCode.toUpperCase(),
+                false,
+                newDeviceAddress,
+                0,
+                null,
+                System.currentTimeMillis(),
+                hardwareVersion);
         BluetoothUtils.setPairedMicroBit(MBApp.getApp(), newDev);
         updatePairedDeviceCard();
         // Pop up to show pairing successful
@@ -1468,7 +1505,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             stopScanning();
 
             if(scanning) { // was scanning
-                handlePairingFailed();
+                popupScanningTimeout();
             }
         }
     };
@@ -1535,6 +1572,69 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     /**
+     * Occurs when the pairing time ends.
+     * Check bond state and handle success or falure 
+     */
+    private Runnable pairingTimeout = new Runnable() {
+        @Override
+        public void run() {
+            logi("pairingTimeout");
+            boolean success = hardwareVersion != 0 && pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED;
+            if ( success) {
+                pairingSuccess();
+            } else {
+                pairingStop();
+                popupPairingTimeout();
+            }
+        }
+    };
+
+    private void pairingTimeoutCancel() {
+        handler.removeCallbacks( pairingTimeout);
+    }
+
+    private void pairingTimeoutStart() {
+        pairingTimeoutCancel();
+        handler.postDelayed(pairingTimeout, 10000);
+    }
+
+    private void pairingStop() {
+        logi("pairingStop");
+        BluetoothGatt gatt = pairingGatt;
+        pairingGatt = null;
+        pairingTimeoutCancel();
+        stopScanning();
+        if( gatt != null) {
+            synchronized (pairingLock) {
+                pairingLock.notifyAll();
+            }
+            gatt.close();
+        }
+    }
+
+    private void pairingFail() {
+        logi("pairingFail");
+        pairingStop();
+        popupPairingFailed();
+    }
+
+    private void pairingSuccess() {
+        logi("pairingSuccess");
+        pairingStop();
+        handlePairingSuccessful();
+    }
+
+    private void pairingDisconnected() {
+        logi("pairingDisconnected");
+        boolean success = hardwareVersion != 0 && pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED;
+        if ( success) {
+            pairingSuccess();
+        } else {
+            pairingFail();
+        }
+    }
+
+    /**
      * Checks if device is paired, if true - stops scanning and proceeds with success message,
      * else - starts pairing to the device.
      *
@@ -1545,7 +1645,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         // Service to connect
         //Check if the device is already bonded
 
-        // Connect to device and discover services
         BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
@@ -1553,16 +1652,16 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
                 Log.v(TAG, "onConnectionStateChange");
                 if(newState == STATE_CONNECTED) {
-
-                    final boolean success = gatt.discoverServices();
-
-                    /* Taken from Nordic. See reasoning here: https://github.com/NordicSemiconductor/Android-DFU-Library/blob/e0ab213a369982ae9cf452b55783ba0bdc5a7916/dfu/src/main/java/no/nordicsemi/android/dfu/DfuBaseService.java#L888 */
+                    pairingTimeoutStart();
+                    /*
+                     * Nordic says to wait 1600ms for possible service changed before discovering
+                     * https://github.com/NordicSemiconductor/Android-DFU-Library/blob/e0ab213a369982ae9cf452b55783ba0bdc5a7916/dfu/src/main/java/no/nordicsemi/android/dfu/DfuBaseService.java#L888
+                     */
                     if (gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
                         Log.v(TAG, "Already bonded");
-                        synchronized (lock) {
+                        synchronized (pairingLock) {
                             try {
-                                lock.wait(1600);
-
+                                pairingLock.wait(1600);
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -1572,18 +1671,20 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         // NOTE: This also works with shorted waiting time. The gatt.discoverServices() must be called after the indication is received which is
                         // about 600ms after establishing connection. Values 600 - 1600ms should be OK.
                     }
-                    gatt.discoverServices();
-
-                    if (!success) {
-                        Log.e(TAG,"ERROR_SERVICE_DISCOVERY_NOT_STARTED");
-                    } else {
-                        // Wait for service discovery to clear lock
-                        return;
+                    boolean success = false;
+                    if ( pairingGatt != null) {
+                        success = gatt.discoverServices();
+                        if (!success) {
+                            Log.e(TAG, "ERROR_SERVICE_DISCOVERY_NOT_STARTED");
+                            pairingFail();
+                            return;
+                        }
+                        pairingTimeoutStart();
                     }
                 }
-
-                if(newState == STATE_DISCONNECTED) {
-                    gatt.close();
+                else if(newState == STATE_DISCONNECTED) {
+                    // If actually pairing, micro:bit will break the connection
+                    pairingDisconnected();
                 }
             }
 
@@ -1591,39 +1692,48 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                 super.onServicesDiscovered(gatt, status);
                 Log.v(TAG, "onServicesDiscovered");
-                ConnectedDevice cD = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
                 if(gatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb")) != null ) {
                     Log.v(TAG, "Hardware Type: V2");
-                    cD.mhardwareVersion = 2;
                     hardwareVersion = 2;
                 } else {
                     Log.v(TAG, "Hardware Type: V1");
-                    cD.mhardwareVersion = 1;
                     hardwareVersion = 1;
                 }
-                BluetoothUtils.setPairedMicroBit(MBApp.getApp(), cD);
-                synchronized (lock) {
-                    lock.notifyAll();
+                pairingTimeoutCancel();
+                if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
+                    pairingSuccess();
+                } else {
+                    // Wait a bit for bonding to start
+                    synchronized (pairingLock) {
+                        try {
+                            pairingLock.wait(1000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    if ( pairingDevice.getBondState() == BluetoothDevice.BOND_NONE) {
+                        boolean started = pairingDevice.createBond();
+                        if (started) {
+                            Log.v(TAG, "create bond: started");
+                        } else {
+                            pairingFail();
+                        }
+                    }
                 }
             }
         };
 
-        BluetoothGatt gatt = device.connectGatt(this, true, bluetoothGattCallback);
-        synchronized (lock) { // Wait for services to be discovered
-            lock.wait(10000); // 10 second max
+        hardwareVersion = 0;
+
+        pairingTimeoutStart();
+
+        // Connect to device and discover services
+        pairingDevice = device;
+        pairingGatt = pairingDevice.connectGatt(this, true, bluetoothGattCallback);
+
+        synchronized (pairingLock) {
+            pairingLock.wait(10000);
         }
-
-            stopScanning();
-
-            // Create bond
-            boolean newbond = device.createBond();
-            Log.v(TAG, "create bond: newbond");
-
-            //Get device name from the System settings if present and add to our list
-            ConnectedDevice newDev = new ConnectedDevice(newDeviceCode.toUpperCase(),
-                    newDeviceCode.toUpperCase(), false, newDeviceAddress, 0, null,
-                    System.currentTimeMillis(), hardwareVersion);
-            handlePairingSuccessful(newDev);
     }
 
     @Override
