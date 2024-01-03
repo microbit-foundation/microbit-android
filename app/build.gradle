@@ -1,12 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
+    compileSdk 30
     defaultConfig {
         applicationId "com.samsung.microbit"
         minSdkVersion 21
-        targetSdkVersion 29
-        // Once target SDK version is 30, requestLegacyStorage will no longer work
+        targetSdk 30
+        // Once target SDK version is 30, requestLegacyExternalStorage will no longer work
     }
     buildTypes {
         release {
