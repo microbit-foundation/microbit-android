@@ -519,7 +519,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         File nowDownloadedFile = null;
 
         // TODO: What folder should we search - downloads or projects?
-        File downloadFiles[] = ProjectsHelper.downloadsFilesListHEX( this);
+        File[] downloadFiles = ProjectsHelper.downloadsFilesListHEX( this);
 
         if(downloadFiles != null) {
             for(File file : downloadFiles) {
@@ -580,9 +580,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         localBroadcastManager.unregisterReceiver(gattForceClosedReceiver);
         localBroadcastManager.unregisterReceiver(connectionChangedReceiver);
 
-        if(dfuResultReceiver != null) {
-            localBroadcastManager.unregisterReceiver(dfuResultReceiver);
-        }
+        unregisterCallbacksForFlashing();
 
         application.stopService(new Intent(application, DfuService.class));
 
@@ -1097,11 +1095,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * registers callbacks requisite for flashing and starts flashing.</p>
      */
     protected void initiateFlashing() {
-        if(dfuResultReceiver != null) {
-            LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
-            dfuResultReceiver = null;
-        }
-
         /* Pop up for flash init */
 
         setActivityState(FlashActivityState.FLASH_STATE_FIND_DEVICE);
@@ -1526,6 +1519,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * and react to flashing progress, errors and log some messages.
      */
     private void registerCallbacksForFlashing() {
+        unregisterCallbacksForFlashing();
+
+        Log.v(TAG, "registerCallbacksForFlashing");
+
         IntentFilter filter = new IntentFilter();
         filter.addAction(DfuService.BROADCAST_PROGRESS);
         filter.addAction(DfuService.BROADCAST_ERROR);
@@ -1542,6 +1539,20 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(pfResultReceiver, pfFilter);
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(dfuResultReceiver, filter);
+    }
+
+    private void unregisterCallbacksForFlashing() {
+        Log.v(TAG, "unregisterCallbacksForFlashing");
+
+        if(dfuResultReceiver != null) {
+            LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
+            dfuResultReceiver = null;
+        }
+
+        if(pfResultReceiver != null) {
+            LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(pfResultReceiver);
+            pfResultReceiver = null;
+        }
     }
 
     /**
