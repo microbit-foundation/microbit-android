@@ -14,4 +14,8 @@ public class PermissionCodes {
     public static final int CAMERA_PERMISSIONS_REQUESTED = 0x03;
     public static final int INCOMING_CALL_PERMISSIONS_REQUESTED = 0x03;
     public static final int INCOMING_SMS_PERMISSIONS_REQUESTED = 0x04;
+    public static final int BLUETOOTH_PERMISSIONS_REQUESTED_API28 = 0x10;
+    public static final int BLUETOOTH_PERMISSIONS_REQUESTED_API29 = 0x11;
+    public static final int BLUETOOTH_PERMISSIONS_REQUESTED_API30_FOREGROUND = 0x12;
+    public static final int BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND = 0x13;
 }
