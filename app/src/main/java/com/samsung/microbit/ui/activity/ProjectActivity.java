@@ -402,9 +402,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         initViews();
         setupFontStyle();
 
-        minimumPermissionsGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PermissionChecker.PERMISSION_GRANTED && (ContextCompat.checkSelfPermission(this, Manifest
-                .permission.WRITE_EXTERNAL_STORAGE) == PermissionChecker.PERMISSION_GRANTED);
+        minimumPermissionsGranted = ProjectsHelper.havePermissions(this);
 
         checkMinimumPermissionsForThisScreen();
         setConnectedDeviceText();
@@ -596,6 +594,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         ActivityCompat.requestPermissions(this, permissions, requestCode);
     }
 
+    private void storageRequestPermission() {
+        ProjectsHelper.requestPermissions(this, PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED);
+    }
+
     /**
      * Listener for OK button that allows to request write/read
      * external storage permissions.
@@ -605,8 +607,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         public void onClick(View v) {
             logi("diskStoragePermissionOKHandler");
             PopUp.hide();
-            String[] permissionsNeeded = {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-            requestPermission(permissionsNeeded, PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED);
+            storageRequestPermission();
         }
     };
 
@@ -642,8 +643,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                            @NonNull int[] grantResults) {
         switch(requestCode) {
             case PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED: {
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                        && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                if( ProjectsHelper.havePermissions(this)) {
                     minimumPermissionsGranted = true;
                     updateProjectsListSortOrder(true);
                 } else {
