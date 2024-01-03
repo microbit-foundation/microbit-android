@@ -56,6 +56,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     private static final String TAG = HomeActivity.class.getSimpleName();
 
     public static final String FIRST_RUN = "firstrun";
+    public static final String FIRST_RUN_300 = "firstrun300";
 
     // share stats checkbox
     private CheckBox mShareStatsCheckBox;
@@ -476,27 +477,54 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         logi("shareStatistics = " + shareStatistics);
     }
 
+    private boolean isFirstRun() {
+        return mPrefs == null || mPrefs.getBoolean(FIRST_RUN, true);
+    }
+
+    private void setFirstRun( boolean yes) {
+        if (mPrefs != null)
+            mPrefs.edit().putBoolean(FIRST_RUN, yes).apply();
+    }
+
+    private boolean isFirstRun300() {
+        return mPrefs.getBoolean(FIRST_RUN_300, true);
+    }
+
+    private void setFirstRun300( boolean yes) {
+        mPrefs.edit().putBoolean(FIRST_RUN_300, yes).apply();
+    }
+
     /**
      * Loads standard samples provided by Samsung. The samples can be used to
      * flash on a micro:bit board.
      */
-    private void installSamples() {
-        if(mPrefs.getBoolean(FIRST_RUN, true)) {
-            mPrefs.edit().putBoolean(FIRST_RUN, false).apply();
+    private void installSamples( boolean withThanks) {
+        if(isFirstRun() || isFirstRun300() && !ProjectsHelper.legacyStorage()) {
+            setFirstRun(false);
+            setFirstRun300(false);
             //First Run. Install the Sample applications
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    PopUp.show(getString(R.string.samples_are_about_to_be_copied),
-                            "Thank you",
-                            R.drawable.message_face, R.drawable.blue_btn,
-                            PopUp.GIFF_ANIMATION_NONE,
-                            PopUp.TYPE_ALERT,
-                            null, null);
-                    ProjectsHelper.installSamples( MBApp.getApp().getBaseContext());
+            if ( withThanks) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        PopUp.show(getString(R.string.samples_are_about_to_be_copied),
+                                "Thank you",
+                                R.drawable.message_face, R.drawable.blue_btn,
+                                PopUp.GIFF_ANIMATION_NONE,
+                                PopUp.TYPE_ALERT,
+                                null, null);
+                        ProjectsHelper.installSamples(MBApp.getApp().getBaseContext());
 
-                }
-            }).start();
+                    }
+                }).start();
+            } else {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ProjectsHelper.installSamples( MBApp.getApp().getBaseContext());
+                    }
+                }).start();
+            }
         }
     }
 
@@ -505,11 +533,11 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                                            @NonNull int[] grantResults) {
         switch(requestCode) {
             case PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED: {
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                        && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
-                    installSamples();
+                if ( ProjectsHelper.havePermissions(this)) {
+                    installSamples( true);
                 } else {
-                    if(mPrefs != null) mPrefs.edit().putBoolean(FIRST_RUN, false).apply();
+                    setFirstRun(false);
+                    setFirstRun300(false);
                     PopUp.show(getString(R.string.storage_permission_for_samples_error),
                             "",
                             R.drawable.error_face, R.drawable.red_btn,
@@ -523,8 +551,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void requestPermission(String[] permissions, final int requestCode) {
-        ActivityCompat.requestPermissions(this, permissions, requestCode);
+    private void storageRequestPermission() {
+        ProjectsHelper.requestPermissions(this, PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED);
     }
 
     /**
@@ -535,11 +563,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         public void onClick(View v) {
             logi("diskStoragePermissionOKHandler");
             PopUp.hide();
-            String[] permissionsNeeded = {
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-            };
-            requestPermission(permissionsNeeded, PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED);
+            storageRequestPermission();
         }
     };
 
@@ -557,7 +581,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     PopUp.GIFF_ANIMATION_ERROR,
                     PopUp.TYPE_ALERT,
                     null, null);
-            if(mPrefs != null) mPrefs.edit().putBoolean(FIRST_RUN, false).apply();
+            setFirstRun(false);
+            setFirstRun300(false);
         }
     };
 
@@ -567,11 +592,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
      */
     private void checkMinimumPermissionsForThisScreen() {
         //Check reading permissions & writing permission to populate the HEX files & show program list
-        if(mPrefs.getBoolean(FIRST_RUN, true)) {
-            if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PermissionChecker.PERMISSION_GRANTED ||
-                    (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                            != PermissionChecker.PERMISSION_GRANTED)) {
+        if(isFirstRun() || isFirstRun300() && !ProjectsHelper.legacyStorage()) {
+            if( !ProjectsHelper.havePermissions(this)) {
                 PopUp.show(getString(R.string.storage_permission_for_samples),
                         getString(R.string.permissions_needed_title),
                         R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
@@ -579,16 +601,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                         diskStoragePermissionOKHandler,
                         diskStoragePermissionCancelHandler);
             } else {
-                if(mPrefs.getBoolean(FIRST_RUN, true)) {
-                    mPrefs.edit().putBoolean(FIRST_RUN, false).apply();
-                    //First Run. Install the Sample applications
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            ProjectsHelper.installSamples( MBApp.getApp().getBaseContext());
-                        }
-                    }).start();
-                }
+                installSamples( false);
             }
         }
     }
