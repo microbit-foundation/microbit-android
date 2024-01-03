@@ -18,6 +18,7 @@ import android.webkit.WebViewClient;
 
 import com.samsung.microbit.BuildConfig;
 import com.samsung.microbit.R;
+import com.samsung.microbit.utils.ProjectsHelper;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -121,7 +122,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                 }
 
                 try {
-                    hexToWrite = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + hexName);
+                    hexToWrite = getProjectFile( hexName);
 
                     /*
                     // Append n to file until it doesn't exist
@@ -129,7 +130,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
                     while (hexToWrite.exists()) {
                         hexName = hexName.replaceAll("-?\\d*\\.","-" + i + ".");
-                        hexToWrite = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + hexName);
+                        hexToWrite = getProjectFile( hexName);
                         i++;
                     }
                      */
@@ -158,6 +159,11 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         //Check parameters Before load
         Intent intent = getIntent();
         webView.loadUrl(makecodeUrl);
+    }
+
+    public File getProjectFile( String hexName)
+    {
+        return ProjectsHelper.projectFile( this, hexName);
     }
 
     @Override

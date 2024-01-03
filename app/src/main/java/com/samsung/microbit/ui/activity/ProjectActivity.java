@@ -455,8 +455,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         boolean isShareableApp = cursor.getColumnIndex(DocumentsContract.Document
                                 .COLUMN_DOCUMENT_ID) != -1;
 
-                                                fullPathOfFile = new File(Environment.getExternalStoragePublicDirectory(Environment
-                                                        .DIRECTORY_DOWNLOADS), selectedFileName).getAbsolutePath();
+                        fullPathOfFile = ProjectsHelper.projectPath(this, selectedFileName);
+
                         if (isShareableApp) {
                             try {
                                 IOUtils.copy(getContentResolver().openInputStream(uri), new FileOutputStream(fullPathOfFile));
@@ -511,9 +511,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     private Project getLatestProjectFromFolder(long lengthOfSearchingFile) {
-        File downloadDirectory = Environment.getExternalStoragePublicDirectory(Environment
-                        .DIRECTORY_DOWNLOADS);
-
         FilenameFilter hexFilenameFilter = new FilenameFilter() {
             @Override
             public boolean accept(File dir, String filename) {
@@ -523,7 +520,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         File nowDownloadedFile = null;
 
-        File downloadFiles[] = downloadDirectory.listFiles(hexFilenameFilter);
+        // TODO: What folder should we search - downloads or projects?
+        File downloadFiles[] = ProjectsHelper.downloadsFilesListHEX( this);
 
         if(downloadFiles != null) {
             for(File file : downloadFiles) {
@@ -814,7 +812,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             mOldProjectList.clear();
             mOldProjectList.addAll(mProjectList);
             mProjectList.clear();
-            ProjectsHelper.findProjectssAndPopulate(mPrettyFileNameMap, mProjectList);
+            ProjectsHelper.findProjectsAndPopulate( this, mPrettyFileNameMap, mProjectList);
         }
 
         int projectListSortOrder = Utils.getListSortOrder();

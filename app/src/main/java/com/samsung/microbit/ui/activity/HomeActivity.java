@@ -41,6 +41,7 @@ import com.samsung.microbit.data.constants.PermissionCodes;
 import com.samsung.microbit.service.IPCService;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.utils.FileUtils;
+import com.samsung.microbit.utils.ProjectsHelper;
 import com.samsung.microbit.utils.Utils;
 
 import pl.droidsonroids.gif.GifImageView;
@@ -492,7 +493,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                             PopUp.GIFF_ANIMATION_NONE,
                             PopUp.TYPE_ALERT,
                             null, null);
-                    FileUtils.installSamples();
+                    ProjectsHelper.installSamples( MBApp.getApp().getBaseContext());
 
                 }
             }).start();
@@ -584,7 +585,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            FileUtils.installSamples();
+                            ProjectsHelper.installSamples( MBApp.getApp().getBaseContext());
                         }
                     }).start();
                 }

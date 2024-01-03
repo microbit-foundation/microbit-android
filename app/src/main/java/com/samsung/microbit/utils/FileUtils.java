@@ -34,61 +34,6 @@ public class FileUtils {
     }
 
     /**
-     * Allows to install standard project examples by unzipping them
-     * from the raw resources to Downloads directory on a mobile device.
-     *
-     * @return True if installing completed successfully.
-     */
-    public static boolean installSamples() {
-        try {
-            MBApp app = MBApp.getApp();
-
-            Resources resources = app.getResources();
-            final int internalResource = resources.getIdentifier(FileConstants.ZIP_INTERNAL_NAME, "raw", app.getPackageName());
-            final String outputDir = Environment.getExternalStoragePublicDirectory(Environment
-                    .DIRECTORY_DOWNLOADS).getAbsolutePath();
-            Log.d("MicroBit", "Resource id: " + internalResource);
-            //Unzip the file now
-            ZipInputStream zin = new ZipInputStream(resources.openRawResource(internalResource));
-            ZipEntry ze;
-            while((ze = zin.getNextEntry()) != null) {
-                Log.v("MicroBit", "Unzipping " + ze.getName());
-
-                if(ze.isDirectory()) {
-                    dirChecker(ze.getName());
-                } else {
-                    FileOutputStream fout = new FileOutputStream(outputDir + File.separator + ze.getName());
-                    BufferedOutputStream bufout = new BufferedOutputStream(fout);
-                    byte[] buffer = new byte[1024];
-                    int read = 0;
-                    while ((read = zin.read(buffer)) != -1) {
-                        bufout.write(buffer, 0, read);
-                    }
-                    zin.closeEntry();
-                    bufout.close();
-                    fout.close();
-                }
-            }
-            zin.close();
-        } catch(Resources.NotFoundException e) {
-            Log.e("MicroBit", "No internal zipfile present", e);
-            return false;
-        } catch(IOException e) {
-            Log.e("MicroBit", "unzip", e);
-            return false;
-        }
-        return true;
-    }
-
-    private static void dirChecker(String dir) {
-        File f = new File(Environment.DIRECTORY_DOWNLOADS + dir);
-
-        if(!f.isDirectory()) {
-            f.mkdirs();
-        }
-    }
-
-    /**
      * Tries to rename a file with a given parameter and returns a result code
      * as RenameResult.
      *
