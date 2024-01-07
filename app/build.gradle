@@ -5,7 +5,7 @@ android {
     defaultConfig {
         applicationId "com.samsung.microbit"
         minSdkVersion 21
-        targetSdk 31
+        targetSdk 33
         // Once target SDK version is 30, requestLegacyExternalStorage will no longer work
     }
     buildTypes {
