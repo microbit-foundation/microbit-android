@@ -1653,6 +1653,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         private boolean inInit = false;
         private boolean inProgress = false;
 
+        private int progressState = 0;
+
         private View.OnClickListener okFinishFlashingHandler = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1671,6 +1673,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     logi("DFUResultReceiver.onReceive :: state -- " + state);
                     switch(state) {
                         case DfuService.PROGRESS_STARTING:
+                            progressState = 0;
                             setActivityState(FlashActivityState.FLASH_STATE_INIT_DEVICE);
                             PopUp.show(getString(R.string.dfu_status_starting_msg), //message
                                     getString(R.string.send_project), //title
@@ -1885,8 +1888,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         removeReconnectionRunnable();
                     }
 
-                    PopUp.updateProgressBar(state);
-
+                    if ( state != progressState) {
+                        progressState = state;
+                        PopUp.updateProgressBar(state);
+                    }
                 }
             } else if(intent.getAction().equals(DfuService.BROADCAST_ERROR)) {
                 int errorCode = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
