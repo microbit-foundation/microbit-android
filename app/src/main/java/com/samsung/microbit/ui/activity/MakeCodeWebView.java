@@ -12,6 +12,7 @@ import android.view.View;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -32,6 +33,7 @@ import static android.content.ContentValues.TAG;
 /**
  * Displays MakeCode
  */
+
 public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
@@ -39,6 +41,11 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     public static Activity activityHandle = null;
 
     Uri hexToFlash;
+
+    private static final int REQUEST_CODE_SAVEDATA = 1;
+    private static final int REQUEST_CODE_CHOOSE_FILE = 2;
+    private byte[] dataToSave = null;
+    private ValueCallback<Uri[]> onShowFileChooser_filePathCallback;
 
     public static void setMakecodeUrl(String url) {
         makecodeUrl = url;
@@ -88,15 +95,32 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 Log.v(TAG, "url: " + url);
-                if(url.contains("https://microbit.org/")) activityHandle.finish();
+                if (url.contains("https://microbit.org/")) activityHandle.finish();
                 return false;
             }
+
             @Override
-            public void onLoadResource (WebView view, String url) {
+            public void onLoadResource(WebView view, String url) {
                 super.onLoadResource(view, url);
-                Log.v(TAG, "onLoadResource("+url+");");
+                Log.v(TAG, "onLoadResource(" + url + ");");
             }
-        });
+        }); //setWebViewClient
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+                onShowFileChooser_filePathCallback = filePathCallback;
+                try {
+                    Intent intent = fileChooserParams.createIntent();
+                    startActivityForResult(intent, REQUEST_CODE_CHOOSE_FILE);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+                return true;
+
+            }
+        }); //setWebChromeClient
 
         webView.setDownloadListener(new DownloadListener() {
             public void onDownloadStart(String url, String userAgent,
@@ -200,24 +224,18 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                     e.printStackTrace();
                 }
             }
-        });
+        }); // setDownloadListener
 
         //Check parameters Before load
         Intent intent = getIntent();
         webView.loadUrl(makecodeUrl);
-    }
-
-    private static final String EXTRA_BYTEARRAY = "com.samsung.microbit.BYTEARRAY";
-    private static final int REQUEST_CODE_SAVEDATA = 1;
-
-    private byte[] dataToSave = null;
+    } // onCreate
 
     private void saveData( String name, String mimetype, byte[] data) {
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType( mimetype);
         intent.putExtra(Intent.EXTRA_TITLE, name);
-        //intent.putExtra( EXTRA_BYTEARRAY, data);
         dataToSave = data;
         startActivityForResult( intent, REQUEST_CODE_SAVEDATA);
     }
@@ -233,7 +251,6 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             }
             OutputStream os = null;
             try {
-                //byte[] dataToSave = data.getByteArrayExtra(EXTRA_BYTEARRAY);
                 os = getContentResolver().openOutputStream( data.getData());
                 if ( dataToSave != null && dataToSave.length > 0) {
                     os.write(dataToSave, 0, dataToSave.length);
@@ -248,6 +265,13 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                     }
                 } catch (IOException e) { }
             }
+        } else if (requestCode == REQUEST_CODE_CHOOSE_FILE) {
+            if ( resultCode != RESULT_OK) {
+                onShowFileChooser_filePathCallback.onReceiveValue( null);
+                return;
+            }
+            Uri[] uris = WebChromeClient.FileChooserParams.parseResult ( resultCode, data);
+            onShowFileChooser_filePathCallback.onReceiveValue( uris);
         }
     }
 
