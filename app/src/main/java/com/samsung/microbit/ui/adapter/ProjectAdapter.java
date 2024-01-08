@@ -279,6 +279,18 @@ public class ProjectAdapter extends BaseAdapter {
         notifyDataSetChanged();
     }
 
+//    /**
+//     * On long click listener that provides save action.
+//     */
+//    private View.OnLongClickListener sendBtnLongClickListener = new View.OnLongClickListener() {
+//        @Override
+//        public boolean onLongClick(View v) {
+//            logi("OnLongClickListener() :: " + v.getClass().getName());
+//            mProjectActivity.saveProject((Project) ProjectAdapter.this.getItem((Integer) v.getTag()));
+//            return true;
+//        }
+//    };
+
     /**
      * Occurs when a user clicks on the Flash button on some project item.
      * Sends clicked project to flash to a micro:bit board.
@@ -403,6 +415,7 @@ public class ProjectAdapter extends BaseAdapter {
         LinearLayout sendBtnLayout = (LinearLayout) convertView.findViewById(R.id.sendBtn);
         sendBtnLayout.setTag(position);
         sendBtnLayout.setOnClickListener(sendBtnClickListener);
+//        sendBtnLayout.setOnLongClickListener(sendBtnLongClickListener);
 
         ImageButton deleteBtn = (ImageButton) convertView.findViewById(R.id.deleteBtn);
         deleteBtn.setTag(position);

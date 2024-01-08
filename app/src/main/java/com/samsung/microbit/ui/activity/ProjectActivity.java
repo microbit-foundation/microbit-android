@@ -23,6 +23,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.Window;
+import android.webkit.WebChromeClient;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -45,6 +47,7 @@ import com.samsung.microbit.data.constants.RequestCodes;
 import com.samsung.microbit.data.model.ConnectedDevice;
 import com.samsung.microbit.data.model.Project;
 import com.samsung.microbit.data.model.ui.FlashActivityState;
+import com.samsung.microbit.data.model.ui.PairingActivityState;
 import com.samsung.microbit.service.BLEService;
 import com.samsung.microbit.service.DfuService;
 import com.samsung.microbit.service.PartialFlashingService;
@@ -65,6 +68,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -261,7 +266,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     protected void onStart() {
         super.onStart();
-        startBluetooth();
+        //startBluetooth();
     }
 
     @Override
@@ -367,7 +372,19 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         if(getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
             mProjectListViewRight = (ListView) findViewById(R.id.projectListViewRight);
         }
+
+//        View createProjectBtn = (LinearLayout) findViewById(R.id.createProject);
+//        createProjectBtn.setOnLongClickListener(createProjectBtnLongClickListener);
     }
+
+//    private View.OnLongClickListener createProjectBtnLongClickListener = new View.OnLongClickListener() {
+//        @Override
+//        public boolean onLongClick(View v) {
+//            logi("OnLongClickListener() :: " + v.getClass().getName());
+//            importProject();
+//            return true;
+//        }
+//    };
 
     private void releaseViews() {
         mProjectListView = null;
@@ -425,6 +442,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         String fullPathOfFile;
         String fileName;
 
+        Project externalProject = null;
+
         if(intent.getData() != null && intent.getData().getEncodedPath() != null) {
             isOpenByOtherApp = true;
 
@@ -435,7 +454,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             if (scheme.equals("file")) {
                 fullPathOfFile = URLDecoder.decode(encodedPath);
                 fileName = fileNameForFlashing(fullPathOfFile);
-                mProgramToSend = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
+                externalProject = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
             } else if(scheme.equals("content")) {
 
                 Cursor cursor = null;
@@ -464,8 +483,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         }
 
                         fileName = fileNameForFlashing(fullPathOfFile);
-
-                        mProgramToSend = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
+                        externalProject = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
                     } else {
                         try {
                             AssetFileDescriptor fileDescriptor = getContentResolver().openAssetFileDescriptor(uri, "r");
@@ -474,8 +492,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                 long length = fileDescriptor.getLength();
 
                                 fileDescriptor.close();
-
-                                mProgramToSend = getLatestProjectFromFolder(length);
+                                externalProject = getLatestProjectFromFolder(length);
                             }
                         } catch(IOException e) {
                             Log.e(TAG, e.toString());
@@ -493,13 +510,21 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
         }
 
-        if (mProgramToSend != null) {
-            if(!BluetoothChecker.getInstance().isBluetoothON()) {
-                startBluetooth();
-            } else {
-                adviceOnMicrobitState();
+        if ( externalProject != null) {
+            mProgramToSend = externalProject;
+            setActivityState(FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST);
+        }
+
+        if ( mProgramToSend != null) {
+            if ( startBluetoothForFlashing())
                 finish();
-            }
+            //TODO call finish()?
+//            if(!BluetoothChecker.getInstance().isBluetoothON()) {
+//                startBluetooth();
+//            } else {
+//                flashingChecks();
+//                finish();
+//            }
         } else {
             if (isOpenByOtherApp) {
                 Toast.makeText(this, "Not a micro:bit HEX file", Toast.LENGTH_LONG).show();
@@ -540,7 +565,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             return null;
         } else {
             fullPathOfFile = nowDownloadedFile.getAbsolutePath();
-            return new Project(fileNameForFlashing(fullPathOfFile), fullPathOfFile, 0, null, false);
+            String fileName = fileNameForFlashing(fullPathOfFile);
+            return fileName == null ? null : new Project(fileNameForFlashing(fullPathOfFile), fullPathOfFile, 0, null, false);
         }
     }
 
@@ -552,7 +578,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      */
     private String fileNameForFlashing(String fullPathOfFile) {
         String path[] = fullPathOfFile.split("/");
-        setActivityState(FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST);
         if(path[path.length - 1].endsWith(".hex")) {
             return path[path.length - 1];
         } else {
@@ -640,6 +665,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],
                                            @NonNull int[] grantResults) {
         switch(requestCode) {
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_FLASHING_API31: {
+                requestPermissionsFlashingResult(requestCode, permissions, grantResults);
+            }
+            break;
             case PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED: {
                 if( ProjectsHelper.havePermissions(this)) {
                     minimumPermissionsGranted = true;
@@ -872,7 +901,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             if(resultCode == Activity.RESULT_OK) {
                 if(mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
                         mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST) {
-                    adviceOnMicrobitState();
+                    flashingChecks();
                 } else if(mActivityState == FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
                     setActivityState(FlashActivityState.STATE_IDLE);
                     toggleConnection();
@@ -887,16 +916,204 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         TYPE_ALERT,
                         null, null);
             }
+        } else if ( requestCode == REQUEST_CODE_SAVE_PROJECT) {
+            if ( resultCode != RESULT_OK) {
+                mProjectToSave = null;
+                return;
+            }
+            FileInputStream is = null;
+            OutputStream os = null;
+            try {
+                is = new FileInputStream( mProjectToSave.filePath);
+                os = getContentResolver().openOutputStream( data.getData());
+                if ( os != null) {
+                    try {
+                        IOUtils.copy(is, os);
+                    } catch (Exception e) {
+                        Log.e(TAG, e.toString());
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    mProjectToSave = null;
+                    if ( os != null) {
+                        os.close();
+                    }
+                } catch (IOException e) { }
+            }
+        } else if (requestCode == REQUEST_CODE_IMPORT_PROJECT) {
+            if ( resultCode != RESULT_OK) {
+                return;
+            }
+            Uri uri = null;
+            if ( data != null) {
+                uri = data.getData();
+                String encodedPath = uri.getEncodedPath();
+
+                String scheme = uri.getScheme();
+
+                String fileName = null;
+                if ( uri.getScheme().equals("content")) {
+                    Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+                    try {
+                        if (cursor != null && cursor.moveToFirst()) {
+                            fileName = cursor.getString( cursor.getColumnIndexOrThrow(
+                                    DocumentsContract.Document.COLUMN_DISPLAY_NAME));
+                        }
+                    } finally {
+                        cursor.close();
+                    }
+                }
+                if (fileName == null) {
+                    fileName = uri.getPath();
+                    int cut = fileName.lastIndexOf('/');
+                    if (cut != -1) {
+                        fileName = fileName.substring(cut + 1);
+                    }
+                }
+                String fullPathOfFile = ProjectsHelper.projectPath(this, fileName);
+                InputStream is = null;
+                OutputStream os = null;
+                try {
+                    is = getContentResolver().openInputStream(uri);
+                    os = new FileOutputStream( fullPathOfFile);
+                    if ( is != null) {
+                        try {
+                            IOUtils.copy(is, os);
+                        } catch (Exception e) {
+                            Log.e(TAG, e.toString());
+                        }
+                    }
+                    updateProjectsListSortOrder(true);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    try {
+                        if ( os != null) {
+                            os.close();
+                        }
+                    } catch (IOException e) { }
+                }
+            }
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
 
     /**
-     * Starts activity to enable Bluetooth.
+     * Starts Bluetooth for flashing.
+     * Checks if bluetooth permission is granted. If it's not then ask to grant,
+     * proceed with using bluetooth otherwise.
+     * @return true if flashing checks has started
      */
-    private void startBluetooth() {
+    private boolean startBluetoothForFlashing() {
+        Log.v(TAG, "startBluetoothForFlashing");
+
+        if ( launchPairingIfNoCurrentMicrobit())
+            return false;
+
+        if ( havePermissionsFlashing()) {
+            if( BluetoothChecker.getInstance().isBluetoothON()) {
+                flashingChecks();
+                return true;
+            }
+            enableBluetooth();
+        } else {
+            popupPermissionFlashing();
+        }
+        return false;
+    }
+
+    /**
+     * Provides actions after BLE permission has been granted:
+     * check if bluetooth is disabled then enable it and
+     * start the flashing steps.
+     */
+    private void proceedAfterBlePermissionGranted() {
+        if(!BluetoothChecker.getInstance().isBluetoothON()) {
+            enableBluetooth();
+            return;
+        }
+        flashingChecks();
+    }
+
+    /**
+     * Starts activity to enable bluetooth.
+     */
+    private void enableBluetooth() {
         Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
         startActivityForResult(enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
+    }
+
+    private boolean havePermission(String permission) {
+        return ContextCompat.checkSelfPermission( this, permission) == PermissionChecker.PERMISSION_GRANTED;
+    }
+
+   private boolean havePermissionsFlashing() {
+        boolean yes = true;
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if ( !havePermission( Manifest.permission.BLUETOOTH_CONNECT))
+                yes = false;
+        }
+        return yes;
+    }
+
+    private void requestPermissionsFlashing() {
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            String[] permissionsNeeded = {
+                    Manifest.permission.BLUETOOTH_CONNECT};
+            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_FLASHING_API31);
+        }
+    }
+
+    public void requestPermissionsFlashingResult(int requestCode,
+                                                @NonNull String permissions[],
+                                                @NonNull int[] grantResults) {
+        if ( havePermissionsFlashing())
+        {
+            proceedAfterBlePermissionGranted();
+            return;
+        }
+
+        switch(requestCode) {
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_FLASHING_API31: {
+                popupPermissionFlashingError();
+                break;
+            }
+        }
+    }
+
+    private void popupPermissionFlashingError() {
+        PopUp.show(getString(R.string.ble_permission_error),
+                getString(R.string.permissions_needed_title),
+                R.drawable.error_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_ALERT,
+                null, null);
+    }
+
+    private void popupPermissionFlashing() {
+        PopUp.show(getString(R.string.ble_permission),
+                    getString(R.string.permissions_needed_title),
+                    R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
+                    PopUp.TYPE_CHOICE,
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            logi("bluetoothPermissionOKHandler");
+                            PopUp.hide();
+                            requestPermissionsFlashing();
+                        }
+                    },
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            logi("bluetoothPermissionCancelHandler");
+                            PopUp.hide();
+                            popupPermissionFlashingError();
+                        }
+                    });
     }
 
     /**
@@ -937,11 +1154,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     public void sendProject(final Project project) {
         mProgramToSend = project;
         setActivityState(FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST);
-        if(!BluetoothChecker.getInstance().isBluetoothON()) {
-            startBluetooth();
-        } else {
-            adviceOnMicrobitState();
-        }
+        startBluetoothForFlashing();
     }
 
     @Override
@@ -986,21 +1199,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * Checks for requisite state of a micro:bit board. If all is good then
      * initiates flashing.
      */
-    private void adviceOnMicrobitState() {
+    private boolean launchPairingIfNoCurrentMicrobit() {
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
-        if(currentMicrobit.mPattern == null) {
-            Intent intent = new Intent(this, PairingActivity.class);
-            startActivity(intent);
-            /*
-            while(pairingFailed = PENDING)
-            if PASS
-            if FAIL cancel
-            */
-        } else {
-            Log.v(TAG, "Start flash!");
-            flashingChecks();
-        }
+        if(currentMicrobit.mPattern != null)
+            return false;
+
+        Intent intent = new Intent(this, PairingActivity.class);
+        startActivity(intent);
+        return true;
     }
 
     private void flashingChecks() {
@@ -1980,5 +2187,42 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
+    }
+
+    private static final int REQUEST_CODE_SAVE_PROJECT = 1;
+    private static final int REQUEST_CODE_IMPORT_PROJECT = 2;
+    private Project mProjectToSave = null;
+
+    public void saveProject(final Project project) {
+        mProjectToSave = project;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType( "text/hex");
+        String path = project.filePath;
+        File file = new File( path);
+        String name = file.getName();
+        if (!name.endsWith(".hex"))
+            name = name + ".hex";
+        intent.putExtra(Intent.EXTRA_TITLE, project.name);
+        try {
+            startActivityForResult( intent, REQUEST_CODE_SAVE_PROJECT);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void importProject() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.setType( "*/*");
+        String[] mimeTypes = new String[]{"application/x-microbit-hex,text/hex,text/plain,application/x-binary,application/octet-stream"};
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+        try {
+            startActivityForResult( intent, REQUEST_CODE_IMPORT_PROJECT);
+        } catch (Exception e) {
+            e.printStackTrace();
+       }
+
     }
 }

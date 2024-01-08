@@ -19,4 +19,7 @@ public class PermissionCodes {
     public static final int BLUETOOTH_PERMISSIONS_REQUESTED_API30_FOREGROUND = 0x12;
     public static final int BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND = 0x13;
     public static final int BLUETOOTH_PERMISSIONS_REQUESTED_API31 = 0x14;
+    public static final int BLUETOOTH_PERMISSIONS_REQUESTED_FLASHING_API31 = 0x15;
+
+
 }

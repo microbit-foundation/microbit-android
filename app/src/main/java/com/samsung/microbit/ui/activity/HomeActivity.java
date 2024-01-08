@@ -37,7 +37,9 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
+import com.samsung.microbit.core.bluetooth.BluetoothUtils;
 import com.samsung.microbit.data.constants.PermissionCodes;
+import com.samsung.microbit.data.model.ConnectedDevice;
 import com.samsung.microbit.service.IPCService;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.utils.FileUtils;
