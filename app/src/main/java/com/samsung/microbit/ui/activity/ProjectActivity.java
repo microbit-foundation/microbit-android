@@ -120,8 +120,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private String m_BinSizeStats = "0";
     private String m_MicroBitFirmware = "0.0";
 
-    private DFUResultReceiver dfuResultReceiver;
-    private pfResultReceiver pfResultReceiver;
+    private DFUResultReceiver dfuResultReceiver = null;
+    private PFResultReceiver pfResultReceiver = null;
+
+    private boolean dfuRegistered = false;
+    private boolean pfRegistered = false;
 
     private List<Integer> mRequestPermissions = new ArrayList<>();
 
@@ -1629,6 +1632,59 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         return new String[]{"-1", "-1"};
     }
 
+    private void pfRegister() {
+        if (pfRegistered) {
+            return;
+        }
+
+        if (pfResultReceiver == null)
+            pfResultReceiver = new PFResultReceiver();
+
+        IntentFilter pfFilter = new IntentFilter();
+        pfFilter.addAction(PartialFlashingService.BROADCAST_START);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PROGRESS);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU);
+        pfFilter.addAction(PartialFlashingService.BROADCAST_COMPLETE);
+
+        LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(pfResultReceiver, pfFilter);
+        pfRegistered = true;
+    }
+
+    private void pfUnregister() {
+        if (!pfRegistered) {
+            return;
+        }
+        LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(pfResultReceiver);
+        pfRegistered = false;
+    }
+
+    private void dfuRegister() {
+        if (dfuRegistered) {
+            return;
+        }
+
+        if (dfuResultReceiver == null)
+            dfuResultReceiver = new DFUResultReceiver();
+
+        dfuResultReceiver.reset();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(DfuService.BROADCAST_PROGRESS);
+        filter.addAction(DfuService.BROADCAST_ERROR);
+        filter.addAction(DfuService.BROADCAST_LOG);
+        LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(dfuResultReceiver, filter);
+        dfuRegistered = true;
+    }
+
+    private void dfuUnregister() {
+        if (!dfuRegistered) {
+            return;
+        }
+        LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
+        dfuRegistered = false;
+    }
+
     /**
      * Registers callbacks that allows to handle flashing process
      * and react to flashing progress, errors and log some messages.
@@ -1638,36 +1694,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         Log.v(TAG, "registerCallbacksForFlashing");
 
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(DfuService.BROADCAST_PROGRESS);
-        filter.addAction(DfuService.BROADCAST_ERROR);
-        filter.addAction(DfuService.BROADCAST_LOG);
-        dfuResultReceiver = new DFUResultReceiver();
-
-        IntentFilter pfFilter = new IntentFilter();
-        pfFilter.addAction(PartialFlashingService.BROADCAST_START);
-        pfFilter.addAction(PartialFlashingService.BROADCAST_PROGRESS);
-        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
-        pfFilter.addAction(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU);
-        pfFilter.addAction(PartialFlashingService.BROADCAST_COMPLETE);
-        pfResultReceiver = new pfResultReceiver();
-
-        LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(pfResultReceiver, pfFilter);
-        LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(dfuResultReceiver, filter);
+        pfRegister();
+        dfuRegister();
     }
 
     private void unregisterCallbacksForFlashing() {
         Log.v(TAG, "unregisterCallbacksForFlashing");
-
-        if(dfuResultReceiver != null) {
-            LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
-            dfuResultReceiver = null;
-        }
-
-        if(pfResultReceiver != null) {
-            LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(pfResultReceiver);
-            pfResultReceiver = null;
-        }
+        dfuUnregister();
+        pfUnregister();
     }
 
     /**
@@ -1695,7 +1729,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * Represents a broadcast receiver that allows to handle states of
      * partial flashing process.
      */
-    class pfResultReceiver extends BroadcastReceiver {
+    class PFResultReceiver extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1768,7 +1802,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         private boolean inInit = false;
         private boolean inProgress = false;
 
-        private int progressState = 0;
+        private int progressState = -1;
+
+        public void reset() {
+            isCompleted = false;
+            inInit = false;
+            inProgress = false;
+            progressState = -1;
+        }
 
         private View.OnClickListener okFinishFlashingHandler = new View.OnClickListener() {
             @Override
@@ -1810,8 +1851,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                                 MBApp application = MBApp.getApp();
 
-                                LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                                dfuResultReceiver = null;
+                                dfuUnregister();
                                 /* Update Stats
                                 GoogleAnalyticsManager.getInstance().sendFlashStats(
                                         ProjectActivity.class.getSimpleName(),
@@ -1926,8 +1966,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
 
-                            LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                            dfuResultReceiver = null;
+                            dfuUnregister();
                             break;
                         */
                         case DfuService.PROGRESS_ABORTED:
@@ -1951,8 +1990,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
 
-                            LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                            dfuResultReceiver = null;
+                            dfuUnregister();
                             removeReconnectionRunnable();
                             break;
                         /*
@@ -1976,8 +2014,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
 
-                            LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                            dfuResultReceiver = null;
+                            dfuUnregister();
                             removeReconnectionRunnable();
                             break;
                             */
@@ -2028,8 +2065,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                 MBApp application = MBApp.getApp();
 
-                LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                dfuResultReceiver = null;
+                dfuUnregister();
                 //Update Stats
                 /*
                 GoogleAnalyticsManager.getInstance().sendFlashStats(
