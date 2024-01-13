@@ -893,7 +893,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             if(resultCode == Activity.RESULT_OK) {
                 if(mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
                         mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST) {
-                    flashingChecks();
+                    proceedAfterBlePermissionGrantedAndBleEnabled();
                 } else if(mActivityState == FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
                     setActivityState(FlashActivityState.STATE_IDLE);
                     toggleConnection();
@@ -921,12 +921,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private boolean startBluetoothForFlashing() {
         Log.v(TAG, "startBluetoothForFlashing");
 
-        if ( launchPairingIfNoCurrentMicrobit())
-            return false;
-
         if ( havePermissionsFlashing()) {
             if( BluetoothChecker.getInstance().isBluetoothON()) {
-                flashingChecks();
+                proceedAfterBlePermissionGrantedAndBleEnabled();
                 return true;
             }
             enableBluetooth();
@@ -946,6 +943,18 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             enableBluetooth();
             return;
         }
+        proceedAfterBlePermissionGrantedAndBleEnabled();
+    }
+
+    /**
+     * Provides actions after BLE permission has been granted:
+     * check if bluetooth is disabled then enable it and
+     * start the flashing steps.
+     */
+    private void proceedAfterBlePermissionGrantedAndBleEnabled() {
+        if (launchPairingIfNoCurrentMicrobit())
+            return;
+
         flashingChecks();
     }
 
