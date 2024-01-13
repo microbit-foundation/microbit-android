@@ -372,19 +372,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         if(getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
             mProjectListViewRight = (ListView) findViewById(R.id.projectListViewRight);
         }
-
-//        View createProjectBtn = (LinearLayout) findViewById(R.id.createProject);
-//        createProjectBtn.setOnLongClickListener(createProjectBtnLongClickListener);
     }
 
-//    private View.OnLongClickListener createProjectBtnLongClickListener = new View.OnLongClickListener() {
-//        @Override
-//        public boolean onLongClick(View v) {
-//            logi("OnLongClickListener() :: " + v.getClass().getName());
-//            importProject();
-//            return true;
-//        }
-//    };
 
     private void releaseViews() {
         mProjectListView = null;
@@ -915,87 +904,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         PopUp.GIFF_ANIMATION_ERROR,
                         TYPE_ALERT,
                         null, null);
-            }
-        } else if ( requestCode == REQUEST_CODE_SAVE_PROJECT) {
-            if ( resultCode != RESULT_OK) {
-                mProjectToSave = null;
-                return;
-            }
-            FileInputStream is = null;
-            OutputStream os = null;
-            try {
-                is = new FileInputStream( mProjectToSave.filePath);
-                os = getContentResolver().openOutputStream( data.getData());
-                if ( os != null) {
-                    try {
-                        IOUtils.copy(is, os);
-                    } catch (Exception e) {
-                        Log.e(TAG, e.toString());
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    mProjectToSave = null;
-                    if ( os != null) {
-                        os.close();
-                    }
-                } catch (IOException e) { }
-            }
-        } else if (requestCode == REQUEST_CODE_IMPORT_PROJECT) {
-            if ( resultCode != RESULT_OK) {
-                return;
-            }
-            Uri uri = null;
-            if ( data != null) {
-                uri = data.getData();
-                String encodedPath = uri.getEncodedPath();
-
-                String scheme = uri.getScheme();
-
-                String fileName = null;
-                if ( uri.getScheme().equals("content")) {
-                    Cursor cursor = getContentResolver().query(uri, null, null, null, null);
-                    try {
-                        if (cursor != null && cursor.moveToFirst()) {
-                            fileName = cursor.getString( cursor.getColumnIndexOrThrow(
-                                    DocumentsContract.Document.COLUMN_DISPLAY_NAME));
-                        }
-                    } finally {
-                        cursor.close();
-                    }
-                }
-                if (fileName == null) {
-                    fileName = uri.getPath();
-                    int cut = fileName.lastIndexOf('/');
-                    if (cut != -1) {
-                        fileName = fileName.substring(cut + 1);
-                    }
-                }
-                String fullPathOfFile = ProjectsHelper.projectPath(this, fileName);
-                InputStream is = null;
-                OutputStream os = null;
-                try {
-                    is = getContentResolver().openInputStream(uri);
-                    os = new FileOutputStream( fullPathOfFile);
-                    if ( is != null) {
-                        try {
-                            IOUtils.copy(is, os);
-                        } catch (Exception e) {
-                            Log.e(TAG, e.toString());
-                        }
-                    }
-                    updateProjectsListSortOrder(true);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    try {
-                        if ( os != null) {
-                            os.close();
-                        }
-                    } catch (IOException e) { }
-                }
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
@@ -2189,40 +2097,4 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         return true;
     }
 
-    private static final int REQUEST_CODE_SAVE_PROJECT = 1;
-    private static final int REQUEST_CODE_IMPORT_PROJECT = 2;
-    private Project mProjectToSave = null;
-
-    public void saveProject(final Project project) {
-        mProjectToSave = project;
-        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType( "text/hex");
-        String path = project.filePath;
-        File file = new File( path);
-        String name = file.getName();
-        if (!name.endsWith(".hex"))
-            name = name + ".hex";
-        intent.putExtra(Intent.EXTRA_TITLE, project.name);
-        try {
-            startActivityForResult( intent, REQUEST_CODE_SAVE_PROJECT);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void importProject() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        intent.setType( "*/*");
-        String[] mimeTypes = new String[]{"application/x-microbit-hex,text/hex,text/plain,application/x-binary,application/octet-stream"};
-        intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-        try {
-            startActivityForResult( intent, REQUEST_CODE_IMPORT_PROJECT);
-        } catch (Exception e) {
-            e.printStackTrace();
-       }
-
-    }
 }
