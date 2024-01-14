@@ -501,9 +501,12 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
      * flash on a micro:bit board.
      */
     private void installSamples( boolean withThanks) {
-        if(isFirstRun() || isFirstRun300() && !ProjectsHelper.legacyStorage()) {
-            setFirstRun(false);
-            setFirstRun300(false);
+        boolean firstRun    = isFirstRun();
+        boolean firstRun300 = isFirstRun300();
+        if ( firstRun) setFirstRun(false);
+        if ( firstRun300) setFirstRun300(false);
+
+        if( firstRun || firstRun300 && !ProjectsHelper.legacyStorage()) {
             //First Run. Install the Sample applications
             if ( withThanks) {
                 new Thread(new Runnable() {
@@ -516,7 +519,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                                 PopUp.TYPE_ALERT,
                                 null, null);
                         ProjectsHelper.installSamples(MBApp.getApp().getBaseContext());
-
                     }
                 }).start();
             } else {

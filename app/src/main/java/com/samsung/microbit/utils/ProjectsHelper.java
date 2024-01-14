@@ -58,7 +58,7 @@ public class ProjectsHelper {
     }
 
     public static boolean legacyStorage() {
-        return Build.VERSION.SDK_INT <= Build.VERSION_CODES.P;
+        return Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q;
     }
 
     public static File getDownloadsDirectory() {
