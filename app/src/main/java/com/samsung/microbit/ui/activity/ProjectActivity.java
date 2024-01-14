@@ -146,6 +146,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     private boolean previousPartialFlashFailed = false;
 
+    private boolean finishWhenFlashComplete = true;
+
     private int FLASH_TYPE_DFU = 0;
     private int FLASH_TYPE_PF  = 1;
 
@@ -153,6 +155,25 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private int MICROBIT_V2 = 2;
 
     BLEService bleService;
+
+    private void onFlashComplete() {
+        if ( finishWhenFlashComplete) {
+            finish();
+        }
+    }
+
+    /**
+     * Handler for popup button that hides a popup window
+     * and calls onFlashComplete()
+     */
+    View.OnClickListener popupClickFlashComplete = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            logi("popupClickFlashComplete");
+            PopUp.hide();
+            onFlashComplete();
+        }
+    };
 
     private final Runnable tryToConnectAgain = new Runnable() {
 
@@ -417,6 +438,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         setConnectedDeviceText();
 
         if(savedInstanceState == null && getIntent() != null) {
+            finishWhenFlashComplete = getIntent().getData() != null;
             handleIncomingIntent(getIntent());
         }
     }
@@ -508,19 +530,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
 
         if ( mProgramToSend != null) {
-            if ( startBluetoothForFlashing())
-                finish();
-            //TODO call finish()?
-//            if(!BluetoothChecker.getInstance().isBluetoothON()) {
-//                startBluetooth();
-//            } else {
-//                flashingChecks();
-//                finish();
-//            }
+            startBluetoothForFlashing();
         } else {
             if (isOpenByOtherApp) {
                 Toast.makeText(this, "Not a micro:bit HEX file", Toast.LENGTH_LONG).show();
-                finish();
+                onFlashComplete();
             }
         }
     }
@@ -888,18 +902,20 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        boolean flash   = mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
+                          mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST;
+        boolean connect = mActivityState == FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT;
 
-        if(requestCode == RequestCodes.REQUEST_ENABLE_BT) {
-            if(resultCode == Activity.RESULT_OK) {
-                if(mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
-                        mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST) {
+        if (requestCode == RequestCodes.REQUEST_ENABLE_BT) {
+            if (resultCode == Activity.RESULT_OK) {
+                if (flash) {
                     proceedAfterBlePermissionGrantedAndBleEnabled();
-                } else if(mActivityState == FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
+                } else if (connect) {
                     setActivityState(FlashActivityState.STATE_IDLE);
                     toggleConnection();
                 }
             }
-            if(resultCode == Activity.RESULT_CANCELED) {
+            else if (resultCode == Activity.RESULT_CANCELED) {
                 setActivityState(FlashActivityState.STATE_IDLE);
                 PopUp.show(getString(R.string.bluetooth_off_cannot_continue), //message
                         "",
@@ -907,6 +923,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         PopUp.GIFF_ANIMATION_ERROR,
                         TYPE_ALERT,
                         null, null);
+                if (flash) {
+                    onFlashComplete();
+                }
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
@@ -999,6 +1018,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         switch(requestCode) {
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_FLASHING_API31: {
                 popupPermissionFlashingError();
+                onFlashComplete();
                 break;
             }
         }
@@ -1032,6 +1052,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             logi("bluetoothPermissionCancelHandler");
                             PopUp.hide();
                             popupPermissionFlashingError();
+                            onFlashComplete();
                         }
                     });
     }
@@ -1157,7 +1178,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                           }
                       }
               );
-            return;
+              onFlashComplete();
+              return;
           }
 //
 //        if(mProgramToSend == null || mProgramToSend.filePath == null) {
@@ -1184,6 +1206,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     PopUp.GIFF_ANIMATION_FLASH,
                     TYPE_ALERT,
                     null, null);
+            onFlashComplete();
             return;
         }
 
@@ -1203,13 +1226,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             initiateFlashing();
                         }
                     },//override click listener for ok button
-                    new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            PopUp.hide();
-                            finish();
-                        }
-                    });//pass null to use default listeneronClick
+                    popupClickFlashComplete);
         } else {
             initiateFlashing();
         }
@@ -1246,7 +1263,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * Creates and starts service to flash a program to a micro:bit board.
      * int FLASH_TYPE_DFU
      */
-    @RequiresApi(api = Build.VERSION_CODES.O)
+    //@RequiresApi(api = Build.VERSION_CODES.O)
     protected void startFlashing(int flashingType) {
 
         logi(">>>>>>>>>>>>>>>>>>> startFlashing called >>>>>>>>>>>>>>>>>>>  ");
@@ -1282,6 +1299,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     PopUp.GIFF_ANIMATION_ERROR,
                     TYPE_ALERT,
                     null, null);
+            onFlashComplete();
             return;
         }
 
@@ -1763,6 +1781,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 flashSuccess.putExtra(INTENT_GIFF_ANIMATION_CODE, 1);
                 flashSuccess.putExtra(INTENT_EXTRA_TYPE, TYPE_ALERT);
                 localBroadcastManager.sendBroadcast( flashSuccess );
+                onFlashComplete();
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_START)) {
                 // Display progress
                 PopUp.show("",
@@ -1796,6 +1815,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         TYPE_ALERT, //type of popup.
                         popupOkHandler,//override click listener for ok button
                         popupOkHandler);//pass null to use default listener
+                onFlashComplete();
             }
 
         }
@@ -1823,7 +1843,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         private View.OnClickListener okFinishFlashingHandler = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                logi("popupOkHandler");
+                logi("okFinishFlashingHandler");
                 PopUp.hide();
             }
         };
@@ -1879,6 +1899,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         TYPE_ALERT, //type of popup.
                                         okFinishFlashingHandler,//override click listener for ok button
                                         okFinishFlashingHandler);//pass null to use default listener
+                                onFlashComplete();
                             }
 
                             isCompleted = true;
@@ -2001,6 +2022,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                             dfuUnregister();
                             removeReconnectionRunnable();
+                            onFlashComplete();
                             break;
                         /*
                         case DfuService.PROGRESS_SERVICE_NOT_FOUND:
@@ -2075,6 +2097,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 MBApp application = MBApp.getApp();
 
                 dfuUnregister();
+                removeReconnectionRunnable();
                 //Update Stats
                 /*
                 GoogleAnalyticsManager.getInstance().sendFlashStats(
@@ -2097,7 +2120,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     flashingChecks();
                                 }
                             },
-                            popupOkHandler);
+                            new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    PopUp.hide();
+                                    onFlashComplete();
+                                }
+                            });
                 } else {
                     PopUp.show(error_message + "\n\n" + getString(R.string.connect_tip_text), //message
                             getString(R.string.flashing_failed_title), //title
@@ -2106,8 +2135,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             TYPE_ALERT, //type of popup.
                             popupOkHandler,//override click listener for ok button
                             popupOkHandler);//pass null to use default listener
+                    onFlashComplete();
                 }
-                removeReconnectionRunnable();
             } else if(intent.getAction().equals(DfuService.BROADCAST_LOG)) {
                 //Only used for Stats at the moment
                 String data;
