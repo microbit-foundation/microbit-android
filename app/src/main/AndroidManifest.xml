@@ -14,17 +14,16 @@
   limitations under the License.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.samsung.microbit"
-          android:versionCode="38"
-          android:versionName="2.8.8">
+    android:versionCode="50"
+    android:versionName="3.0.0">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.BLUETOOTH"/>
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS"  android:protectionLevel="signature"/>
@@ -34,17 +33,22 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" android:maxSdkVersion="30"/>
+
+    <!-- API 31 Needed only if your app looks for Bluetooth devices. -->
+    <!-- Include "neverForLocation" only if you can strongly assert that
+        your app never derives physical location from Bluetooth scan results. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <!-- API 31 Needed only if your app communicates with already-paired Bluetooth devices. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.flash" android:required="false"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     <uses-feature android:name="android.hardware.telephony" android:required="false"/>
-
-
 
     <supports-screens android:normalScreens="true" />
     <supports-screens android:largeScreens="true" />
@@ -70,9 +74,10 @@
             android:label="@string/app_name_without_colon"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize"
-            android:launchMode="singleTask">
-            <!-- Intent filters for open micro:bit app, accord to user request -->
+            android:launchMode="singleTask"
+            android:exported="true">
 
+            <!-- Intent filters for open micro:bit app, accord to user request -->
 
             <!-- This filter works, when request - open file from File Manager -->
             <intent-filter>
@@ -149,8 +154,7 @@
             android:configChanges="orientation|screenSize"
             android:label="MakeCode Webview"
             android:launchMode="singleTask"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-            android:screenOrientation="portrait"/>
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"/>
 
         <activity
             android:name=".ui.activity.CameraActivityPermissionChecker"
@@ -187,7 +191,8 @@
         <activity
             android:name=".ui.activity.SplashScreenActivity"
             android:screenOrientation="locked"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 

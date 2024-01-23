@@ -1,11 +1,14 @@
 package com.samsung.microbit.core.bluetooth;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -17,12 +20,16 @@ import java.util.Set;
 
 import static com.samsung.microbit.BuildConfig.DEBUG;
 
+import androidx.core.content.ContextCompat;
+import androidx.core.content.PermissionChecker;
+
 public class BluetoothUtils {
     private static final String TAG = BluetoothUtils.class.getSimpleName();
 
     public static final String PREFERENCES_KEY = "Microbit_PairedDevices";
     public static final String PREFERENCES_PAIREDDEV_KEY = "PairedDeviceDevice";
 
+    // sConnectedDevice used only as a buffer - actual value stored in prefs
     private static ConnectedDevice sConnectedDevice = new ConnectedDevice();
 
     private static void logi(String message) {
@@ -37,19 +44,44 @@ public class BluetoothUtils {
         return ctx.getApplicationContext().getSharedPreferences(PREFERENCES_KEY, Context.MODE_MULTI_PROCESS);
     }
 
-    public static int getTotalPairedMicroBitsFromSystem() {
-        int totalPairedMicroBits = 0;
-        BluetoothAdapter mBluetoothAdapter = ((BluetoothManager) MBApp.getApp().getSystemService(Context
-                .BLUETOOTH_SERVICE)).getAdapter();
-        if(mBluetoothAdapter != null && !mBluetoothAdapter.isEnabled()) {
-            Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-            for(BluetoothDevice bt : pairedDevices) {
-                if(bt.getName().contains("micro:bit")) {
-                    ++totalPairedMicroBits;
-                }
-            }
+    public static ConnectedDevice deviceFromPrefs(Context ctx) {
+        SharedPreferences prefs = getPreferences( ctx);
+
+        ConnectedDevice fromPrefs = null;
+
+        if( prefs.contains(PREFERENCES_PAIREDDEV_KEY)) {
+            String pairedDeviceString = prefs.getString(PREFERENCES_PAIREDDEV_KEY, null);
+            Gson gson = new Gson();
+            fromPrefs = gson.fromJson(pairedDeviceString, ConnectedDevice.class);
         }
-        return totalPairedMicroBits;
+        return fromPrefs;
+    }
+
+    public static void deviceToPrefs(Context ctx, ConnectedDevice toPrefs) {
+        SharedPreferences prefs = ctx.getApplicationContext().getSharedPreferences(PREFERENCES_KEY,
+                Context.MODE_MULTI_PROCESS);
+        SharedPreferences.Editor editor = prefs.edit();
+        if( toPrefs == null) {
+            editor.clear();
+        } else {
+            Gson gson = new Gson();
+            String jsonActiveDevice = gson.toJson( toPrefs);
+            editor.putString(PREFERENCES_PAIREDDEV_KEY, jsonActiveDevice);
+        }
+        editor.apply();
+    }
+
+    private static boolean havePermission( Context ctx, String permission) {
+        return ContextCompat.checkSelfPermission( ctx, permission) == PermissionChecker.PERMISSION_GRANTED;
+    }
+
+    private static boolean havePermissionsFlashing( Context ctx) {
+        boolean yes = true;
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if ( !havePermission( ctx, Manifest.permission.BLUETOOTH_CONNECT))
+                yes = false;
+        }
+        return yes;
     }
 
     public static String parse(final BluetoothGattCharacteristic characteristic) {
@@ -89,49 +121,21 @@ public class BluetoothUtils {
     }
 
     public static void updateFirmwareMicrobit(Context ctx, String firmware) {
-        SharedPreferences pairedDevicePref = ctx.getApplicationContext().getSharedPreferences(PREFERENCES_KEY,
-                Context.MODE_MULTI_PROCESS);
-        if(pairedDevicePref.contains(PREFERENCES_PAIREDDEV_KEY)) {
-            String pairedDeviceString = pairedDevicePref.getString(PREFERENCES_PAIREDDEV_KEY, null);
-            Log.v("BluetoothUtils", "Updating the microbit firmware");
-            ConnectedDevice deviceInSharedPref = new Gson().fromJson(pairedDeviceString, ConnectedDevice.class);
-            deviceInSharedPref.mfirmware_version = firmware;
-            setPairedMicroBit(ctx, deviceInSharedPref);
+        ConnectedDevice fromPrefs = deviceFromPrefs(ctx);
+        if( fromPrefs != null) {
+            Log.v("BluetoothUtils", "Updating the microbit firmware version");
+            fromPrefs.mfirmware_version = firmware;
+            deviceToPrefs(ctx, fromPrefs);
         }
     }
 
     public static void updateConnectionStartTime(Context ctx, long time) {
-        SharedPreferences pairedDevicePref = ctx.getApplicationContext().getSharedPreferences(PREFERENCES_KEY,
-                Context.MODE_MULTI_PROCESS);
-        if(pairedDevicePref.contains(PREFERENCES_PAIREDDEV_KEY)) {
-            String pairedDeviceString = pairedDevicePref.getString(PREFERENCES_PAIREDDEV_KEY, null);
-            Log.e("BluetoothUtils", "Updating the microbit firmware");
-            ConnectedDevice deviceInSharedPref = new Gson().fromJson(pairedDeviceString, ConnectedDevice.class);
-            deviceInSharedPref.mlast_connection_time = time;
-            setPairedMicroBit(ctx, deviceInSharedPref);
+        ConnectedDevice fromPrefs = deviceFromPrefs(ctx);
+        if( fromPrefs != null) {
+            Log.e("BluetoothUtils", "Updating the microbit connection time");
+            fromPrefs.mlast_connection_time = time;
+            deviceToPrefs(ctx, fromPrefs);
         }
-    }
-
-    public static BluetoothDevice getPairedDeviceMicroBit(Context context) {
-        SharedPreferences pairedDevicePref = context.getApplicationContext().getSharedPreferences(PREFERENCES_KEY,
-                Context.MODE_MULTI_PROCESS);
-        if(pairedDevicePref.contains(PREFERENCES_PAIREDDEV_KEY)) {
-            String pairedDeviceString = pairedDevicePref.getString(PREFERENCES_PAIREDDEV_KEY, null);
-            Gson gson = new Gson();
-            sConnectedDevice = gson.fromJson(pairedDeviceString, ConnectedDevice.class);
-            //Check if the microbit is still paired with our mobile
-            BluetoothAdapter mBluetoothAdapter = ((BluetoothManager) MBApp.getApp().getSystemService(Context
-                    .BLUETOOTH_SERVICE)).getAdapter();
-            if(mBluetoothAdapter.isEnabled()) {
-                Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
-                for(BluetoothDevice bt : pairedDevices) {
-                    if(bt.getAddress().equals(sConnectedDevice.mAddress)) {
-                        return bt;
-                    }
-                }
-            }
-        }
-        return null;
     }
 
     public static ConnectedDevice getPairedMicrobit(Context ctx) {
@@ -142,16 +146,18 @@ public class BluetoothUtils {
             sConnectedDevice = new ConnectedDevice();
         }
 
-        if(pairedDevicePref.contains(PREFERENCES_PAIREDDEV_KEY)) {
+        ConnectedDevice fromPrefs = deviceFromPrefs(ctx);
+        if( fromPrefs == null) {
+            sConnectedDevice.mPattern = null;
+            sConnectedDevice.mName = null;
+        } else {
             boolean pairedMicrobitInSystemList = false;
-            String pairedDeviceString = pairedDevicePref.getString(PREFERENCES_PAIREDDEV_KEY, null);
-            Gson gson = new Gson();
-            sConnectedDevice = gson.fromJson(pairedDeviceString, ConnectedDevice.class);
+            sConnectedDevice = fromPrefs;
             //Check if the microbit is still paired with our mobile
             BluetoothAdapter mBluetoothAdapter = ((BluetoothManager) MBApp.getApp().getSystemService(Context
                     .BLUETOOTH_SERVICE)).getAdapter();
-            if(mBluetoothAdapter.isEnabled()) {
-                Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+            if(mBluetoothAdapter.isEnabled() && havePermissionsFlashing( ctx)) {
+                @SuppressLint("MissingPermission") Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
                 for(BluetoothDevice bt : pairedDevices) {
                     if(bt.getAddress().equals(sConnectedDevice.mAddress)) {
                         pairedMicrobitInSystemList = true;
@@ -176,26 +182,12 @@ public class BluetoothUtils {
 
                 setPairedMicroBit(ctx, null);
             }
-        } else {
-            sConnectedDevice.mPattern = null;
-            sConnectedDevice.mName = null;
         }
         return sConnectedDevice;
     }
 
     public static void setPairedMicroBit(Context ctx, ConnectedDevice newDevice) {
-        SharedPreferences pairedDevicePref = ctx.getApplicationContext().getSharedPreferences(PREFERENCES_KEY,
-                Context.MODE_MULTI_PROCESS);
-        SharedPreferences.Editor editor = pairedDevicePref.edit();
-        if(newDevice == null) {
-            editor.clear();
-        } else {
-            Gson gson = new Gson();
-            String jsonActiveDevice = gson.toJson(newDevice);
-            editor.putString(PREFERENCES_PAIREDDEV_KEY, jsonActiveDevice);
-        }
-
-        editor.apply();
+        deviceToPrefs( ctx, newDevice);
     }
 
 }

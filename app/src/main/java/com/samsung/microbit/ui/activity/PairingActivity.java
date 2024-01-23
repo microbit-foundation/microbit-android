@@ -1,6 +1,7 @@
 package com.samsung.microbit.ui.activity;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -23,10 +24,13 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcelable;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -75,6 +79,8 @@ import pl.droidsonroids.gif.GifImageView;
 
 import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
 import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTED;
+import static android.bluetooth.BluetoothAdapter.STATE_CONNECTING;
+import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTING;
 import static com.samsung.microbit.BuildConfig.DEBUG;
 
 /**
@@ -154,9 +160,194 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     private boolean justPaired;
 
-    private final Object lock = new Object();
+    private final Object pairingLock = new Object();
+
+    private BluetoothGatt pairingGatt = null;
+    private BluetoothDevice pairingDevice = null;
 
     private int hardwareVersion = 0;
+
+    private String MICROBIT_NAME_OLD = "BBC MicroBit";
+    private String MICROBIT_NAME = "BBC micro:bit";
+
+    public static final int PAIRING_GATT_DISCONNECTED = 0;
+    public static final int PAIRING_GATT_CONNECTING = 1;
+    public static final int PAIRING_GATT_CONNECTED = 2;
+    private static final int PAIRING_GATT_CONNECTED_AND_READY = 4;
+    private static final int PAIRING_GATT_ERROR = 5;
+    private int mPairingGattState = PAIRING_GATT_DISCONNECTED;
+
+
+    public boolean nameIsMicrobit( String name)
+    {
+        return name.startsWith( MICROBIT_NAME) || name.startsWith( MICROBIT_NAME_OLD);
+    }
+
+    public boolean nameIsMicrobitWithCode( String name, String code)
+    {
+        return nameIsMicrobit( name) && name.toLowerCase().contains( code.toLowerCase());
+    }
+
+    private boolean havePermission(String permission) {
+        return ContextCompat.checkSelfPermission( this, permission) == PermissionChecker.PERMISSION_GRANTED;
+    }
+
+    private boolean havePermissionsLocationForeground() {
+        boolean yes = true;
+        if ( !havePermission( Manifest.permission.ACCESS_COARSE_LOCATION))
+            yes = false;
+        if ( !havePermission( Manifest.permission.ACCESS_FINE_LOCATION))
+            yes = false;
+        return yes;
+    }
+
+    private boolean havePermissionsLocationBackground() {
+        boolean yes = true;
+        if (!havePermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+            yes = false;
+        return yes;
+    }
+
+    private boolean pairingNeedsLocationEnabled() {
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return false; // Not needed
+        }
+        LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+        List<String> lp = lm.getProviders(true);
+        for (String p : lp) {
+            if (!p.equals(LocationManager.PASSIVE_PROVIDER)) {
+                return false; // enabled
+            }
+        }
+        return true;
+    }
+
+    private boolean havePermissionsPairing() {
+        boolean yes = true;
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if ( !havePermission( Manifest.permission.BLUETOOTH_SCAN))
+                yes = false;
+            if ( !havePermission( Manifest.permission.BLUETOOTH_CONNECT))
+                yes = false;
+        }
+        else if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if ( !havePermissionsLocationForeground())
+                yes = false;
+            if (!havePermissionsLocationBackground())
+                yes = false;
+        }
+        else {
+            if ( !havePermissionsLocationForeground())
+                yes = false;
+        }
+        return yes;
+    }
+
+    private void requestPermissionsPairing() {
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            String[] permissionsNeeded = {
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_CONNECT};
+            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API31);
+        } else if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            String[] permissionsNeeded = {
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION};
+            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_FOREGROUND);
+        } else if ( Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+            String[] permissionsNeeded = {
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION };
+            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API29);
+        } else {
+            String[] permissionsNeeded = {
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION };
+            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API28);
+        }
+    }
+
+    private void requestPermissionsPairingAPI30Background() {
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            String[] permissionsNeeded = { Manifest.permission.ACCESS_BACKGROUND_LOCATION };
+            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND);
+        }
+    }
+
+    public void requestPermissionsPairingResult(int requestCode,
+                                                @NonNull String permissions[],
+                                                @NonNull int[] grantResults) {
+        if ( havePermissionsPairing())
+        {
+            proceedAfterBlePermissionGranted();
+            return;
+        }
+
+        switch(requestCode) {
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_FOREGROUND: {
+                if ( havePermissionsLocationForeground()) {
+                    requestPermissionsPairingAPI30Background();
+                } else {
+                    popupPermissionLocationError();
+                }
+                break;
+            }
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API28:
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API29:
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND:
+                popupPermissionLocationError();;
+                break;
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API31: {
+                popupPermissionBluetoothError();
+                break;
+            }
+        }
+    }
+
+    private void popupPermissionLocationError() {
+        PopUp.show(getString(R.string.location_permission_error),
+                getString(R.string.permissions_needed_title),
+                R.drawable.error_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_ALERT,
+                null, null);
+    }
+
+    private void popupPermissionBluetoothError() {
+        PopUp.show(getString(R.string.ble_permission_error),
+                getString(R.string.permissions_needed_title),
+                R.drawable.error_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_ALERT,
+                null, null);
+    }
+
+    private void popupPermissionError() {
+        if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            popupPermissionBluetoothError();
+        } else {
+            popupPermissionLocationError();
+        }
+    }
+
+    private void popupPermissionPairing() {
+        if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PopUp.show(getString(R.string.ble_permission),
+                    getString(R.string.permissions_needed_title),
+                    R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
+                    PopUp.TYPE_CHOICE,
+                    bluetoothPermissionOKHandler,
+                    bluetoothPermissionCancelHandler);
+        } else {
+            PopUp.show(getString(R.string.location_permission_pairing),
+                    getString(R.string.permissions_needed_title),
+                    R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
+                    PopUp.TYPE_CHOICE,
+                    bluetoothPermissionOKHandler,
+                    bluetoothPermissionCancelHandler);
+        }
+    }
 
     /**
      * Occurs after successfully finished pairing process and
@@ -217,41 +408,27 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
 
-            if(BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
+            if ( BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
+                final BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                if (device == null) {
+                    Log.e(TAG, "pairReceiver - no device");
+                    return;
+                }
+                final String name = device.getName();
+                final String addr = device.getAddress();
                 final int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR);
                 final int prevState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR);
-
-                logi(" pairReceiver - state = " + state + " prevState = " + prevState);
-                if(state == BluetoothDevice.BOND_BONDED && prevState == BluetoothDevice.BOND_BONDING) {
-                    if(newDeviceCode.isEmpty()) {
-                        Log.e(TAG, "device code empty. State = " + state + ", prevState = " + prevState + ".");
-                    } else {
-                        ConnectedDevice newDev = new ConnectedDevice(newDeviceCode.toUpperCase(), newDeviceCode
-                                .toUpperCase(), false, newDeviceAddress, 0, null, System.currentTimeMillis(), hardwareVersion);
-                        handlePairingSuccessful(newDev);
+                logi(" pairReceiver -" + " name = " + name + " addr = " + addr + " state = " + state + " prevState = " + prevState);
+                if (name.isEmpty() || addr.isEmpty()) {
+                    return;
+                }
+		// Check the changed device is the one we are trying to pair 
+                if ( pairingGatt != null && nameIsMicrobitWithCode(device.getName(), newDeviceCode)) {
+                    if (state == BluetoothDevice.BOND_BONDED) {
+                        notifyLock();
+                    } else if (state == BluetoothDevice.BOND_NONE) {
+                        notifyLock();
                     }
-                } else if(state == BluetoothDevice.BOND_NONE && prevState == BluetoothDevice.BOND_BONDING) {
-                    stopScanning();
-                    PopUp.show(getString(R.string.pairing_failed_message), //message
-                            getString(R.string.pairing_failed_title), //title
-                            R.drawable.error_face, //image icon res id
-                            R.drawable.red_btn,
-                            PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_CHOICE, //type of popup.
-                            new View.OnClickListener() {
-                                @Override
-                                public void onClick(View v) {
-                                    PopUp.hide();
-                                    displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_1);
-                                }
-                            },//override click listener for ok button
-                            new View.OnClickListener() {
-                                @Override
-                                public void onClick(View v) {
-                                    PopUp.hide();
-                                    displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
-                                }
-                            });
                 }
             }
         }
@@ -576,53 +753,60 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     boolean setupBleController() {
-        boolean retvalue = true;
-
-        if(bluetoothAdapter == null) {
+        if ( bluetoothAdapter == null) {
             final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
             bluetoothAdapter = bluetoothManager.getAdapter();
-            retvalue = false;
-        }
-
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && leScanner == null) {
-            if(bluetoothAdapter == null) {
-                retvalue = false;
-            } else {
-                leScanner = bluetoothAdapter.getBluetoothLeScanner();
-                if(leScanner == null)
-                    retvalue = false;
+            if ( bluetoothAdapter == null) {
+                return false;
             }
         }
-        return retvalue;
+
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if ( leScanner == null) {
+                leScanner = bluetoothAdapter.getBluetoothLeScanner();
+                if (leScanner == null) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
 
         logi("onActivityResult");
-        if(requestCode == RequestCodes.REQUEST_ENABLE_BT) {
-
-            switch(resultCode) {
-                case RESULT_OK:
-                    if(activityState == PairingActivityState.STATE_ENABLE_BT_FOR_PAIRING) {
-                        startWithPairing();
-                    } else if(activityState == PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
-                        toggleConnection();
-                    }
-                    break;
-                case RESULT_CANCELED:
-                    //Change state back to Idle
+        switch (requestCode) {
+            case RequestCodes.REQUEST_ENABLE_BT:
+                switch (resultCode) {
+                    case RESULT_OK:
+                        if (activityState == PairingActivityState.STATE_ENABLE_BT_FOR_PAIRING) {
+                            proceedAfterBlePermissionGranted();
+                        } else if (activityState == PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
+                            toggleConnection();
+                        }
+                        break;
+                    case RESULT_CANCELED:
+                        //Change state back to Idle
+                        setActivityState(PairingActivityState.STATE_IDLE);
+                        PopUp.show(getString(R.string.bluetooth_off_cannot_continue), //message
+                                "",
+                                R.drawable.error_face, R.drawable.red_btn,
+                                PopUp.GIFF_ANIMATION_ERROR,
+                                PopUp.TYPE_ALERT,
+                                null, null);
+                        break;
+                }
+                break;
+            case RequestCodes.REQUEST_ENABLE_LOCATION:
+                if ( pairingNeedsLocationEnabled()) {
                     setActivityState(PairingActivityState.STATE_IDLE);
-
-                    PopUp.show(getString(R.string.bluetooth_off_cannot_continue), //message
-                            "",
-                            R.drawable.error_face, R.drawable.red_btn,
-                            PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_ALERT,
-                            null, null);
-                    break;
-            }
-
+                    popupLocationNeeded();
+                } else {
+                    proceedAfterBlePermissionGranted();
+                }
+                break;
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
@@ -905,6 +1089,39 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         startActivityForResult(enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
     }
 
+    private void enableLocation() {
+        PopUp.show( "Please enable Location Services", //message
+                "Location Services Not Active", //title
+                R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
+                PopUp.TYPE_CHOICE,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        PopUp.hide();
+                        //Unpair the device for secure BLE
+                        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        startActivityForResult( intent, RequestCodes.REQUEST_ENABLE_LOCATION);
+                    }
+                },//override click listener for ok button
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        PopUp.hide();
+                        setActivityState(PairingActivityState.STATE_IDLE);
+                        popupLocationNeeded();
+                    }
+                });
+    }
+
+    public void popupLocationNeeded() {
+        PopUp.show("Cannot continue without enabling location", //message
+                "",
+                R.drawable.error_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_ALERT,
+                null, null);
+    }
+
     /**
      * Starts Step 1 pairing screen.
      */
@@ -951,19 +1168,14 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],
                                            @NonNull int[] grantResults) {
         switch(requestCode) {
-            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED: {
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    proceedAfterBlePermissionGranted();
-                } else {
-                    PopUp.show(getString(R.string.location_permission_error),
-                            getString(R.string.permissions_needed_title),
-                            R.drawable.error_face, R.drawable.red_btn,
-                            PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_ALERT,
-                            null, null);
-                }
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API28:
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API29:
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_FOREGROUND:
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND:
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API31: {
+                requestPermissionsPairingResult(requestCode, permissions, grantResults);
+                break;
             }
-            break;
             case PermissionCodes.INCOMING_CALL_PERMISSIONS_REQUESTED: {
                 if(grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                     PopUp.show(getString(R.string.telephony_permission_error),
@@ -977,9 +1189,9 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         checkTelephonyPermissions();
                     }
                 }
-            }
-            break;
-            case PermissionCodes.INCOMING_SMS_PERMISSIONS_REQUESTED: {
+                break;
+             }
+             case PermissionCodes.INCOMING_SMS_PERMISSIONS_REQUESTED: {
                 if(grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                     PopUp.show(getString(R.string.sms_permission_error),
                             getString(R.string.permissions_needed_title),
@@ -992,8 +1204,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         checkTelephonyPermissions();
                     }
                 }
-            }
-            break;
+                break;
+             }
         }
     }
 
@@ -1006,6 +1218,11 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         if(!BluetoothChecker.getInstance().isBluetoothON()) {
             setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_PAIRING);
             enableBluetooth();
+            return;
+        }
+        if ( pairingNeedsLocationEnabled()) {
+            setActivityState(PairingActivityState.STATE_ENABLE_LOCATION_FOR_PAIRING);
+            enableLocation();
             return;
         }
         startWithPairing();
@@ -1023,9 +1240,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         public void onClick(View v) {
             logi("bluetoothPermissionOKHandler");
             PopUp.hide();
-            //TODO: shouldn't it be BLUETOOTH permission?
-            String[] permissionsNeeded = {Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION};
-            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED);
+            requestPermissionsPairing();
         }
     };
 
@@ -1038,12 +1253,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         public void onClick(View v) {
             logi("bluetoothPermissionCancelHandler");
             PopUp.hide();
-            PopUp.show(getString(R.string.location_permission_error),
-                    getString(R.string.permissions_needed_title),
-                    R.drawable.error_face, R.drawable.red_btn,
-                    PopUp.GIFF_ANIMATION_ERROR,
-                    PopUp.TYPE_ALERT,
-                    null, null);
+            popupPermissionError();
         }
     };
 
@@ -1053,19 +1263,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void checkBluetoothPermissions() {
         Log.v(TAG, "checkBluetoothPermissions");
-        //TODO: shouldn't it be BLUETOOTH permission?
-        if((ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PermissionChecker.PERMISSION_GRANTED)
-        || (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                != PermissionChecker.PERMISSION_GRANTED)
-        || (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PermissionChecker.PERMISSION_GRANTED)) {
-            PopUp.show(getString(R.string.location_permission_pairing),
-                    getString(R.string.permissions_needed_title),
-                    R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
-                    PopUp.TYPE_CHOICE,
-                    bluetoothPermissionOKHandler,
-                    bluetoothPermissionCancelHandler);
+        if( !havePermissionsPairing()) {
+            popupPermissionPairing();
         } else {
             Log.v(TAG, "skipped");
             proceedAfterBlePermissionGranted();
@@ -1208,11 +1407,23 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     /**
-     * Shows a dialog windows that indicates that pairing has failed and
+     * Shows a dialog windows that indicates that pairing has timed out and
      * allows to retry pairing or terminate it.
      */
-    private void handlePairingFailed() {
-        logi("handlePairingFailed() :: Start");
+    private void popupScanningTimeout() {
+        logi("popupScanningTimeout() :: Start");
+        PopUp.show(getString(R.string.pairingErrorMessage), //message
+                getString(R.string.timeOut), //title
+                R.drawable.error_face, //image icon res id
+                R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_CHOICE, //type of popup.
+                retryPairing,//override click listener for ok button
+                failedPairingHandler);
+    }
+
+    private void popupPairingTimeout() {
+        logi("popupPairingTimeout() :: Start");
         PopUp.show(getString(R.string.pairingErrorMessage), //message
                 getString(R.string.timeOut), //title
                 R.drawable.error_face, //image icon res id
@@ -1224,13 +1435,48 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     /**
+     * Shows a dialog windows that indicates that pairing has failed and
+     * allows to retry pairing or terminate it.
+     */
+    private void popupPairingFailed() {
+        logi("popupPairingFailed() :: Start");
+        PopUp.show(getString(R.string.pairing_failed_message), //message
+                getString(R.string.pairing_failed_title), //title
+                R.drawable.error_face, //image icon res id
+                R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_CHOICE, //type of popup.
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        PopUp.hide();
+                        displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_1);
+                    }
+                },//override click listener for ok button
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        PopUp.hide();
+                        displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
+                    }
+                });
+    }
+
+    /**
      * Updates information about a new paired device, updates connection status UI
      * and shows a notification window about successful pairing.
-     *
-     * @param newDev New paired device.
      */
-    private void handlePairingSuccessful(final ConnectedDevice newDev) {
+    private void handlePairingSuccessful() {
         logi("handlePairingSuccessful()");
+        ConnectedDevice newDev = new ConnectedDevice(
+                newDeviceCode.toUpperCase(),
+                newDeviceCode.toUpperCase(),
+                false,
+                newDeviceAddress,
+                0,
+                null,
+                System.currentTimeMillis(),
+                hardwareVersion);
         BluetoothUtils.setPairedMicroBit(MBApp.getApp(), newDev);
         updatePairedDeviceCard();
         // Pop up to show pairing successful
@@ -1370,7 +1616,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             stopScanning();
 
             if(scanning) { // was scanning
-                handlePairingFailed();
+                popupScanningTimeout();
             }
         }
     };
@@ -1436,96 +1682,192 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         }
     }
 
+    private boolean timeoutOnLock( long timeout)
+    {
+        synchronized (pairingLock) {
+            try {
+                pairingLock.wait(timeout);
+            } catch (final Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void notifyLock()
+    {
+        synchronized (pairingLock) {
+            pairingLock.notifyAll();
+        }
+    }
+
     /**
      * Checks if device is paired, if true - stops scanning and proceeds with success message,
      * else - starts pairing to the device.
      *
      * @param device Device to pair with.
      */
+    @SuppressLint("MissingPermission")
     private void startPairingSecureBle(BluetoothDevice device) throws InterruptedException {
+        pairingDevice = device;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                pairingConnect();
+                if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
+                    logi("pairingSuccess");
+                    handlePairingSuccessful();
+                } else {
+                    logi("pairingFail");
+                    popupPairingFailed();
+                }
+            }
+        });
+    }
+
+    @SuppressLint("MissingPermission")
+    private void pairingConnect() {
         logi("###>>>>>>>>>>>>>>>>>>>>> startPairingSecureBle");
         // Service to connect
         //Check if the device is already bonded
 
-        // Connect to device and discover services
         BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
             @Override
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
                 super.onConnectionStateChange(gatt, status, newState);
 
-                Log.v(TAG, "onConnectionStateChange");
+                logi("onConnectionStateChange " + newState + " status " + status);
                 if(newState == STATE_CONNECTED) {
-
-                    final boolean success = gatt.discoverServices();
-
-                    /* Taken from Nordic. See reasoning here: https://github.com/NordicSemiconductor/Android-DFU-Library/blob/e0ab213a369982ae9cf452b55783ba0bdc5a7916/dfu/src/main/java/no/nordicsemi/android/dfu/DfuBaseService.java#L888 */
-                    if (gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
-                        Log.v(TAG, "Already bonded");
-                        synchronized (lock) {
-                            try {
-                                lock.wait(1600);
-
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            Log.v(TAG, "Bond timeout");
-                        }
+                    logi("STATE_CONNECTED");
+                    mPairingGattState = PAIRING_GATT_CONNECTED;
+                    /*
+                     * Nordic says to wait 1600ms for possible service changed before discovering
+                     * https://github.com/NordicSemiconductor/Android-DFU-Library/blob/e0ab213a369982ae9cf452b55783ba0bdc5a7916/dfu/src/main/java/no/nordicsemi/android/dfu/DfuBaseService.java#L888
+                     */
+                    if ( gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
+                        logi("Already bonded");
+                        timeoutOnLock( 1600);
+                        logi("Bond timeout");
                         // After 1.6s the services are already discovered so the following gatt.discoverServices() finishes almost immediately.
                         // NOTE: This also works with shorted waiting time. The gatt.discoverServices() must be called after the indication is received which is
                         // about 600ms after establishing connection. Values 600 - 1600ms should be OK.
                     }
-                    gatt.discoverServices();
-
+                    boolean success = gatt.discoverServices();
                     if (!success) {
-                        Log.e(TAG,"ERROR_SERVICE_DISCOVERY_NOT_STARTED");
-                    } else {
-                        // Wait for service discovery to clear lock
+                        logi("ERROR_SERVICE_DISCOVERY_NOT_STARTED");
+                        mPairingGattState = PAIRING_GATT_ERROR;
+                        notifyLock();
                         return;
                     }
                 }
-
-                if(newState == STATE_DISCONNECTED) {
-                    gatt.close();
+                else if( newState == STATE_DISCONNECTED) {
+                    // If actually pairing, micro:bit will break the connection
+                    logi("STATE_DISCONNECTED");
+                    notifyLock();
                 }
             }
 
             @Override
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                 super.onServicesDiscovered(gatt, status);
-                Log.v(TAG, "onServicesDiscovered");
-                ConnectedDevice cD = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+                logi("onServicesDiscovered");
                 if(gatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb")) != null ) {
-                    Log.v(TAG, "Hardware Type: V2");
-                    cD.mhardwareVersion = 2;
+                    logi("Hardware Type: V2");
                     hardwareVersion = 2;
                 } else {
-                    Log.v(TAG, "Hardware Type: V1");
-                    cD.mhardwareVersion = 1;
+                    logi("Hardware Type: V1");
                     hardwareVersion = 1;
                 }
-                BluetoothUtils.setPairedMicroBit(MBApp.getApp(), cD);
-                synchronized (lock) {
-                    lock.notifyAll();
+
+                mPairingGattState = PAIRING_GATT_CONNECTED_AND_READY;
+
+                if ( pairingDevice.getBondState() != BluetoothDevice.BOND_BONDED) {
+                    // Wait a bit for bonding to start
+                    timeoutOnLock( 1000);
+                    if ( pairingDevice.getBondState() == BluetoothDevice.BOND_NONE) {
+                        boolean started = pairingDevice.createBond();
+                        if (!started) {
+                            logi("create bond not started");
+                            mPairingGattState = PAIRING_GATT_ERROR;
+                        }
+                    }
                 }
+                notifyLock();
             }
         };
 
-        BluetoothGatt gatt = device.connectGatt(this, true, bluetoothGattCallback);
-        synchronized (lock) { // Wait for services to be discovered
-            lock.wait(10000); // 10 second max
+        hardwareVersion = 0;
+
+        // Connect to device and discover services
+
+        pairingGatt = null;
+
+        for ( int i = 0; i < 3; i++) {
+            mPairingGattState = PAIRING_GATT_CONNECTING;
+
+            pairingGatt = connect( pairingDevice, bluetoothGattCallback);
+
+            logi("pairingGatt " + pairingGatt);
+
+            if ( pairingGatt == null) {
+                timeoutOnLock( 1000);
+            } else {
+                timeoutOnLock( 20000);
+
+                logi("mPairingGattState " + mPairingGattState);
+                logi("bondState " + pairingDevice.getBondState());
+
+                if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED)
+                    break;
+
+                if ( mPairingGattState == PAIRING_GATT_CONNECTED_AND_READY) {
+                    timeoutOnLock( 10000);
+                    break;
+                }
+
+                pairingGatt.disconnect();
+                pairingGatt.close();
+                pairingGatt = null;
+            }
         }
 
-            stopScanning();
+        if ( pairingGatt != null) {
+            if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
+                timeoutOnLock( 20000);
+            }
+            pairingGatt.disconnect();
+            pairingGatt.close();
+            pairingGatt = null;
+        }
+    }
 
-            // Create bond
-            boolean newbond = device.createBond();
-            Log.v(TAG, "create bond: newbond");
+    @SuppressLint("MissingPermission")
+    private  BluetoothGatt connect(BluetoothDevice device, BluetoothGattCallback bluetoothGattCallback)
+    {
+        BluetoothGatt gatt;
 
-            //Get device name from the System settings if present and add to our list
-            ConnectedDevice newDev = new ConnectedDevice(newDeviceCode.toUpperCase(),
-                    newDeviceCode.toUpperCase(), false, newDeviceAddress, 0, null,
-                    System.currentTimeMillis(), hardwareVersion);
-            handlePairingSuccessful(newDev);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            gatt = device.connectGatt(
+                    this,
+                    false,
+                    bluetoothGattCallback,
+                    BluetoothDevice.TRANSPORT_LE,
+                    BluetoothDevice.PHY_LE_1M_MASK | BluetoothDevice.PHY_LE_2M_MASK);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            gatt = device.connectGatt(
+                    this,
+                    false,
+                    bluetoothGattCallback,
+                    BluetoothDevice.TRANSPORT_LE);
+        } else {
+            gatt = device.connectGatt(
+                    this,
+                    false,
+                    bluetoothGattCallback);
+        }
+
+        return gatt;
     }
 
     @Override

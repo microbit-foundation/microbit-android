@@ -12,22 +12,28 @@ import android.view.View;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import com.samsung.microbit.BuildConfig;
 import com.samsung.microbit.R;
+import com.samsung.microbit.utils.ProjectsHelper;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import static android.content.ContentValues.TAG;
 
 /**
  * Displays MakeCode
  */
+
 public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
@@ -35,6 +41,11 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     public static Activity activityHandle = null;
 
     Uri hexToFlash;
+
+    private static final int REQUEST_CODE_SAVEDATA = 1;
+    private static final int REQUEST_CODE_CHOOSE_FILE = 2;
+    private byte[] dataToSave = null;
+    private ValueCallback<Uri[]> onShowFileChooser_filePathCallback;
 
     public static void setMakecodeUrl(String url) {
         makecodeUrl = url;
@@ -84,15 +95,32 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 Log.v(TAG, "url: " + url);
-                if(url.contains("https://microbit.org/")) activityHandle.finish();
+                if (url.contains("https://microbit.org/")) activityHandle.finish();
                 return false;
             }
+
             @Override
-            public void onLoadResource (WebView view, String url) {
+            public void onLoadResource(WebView view, String url) {
                 super.onLoadResource(view, url);
-                Log.v(TAG, "onLoadResource("+url+");");
+                Log.v(TAG, "onLoadResource(" + url + ");");
             }
-        });
+        }); //setWebViewClient
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+                onShowFileChooser_filePathCallback = filePathCallback;
+                try {
+                    Intent intent = fileChooserParams.createIntent();
+                    startActivityForResult(intent, REQUEST_CODE_CHOOSE_FILE);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+                return true;
+
+            }
+        }); //setWebChromeClient
 
         webView.setDownloadListener(new DownloadListener() {
             public void onDownloadStart(String url, String userAgent,
@@ -106,58 +134,150 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                     }
                 });
 
-                File hexToWrite;
-                FileOutputStream outputStream;
-                String hexName = "init";
-                byte[] decode = {};
-
-                if(url.contains("data:")) {
-                    String[] data = url.split(",");
-                    hexName = data[0].replace("data:", "").replace(";base64", "");
-                    decode = Base64.decode(data[1], Base64.DEFAULT);
-                } else if(url.contains("blob:")) {
-                    hexName = "blob";
-                    decode = new byte[]{0, 0, 0};
-                }
-
                 try {
-                    hexToWrite = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + hexName);
+                    File hexToWrite;
+                    FileOutputStream outputStream;
+                    String hexName = "";
+                    String fileName = "";
+                    byte[] decode = {};
 
-                    /*
-                    // Append n to file until it doesn't exist
-                    int i = 0;
+                    int colon = url.indexOf(':');
+                    int semi  = url.indexOf(';');
+                    int comma = url.indexOf(',');
 
-                    while (hexToWrite.exists()) {
-                        hexName = hexName.replaceAll("-?\\d*\\.","-" + i + ".");
-                        hexToWrite = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/" + hexName);
-                        i++;
+                    String scheme = "";
+                    String type   = "";
+                    String format = "";
+
+                    if ( colon > 0 && semi > colon && comma > semi)
+                    {
+                        scheme = url.substring( 0,colon);
+                        type   = url.substring( colon + 1, semi);
+                        format = url.substring( semi + 1, comma);
                     }
-                     */
-                    // Replace existing file rather than creating *-n.hex
-                    if(hexToWrite.exists()) {
-                        hexToWrite.delete();
+
+                    if ( scheme.equalsIgnoreCase("data")) {
+                        if ( format.equalsIgnoreCase("base64")) {
+                            decode = Base64.decode(url.substring(comma + 1), Base64.DEFAULT);
+                            if ( decode != null && decode.length > 0) {
+                                String typeLC = type.toLowerCase();
+                                if ( typeLC.endsWith(".hex")) {
+                                    hexName = type;
+                                    type = "application/x-microbit-hex";
+                                } else if ( typeLC.endsWith(".csv")) {
+                                    fileName = type;
+                                    type = "text/csv";
+                                } else if ( typeLC.endsWith(".txt")) {
+                                    fileName = type;
+                                    type = "text/csv";
+                                } else if ( typeLC.equalsIgnoreCase("text/plain")) {
+                                    fileName = "makecode-text";
+                                } else if ( typeLC.equalsIgnoreCase("image/png")) {
+                                    fileName = "makecode-snapshot";
+                                } else if ( typeLC.equalsIgnoreCase("application/zip")) {
+                                    fileName = "makecode-projects";
+                                } else {
+                                    fileName = "makecode-data";
+                                    type = mimetype;
+                                }
+                            }
+                        }
                     }
+//                    else if ( scheme.equalsIgnoreCase("blob")) {
+//                        hexName = "blob";
+//                        decode = new byte[]{0, 0, 0};
+//                    }
 
-                    // Create file
-                    hexToWrite.createNewFile();
-                    outputStream = new FileOutputStream(hexToWrite);
-                    outputStream.write(decode);
-                    outputStream.flush();
+                    if ( !fileName.isEmpty()) {
+                        saveData( fileName, type, decode);
+                    }
+                    else if ( !hexName.isEmpty()) {
+                        hexToWrite = getProjectFile(hexName);
 
-                    // Get file path
-                    hexToFlash = Uri.fromFile(hexToWrite);
+                        /*
+                        // Append n to file until it doesn't exist
+                        int i = 0;
 
-                    openProjectActivity();
+                        while (hexToWrite.exists()) {
+                            hexName = hexName.replaceAll("-?\\d*\\.","-" + i + ".");
+                            hexToWrite = getProjectFile( hexName);
+                            i++;
+                        }
+                         */
+                        // Replace existing file rather than creating *-n.hex
+                        if (hexToWrite.exists()) {
+                            hexToWrite.delete();
+                        }
 
+                        // Create file
+                        hexToWrite.createNewFile();
+                        outputStream = new FileOutputStream(hexToWrite);
+                        outputStream.write(decode);
+                        outputStream.flush();
+
+                        // Get file path
+                        hexToFlash = Uri.fromFile(hexToWrite);
+
+                        openProjectActivity();
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
-        });
+        }); // setDownloadListener
 
         //Check parameters Before load
         Intent intent = getIntent();
         webView.loadUrl(makecodeUrl);
+    } // onCreate
+
+    private void saveData( String name, String mimetype, byte[] data) {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType( mimetype);
+        intent.putExtra(Intent.EXTRA_TITLE, name);
+        dataToSave = data;
+        startActivityForResult( intent, REQUEST_CODE_SAVEDATA);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if ( requestCode == REQUEST_CODE_SAVEDATA) {
+            if ( resultCode != RESULT_OK) {
+                dataToSave = null;
+                return;
+            }
+            OutputStream os = null;
+            try {
+                os = getContentResolver().openOutputStream( data.getData());
+                if ( dataToSave != null && dataToSave.length > 0) {
+                    os.write(dataToSave, 0, dataToSave.length);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    dataToSave = null;
+                    if ( os != null) {
+                        os.close();
+                    }
+                } catch (IOException e) { }
+            }
+        } else if (requestCode == REQUEST_CODE_CHOOSE_FILE) {
+            if ( resultCode != RESULT_OK) {
+                onShowFileChooser_filePathCallback.onReceiveValue( null);
+                return;
+            }
+            Uri[] uris = WebChromeClient.FileChooserParams.parseResult ( resultCode, data);
+            onShowFileChooser_filePathCallback.onReceiveValue( uris);
+        }
+    }
+
+    public File getProjectFile( String hexName)
+    {
+        return ProjectsHelper.projectFile( this, hexName);
     }
 
     @Override

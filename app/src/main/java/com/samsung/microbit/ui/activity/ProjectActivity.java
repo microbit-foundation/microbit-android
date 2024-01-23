@@ -23,6 +23,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.Window;
+import android.webkit.WebChromeClient;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -45,6 +47,7 @@ import com.samsung.microbit.data.constants.RequestCodes;
 import com.samsung.microbit.data.model.ConnectedDevice;
 import com.samsung.microbit.data.model.Project;
 import com.samsung.microbit.data.model.ui.FlashActivityState;
+import com.samsung.microbit.data.model.ui.PairingActivityState;
 import com.samsung.microbit.service.BLEService;
 import com.samsung.microbit.service.DfuService;
 import com.samsung.microbit.service.PartialFlashingService;
@@ -57,6 +60,7 @@ import com.samsung.microbit.utils.IOUtils;
 import com.samsung.microbit.utils.ProjectsHelper;
 import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
+import com.samsung.microbit.utils.irmHexUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -65,6 +69,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -115,8 +121,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private String m_BinSizeStats = "0";
     private String m_MicroBitFirmware = "0.0";
 
-    private DFUResultReceiver dfuResultReceiver;
-    private pfResultReceiver pfResultReceiver;
+    private DFUResultReceiver dfuResultReceiver = null;
+    private PFResultReceiver pfResultReceiver = null;
+
+    private boolean dfuRegistered = false;
+    private boolean pfRegistered = false;
 
     private List<Integer> mRequestPermissions = new ArrayList<>();
 
@@ -138,13 +147,34 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     private boolean previousPartialFlashFailed = false;
 
-    private int FLASH_TYPE_DFU = 0;
-    private int FLASH_TYPE_PF  = 1;
+    private boolean finishWhenFlashComplete = true;
+    private String applicationHexAbsolutePath;
+    private int prepareToFlashResult;
+
 
     private int MICROBIT_V1 = 1;
     private int MICROBIT_V2 = 2;
 
     BLEService bleService;
+
+    private void onFlashComplete() {
+        if ( finishWhenFlashComplete) {
+            finish();
+        }
+    }
+
+    /**
+     * Handler for popup button that hides a popup window
+     * and calls onFlashComplete()
+     */
+    View.OnClickListener popupClickFlashComplete = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            logi("popupClickFlashComplete");
+            PopUp.hide();
+            onFlashComplete();
+        }
+    };
 
     private final Runnable tryToConnectAgain = new Runnable() {
 
@@ -261,7 +291,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     protected void onStart() {
         super.onStart();
-        startBluetooth();
+        //startBluetooth();
     }
 
     @Override
@@ -369,6 +399,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
     }
 
+
     private void releaseViews() {
         mProjectListView = null;
         mProjectListViewRight = null;
@@ -402,14 +433,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         initViews();
         setupFontStyle();
 
-        minimumPermissionsGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PermissionChecker.PERMISSION_GRANTED && (ContextCompat.checkSelfPermission(this, Manifest
-                .permission.WRITE_EXTERNAL_STORAGE) == PermissionChecker.PERMISSION_GRANTED);
+        minimumPermissionsGranted = ProjectsHelper.havePermissions(this);
 
         checkMinimumPermissionsForThisScreen();
         setConnectedDeviceText();
 
         if(savedInstanceState == null && getIntent() != null) {
+            finishWhenFlashComplete = getIntent().getData() != null;
             handleIncomingIntent(getIntent());
         }
     }
@@ -427,6 +457,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         String fullPathOfFile;
         String fileName;
 
+        Project externalProject = null;
+
         if(intent.getData() != null && intent.getData().getEncodedPath() != null) {
             isOpenByOtherApp = true;
 
@@ -437,7 +469,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             if (scheme.equals("file")) {
                 fullPathOfFile = URLDecoder.decode(encodedPath);
                 fileName = fileNameForFlashing(fullPathOfFile);
-                mProgramToSend = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
+                externalProject = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
             } else if(scheme.equals("content")) {
 
                 Cursor cursor = null;
@@ -455,8 +487,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         boolean isShareableApp = cursor.getColumnIndex(DocumentsContract.Document
                                 .COLUMN_DOCUMENT_ID) != -1;
 
-                                                fullPathOfFile = new File(Environment.getExternalStoragePublicDirectory(Environment
-                                                        .DIRECTORY_DOWNLOADS), selectedFileName).getAbsolutePath();
+                        fullPathOfFile = ProjectsHelper.projectPath(this, selectedFileName);
+
                         if (isShareableApp) {
                             try {
                                 IOUtils.copy(getContentResolver().openInputStream(uri), new FileOutputStream(fullPathOfFile));
@@ -466,8 +498,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         }
 
                         fileName = fileNameForFlashing(fullPathOfFile);
-
-                        mProgramToSend = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
+                        externalProject = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
                     } else {
                         try {
                             AssetFileDescriptor fileDescriptor = getContentResolver().openAssetFileDescriptor(uri, "r");
@@ -476,8 +507,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                 long length = fileDescriptor.getLength();
 
                                 fileDescriptor.close();
-
-                                mProgramToSend = getLatestProjectFromFolder(length);
+                                externalProject = getLatestProjectFromFolder(length);
                             }
                         } catch(IOException e) {
                             Log.e(TAG, e.toString());
@@ -495,25 +525,22 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
         }
 
-        if (mProgramToSend != null) {
-            if(!BluetoothChecker.getInstance().isBluetoothON()) {
-                startBluetooth();
-            } else {
-                adviceOnMicrobitState();
-                finish();
-            }
+        if ( externalProject != null) {
+            mProgramToSend = externalProject;
+            setActivityState(FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST);
+        }
+
+        if ( mProgramToSend != null) {
+            startBluetoothForFlashing();
         } else {
             if (isOpenByOtherApp) {
                 Toast.makeText(this, "Not a micro:bit HEX file", Toast.LENGTH_LONG).show();
-                finish();
+                onFlashComplete();
             }
         }
     }
 
     private Project getLatestProjectFromFolder(long lengthOfSearchingFile) {
-        File downloadDirectory = Environment.getExternalStoragePublicDirectory(Environment
-                        .DIRECTORY_DOWNLOADS);
-
         FilenameFilter hexFilenameFilter = new FilenameFilter() {
             @Override
             public boolean accept(File dir, String filename) {
@@ -523,7 +550,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         File nowDownloadedFile = null;
 
-        File downloadFiles[] = downloadDirectory.listFiles(hexFilenameFilter);
+        // TODO: What folder should we search - downloads or projects?
+        File[] downloadFiles = ProjectsHelper.downloadsFilesListHEX( this);
 
         if(downloadFiles != null) {
             for(File file : downloadFiles) {
@@ -544,7 +572,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             return null;
         } else {
             fullPathOfFile = nowDownloadedFile.getAbsolutePath();
-            return new Project(fileNameForFlashing(fullPathOfFile), fullPathOfFile, 0, null, false);
+            String fileName = fileNameForFlashing(fullPathOfFile);
+            return fileName == null ? null : new Project(fileNameForFlashing(fullPathOfFile), fullPathOfFile, 0, null, false);
         }
     }
 
@@ -556,7 +585,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      */
     private String fileNameForFlashing(String fullPathOfFile) {
         String path[] = fullPathOfFile.split("/");
-        setActivityState(FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST);
         if(path[path.length - 1].endsWith(".hex")) {
             return path[path.length - 1];
         } else {
@@ -584,9 +612,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         localBroadcastManager.unregisterReceiver(gattForceClosedReceiver);
         localBroadcastManager.unregisterReceiver(connectionChangedReceiver);
 
-        if(dfuResultReceiver != null) {
-            localBroadcastManager.unregisterReceiver(dfuResultReceiver);
-        }
+        unregisterCallbacksForFlashing();
 
         application.stopService(new Intent(application, DfuService.class));
 
@@ -598,6 +624,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         ActivityCompat.requestPermissions(this, permissions, requestCode);
     }
 
+    private void storageRequestPermission() {
+        ProjectsHelper.requestPermissions(this, PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED);
+    }
+
     /**
      * Listener for OK button that allows to request write/read
      * external storage permissions.
@@ -607,8 +637,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         public void onClick(View v) {
             logi("diskStoragePermissionOKHandler");
             PopUp.hide();
-            String[] permissionsNeeded = {Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
-            requestPermission(permissionsNeeded, PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED);
+            storageRequestPermission();
         }
     };
 
@@ -643,9 +672,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],
                                            @NonNull int[] grantResults) {
         switch(requestCode) {
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_FLASHING_API31: {
+                requestPermissionsFlashingResult(requestCode, permissions, grantResults);
+            }
+            break;
             case PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED: {
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                        && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                if( ProjectsHelper.havePermissions(this)) {
                     minimumPermissionsGranted = true;
                     updateProjectsListSortOrder(true);
                 } else {
@@ -814,7 +846,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             mOldProjectList.clear();
             mOldProjectList.addAll(mProjectList);
             mProjectList.clear();
-            ProjectsHelper.findProjectssAndPopulate(mPrettyFileNameMap, mProjectList);
+            ProjectsHelper.findProjectsAndPopulate( this, mPrettyFileNameMap, mProjectList);
         }
 
         int projectListSortOrder = Utils.getListSortOrder();
@@ -871,18 +903,20 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        boolean flash   = mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
+                          mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST;
+        boolean connect = mActivityState == FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT;
 
-        if(requestCode == RequestCodes.REQUEST_ENABLE_BT) {
-            if(resultCode == Activity.RESULT_OK) {
-                if(mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
-                        mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST) {
-                    adviceOnMicrobitState();
-                } else if(mActivityState == FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
+        if (requestCode == RequestCodes.REQUEST_ENABLE_BT) {
+            if (resultCode == Activity.RESULT_OK) {
+                if (flash) {
+                    proceedAfterBlePermissionGrantedAndBleEnabled();
+                } else if (connect) {
                     setActivityState(FlashActivityState.STATE_IDLE);
                     toggleConnection();
                 }
             }
-            if(resultCode == Activity.RESULT_CANCELED) {
+            else if (resultCode == Activity.RESULT_CANCELED) {
                 setActivityState(FlashActivityState.STATE_IDLE);
                 PopUp.show(getString(R.string.bluetooth_off_cannot_continue), //message
                         "",
@@ -890,17 +924,138 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         PopUp.GIFF_ANIMATION_ERROR,
                         TYPE_ALERT,
                         null, null);
+                if (flash) {
+                    onFlashComplete();
+                }
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
 
     /**
-     * Starts activity to enable Bluetooth.
+     * Starts Bluetooth for flashing.
+     * Checks if bluetooth permission is granted. If it's not then ask to grant,
+     * proceed with using bluetooth otherwise.
+     * @return true if flashing checks has started
      */
-    private void startBluetooth() {
+    private boolean startBluetoothForFlashing() {
+        Log.v(TAG, "startBluetoothForFlashing");
+
+        if ( havePermissionsFlashing()) {
+            if( BluetoothChecker.getInstance().isBluetoothON()) {
+                proceedAfterBlePermissionGrantedAndBleEnabled();
+                return true;
+            }
+            enableBluetooth();
+        } else {
+            popupPermissionFlashing();
+        }
+        return false;
+    }
+
+    /**
+     * Provides actions after BLE permission has been granted:
+     * check if bluetooth is disabled then enable it and
+     * start the flashing steps.
+     */
+    private void proceedAfterBlePermissionGranted() {
+        if(!BluetoothChecker.getInstance().isBluetoothON()) {
+            enableBluetooth();
+            return;
+        }
+        proceedAfterBlePermissionGrantedAndBleEnabled();
+    }
+
+    /**
+     * Provides actions after BLE permission has been granted:
+     * check if bluetooth is disabled then enable it and
+     * start the flashing steps.
+     */
+    private void proceedAfterBlePermissionGrantedAndBleEnabled() {
+        if (launchPairingIfNoCurrentMicrobit())
+            return;
+
+        flashingChecks();
+    }
+
+    /**
+     * Starts activity to enable bluetooth.
+     */
+    private void enableBluetooth() {
         Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
         startActivityForResult(enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
+    }
+
+    private boolean havePermission(String permission) {
+        return ContextCompat.checkSelfPermission( this, permission) == PermissionChecker.PERMISSION_GRANTED;
+    }
+
+   private boolean havePermissionsFlashing() {
+        boolean yes = true;
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if ( !havePermission( Manifest.permission.BLUETOOTH_CONNECT))
+                yes = false;
+        }
+        return yes;
+    }
+
+    private void requestPermissionsFlashing() {
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            String[] permissionsNeeded = {
+                    Manifest.permission.BLUETOOTH_CONNECT};
+            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_FLASHING_API31);
+        }
+    }
+
+    public void requestPermissionsFlashingResult(int requestCode,
+                                                @NonNull String permissions[],
+                                                @NonNull int[] grantResults) {
+        if ( havePermissionsFlashing())
+        {
+            proceedAfterBlePermissionGranted();
+            return;
+        }
+
+        switch(requestCode) {
+            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_FLASHING_API31: {
+                popupPermissionFlashingError();
+                onFlashComplete();
+                break;
+            }
+        }
+    }
+
+    private void popupPermissionFlashingError() {
+        PopUp.show(getString(R.string.ble_permission_error),
+                getString(R.string.permissions_needed_title),
+                R.drawable.error_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_ALERT,
+                null, null);
+    }
+
+    private void popupPermissionFlashing() {
+        PopUp.show(getString(R.string.ble_permission),
+                    getString(R.string.permissions_needed_title),
+                    R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
+                    PopUp.TYPE_CHOICE,
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            logi("bluetoothPermissionOKHandler");
+                            PopUp.hide();
+                            requestPermissionsFlashing();
+                        }
+                    },
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            logi("bluetoothPermissionCancelHandler");
+                            PopUp.hide();
+                            popupPermissionFlashingError();
+                            onFlashComplete();
+                        }
+                    });
     }
 
     /**
@@ -941,11 +1096,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     public void sendProject(final Project project) {
         mProgramToSend = project;
         setActivityState(FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST);
-        if(!BluetoothChecker.getInstance().isBluetoothON()) {
-            startBluetooth();
-        } else {
-            adviceOnMicrobitState();
-        }
+        startBluetoothForFlashing();
     }
 
     @Override
@@ -990,21 +1141,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * Checks for requisite state of a micro:bit board. If all is good then
      * initiates flashing.
      */
-    private void adviceOnMicrobitState() {
+    private boolean launchPairingIfNoCurrentMicrobit() {
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
-        if(currentMicrobit.mPattern == null) {
-            Intent intent = new Intent(this, PairingActivity.class);
-            startActivity(intent);
-            /*
-            while(pairingFailed = PENDING)
-            if PASS
-            if FAIL cancel
-            */
-        } else {
-            Log.v(TAG, "Start flash!");
-            flashingChecks();
-        }
+        if(currentMicrobit.mPattern != null)
+            return false;
+
+        Intent intent = new Intent(this, PairingActivity.class);
+        startActivity(intent);
+        return true;
     }
 
     private void flashingChecks() {
@@ -1034,7 +1179,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                           }
                       }
               );
-            return;
+              onFlashComplete();
+              return;
           }
 //
 //        if(mProgramToSend == null || mProgramToSend.filePath == null) {
@@ -1061,6 +1207,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     PopUp.GIFF_ANIMATION_FLASH,
                     TYPE_ALERT,
                     null, null);
+            onFlashComplete();
             return;
         }
 
@@ -1077,20 +1224,16 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         public void onClick(View v) {
                             ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
                             PopUp.hide();
-                            initiateFlashing();
+                            startFlashing();
                         }
                     },//override click listener for ok button
-                    new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            PopUp.hide();
-                            finish();
-                        }
-                    });//pass null to use default listeneronClick
+                    popupClickFlashComplete);
         } else {
-            initiateFlashing();
+            startFlashing();
         }
     }
+
+
 
     /**
      * Prepares for flashing process.
@@ -1098,46 +1241,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * <p>>Unregisters DFU receiver, sets activity state to the find device state,
      * registers callbacks requisite for flashing and starts flashing.</p>
      */
-    protected void initiateFlashing() {
-        if(dfuResultReceiver != null) {
-            LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
-            dfuResultReceiver = null;
-        }
-
-        /* Pop up for flash init */
+    protected void startFlashing() {
+        logi("startFlashing");
 
         setActivityState(FlashActivityState.FLASH_STATE_FIND_DEVICE);
         registerCallbacksForFlashing();
-
-        // Attempt Partial Flashing first
-        startFlashing(FLASH_TYPE_PF);
-    }
-
-    /**
-     * Convert a HEX char to int
-     */
-    int charToInt(char in) {
-        // 0 - 9
-        if(in - '0' >= 0 && in - '0' < 10) return (in - '0');
-
-        // A - F
-        return in - 55;
-    }
-
-    /**
-     * Creates and starts service to flash a program to a micro:bit board.
-     * int FLASH_TYPE_DFU
-     */
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    protected void startFlashing(int flashingType) {
-
-        logi(">>>>>>>>>>>>>>>>>>> startFlashing called >>>>>>>>>>>>>>>>>>>  ");
-        Log.v(TAG, "startFlashing: " + flashingType);
-        //Reset all stats value
-        m_BinSizeStats = "0";
-        m_MicroBitFirmware = "0.0";
-        m_HexFileSizeStats = getFileSize(mProgramToSend.filePath);
-
 
         PopUp.show(getString(R.string.dfu_status_starting_msg),
                 "",
@@ -1146,25 +1254,85 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 TYPE_SPINNER_NOT_CANCELABLE,
                 null, null);
 
+        new Thread( new Runnable() {
+            @Override
+            public void run() {
+                prepareToFlashResult = prepareToFlash();
+                switch ( prepareToFlashResult) {
+                    case 0: {
+                        startPartialFlash();
+                        break;
+                    }
+                    case 1: {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                PopUp.hide();
+                                popupHexNotCompatible();
+                            }
+                        });
+                        break;
+                    }
+                    case 2: {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                PopUp.hide();
+                                popupFailedToCreateFiles();
+                            }
+                        });
+                        break;
+                    }
+                }
+            }
+        }).start();
+    }
+
+    protected void popupHexNotCompatible() {
+        logi("popupHexNotCompatible");
+        PopUp.show(getString(R.string.v1_hex_v2_hardware),
+                "",
+                R.drawable.message_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                TYPE_ALERT,
+                popupClickFlashComplete, popupClickFlashComplete);
+    }
+
+    protected void popupFailedToCreateFiles() {
+        logi("popupFailedToCreateFiles");
+        PopUp.show("Failed to create files",
+                "",
+                R.drawable.message_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                TYPE_ALERT,
+                popupClickFlashComplete, popupClickFlashComplete);
+    }
+
+    protected int prepareToFlash() {
+        logi("prepareToFlash");
+
+        //Reset all stats value
+        m_BinSizeStats = "0";
+        m_MicroBitFirmware = "0.0";
+        m_HexFileSizeStats = getFileSize(mProgramToSend.filePath);
+
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
 
         MBApp application = MBApp.getApp();
         int hardwareType = currentMicrobit.mhardwareVersion;
 
         // Create tmp hex for V1 or V2
+//        String[] oldret = universalHexToDFUOld(mProgramToSend.filePath, hardwareType);
+//        hexAbsolutePath = oldret[0];
+//        int oldapplicationSize = Integer.parseInt(oldret[1]);
+
         String[] ret = universalHexToDFU(mProgramToSend.filePath, hardwareType);
-        String hexAbsolutePath = ret[0];
+        applicationHexAbsolutePath = ret[0];
         int applicationSize = Integer.parseInt(ret[1]);
 
         if(applicationSize == -1) {
             // V1 Hex on a V2
-            PopUp.show(getString(R.string.v1_hex_v2_hardware),
-                    "",
-                    R.drawable.message_face, R.drawable.red_btn,
-                    PopUp.GIFF_ANIMATION_ERROR,
-                    TYPE_ALERT,
-                    null, null);
-            return;
+            return 1;
         }
 
         // If V2 create init packet
@@ -1172,62 +1340,92 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         if(hardwareType == MICROBIT_V2) {
             try {
                 initPacketAbsolutePath = createDFUInitPacket(applicationSize);
-                String[] files = new String[]{initPacketAbsolutePath, hexAbsolutePath};
+                String[] files = new String[]{initPacketAbsolutePath, applicationHexAbsolutePath};
                 createDFUZip(files);
             } catch (IOException e) {
                 Log.v(TAG, "Failed to create init packet");
                 e.printStackTrace();
+                return 2;
             }
         }
 
-        if(flashingType == FLASH_TYPE_DFU) {
+        return 0;
+    }
 
-            // Start DFU Service
-            Log.v(TAG, "Start Full DFU");
-            Log.v(TAG, "DFU hex: " + hexAbsolutePath);
-            if(hardwareType == MICROBIT_V2) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    DfuServiceInitiator.createDfuNotificationChannel(this);
-                }
+    public void startDFUFlash() {
+        logi("startDFUFlash");
+        PopUp.hide();
+        PopUp.show(getString(R.string.dfu_status_starting_msg),
+                "",
+                R.drawable.flash_face, R.drawable.blue_btn,
+                PopUp.GIFF_ANIMATION_FLASH,
+                TYPE_SPINNER_NOT_CANCELABLE,
+                null, null);
 
-                final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
-                        .setUnsafeExperimentalButtonlessServiceInSecureDfuEnabled(true)
-                        .setDeviceName(currentMicrobit.mName)
-                        .setPacketsReceiptNotificationsEnabled(true)
-                        .setNumberOfRetries(2)
-                        .setDisableNotification(true)
-                        .setRestoreBond(true)
-                        .setKeepBond(true)
-                        .setForeground(true)
-                        .setZip(this.getCacheDir() + "/update.zip");
-                final DfuServiceController controller = starter.start(this, DfuService.class);
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    DfuServiceInitiator.createDfuNotificationChannel(this);
-                }
-                final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
-                        .setDeviceName(currentMicrobit.mName)
-                        .setKeepBond(true)
-                        .setForceDfu(true)
-                        .setPacketsReceiptNotificationsEnabled(true)
-                        .setBinOrHex(DfuBaseService.TYPE_APPLICATION, hexAbsolutePath);
-                final DfuServiceController controller = starter.start(this, DfuService.class);
+        MBApp application = MBApp.getApp();
+        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
+        int hardwareType = currentMicrobit.mhardwareVersion;
+
+        // Start DFU Service
+        Log.v(TAG, "Start Full DFU");
+        Log.v(TAG, "DFU hex: " + applicationHexAbsolutePath);
+        if(hardwareType == MICROBIT_V2) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                DfuServiceInitiator.createDfuNotificationChannel(this);
             }
 
-        } else if(flashingType == FLASH_TYPE_PF) {
-            // Attempt a partial flash
-            Log.v(TAG, "Send Partial Flashing Intent");
-            if(service != null) {
-                application.stopService(service);
+            final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+                    .setUnsafeExperimentalButtonlessServiceInSecureDfuEnabled(true)
+                    .setDeviceName(currentMicrobit.mName)
+                    .setPacketsReceiptNotificationsEnabled(true)
+                    .setNumberOfRetries(2)
+                    .setDisableNotification(true)
+                    .setRestoreBond(true)
+                    .setKeepBond(true)
+                    .setForeground(true)
+                    .setZip(this.getCacheDir() + "/update.zip");
+            final DfuServiceController controller = starter.start(this, DfuService.class);
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                DfuServiceInitiator.createDfuNotificationChannel(this);
             }
-            service = new Intent(application, PartialFlashingService.class);
-            service.putExtra("deviceAddress", currentMicrobit.mAddress);
-            service.putExtra("filepath", hexAbsolutePath); // a path or URI must be provided.
-            service.putExtra("hardwareType", hardwareType); // a path or URI must be provided.
-            service.putExtra("pf", true); // Enable partial flashing
-            application.startService(service);
+            final DfuServiceInitiator starter = new DfuServiceInitiator(currentMicrobit.mAddress)
+                    .setDeviceName(currentMicrobit.mName)
+                    .setKeepBond(true)
+                    .setForceDfu(true)
+                    .setPacketsReceiptNotificationsEnabled(true)
+                    .setBinOrHex(DfuBaseService.TYPE_APPLICATION, applicationHexAbsolutePath);
+            final DfuServiceController controller = starter.start(this, DfuService.class);
         }
     }
+
+    protected void startPartialFlash() {
+        logi("startPartialFlash");
+        PopUp.hide();
+        PopUp.show(getString(R.string.dfu_status_starting_msg),
+                "",
+                R.drawable.flash_face, R.drawable.blue_btn,
+                PopUp.GIFF_ANIMATION_FLASH,
+                TYPE_SPINNER_NOT_CANCELABLE,
+                null, null);
+
+        MBApp application = MBApp.getApp();
+        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
+        int hardwareType = currentMicrobit.mhardwareVersion;
+
+        // Attempt a partial flash
+        Log.v(TAG, "Send Partial Flashing Intent");
+        if(service != null) {
+            application.stopService(service);
+        }
+        service = new Intent(application, PartialFlashingService.class);
+        service.putExtra("deviceAddress", currentMicrobit.mAddress);
+        service.putExtra("filepath", applicationHexAbsolutePath); // a path or URI must be provided.
+        service.putExtra("hardwareType", hardwareType); // a path or URI must be provided.
+        service.putExtra("pf", true); // Enable partial flashing
+        application.startService(service);
+    }
+
 
     /**
      * Create zip for DFU
@@ -1308,180 +1506,26 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * @return
      */
     private String[] universalHexToDFU(String inputPath, int hardwareType) {
-        FileInputStream fis;
-        ByteArrayOutputStream outputHex;
-        outputHex = new ByteArrayOutputStream();
-
-        ByteArrayOutputStream test = new ByteArrayOutputStream();
-
-        FileOutputStream outputStream;
-
-        int application_size = 0;
-        int next = 0;
-        boolean records_wanted = true;
-        boolean is_fat = false;
-        boolean is_v2 = false;
-        boolean uses_ESA = false;
-        ByteArrayOutputStream lastELA = new ByteArrayOutputStream();
-        ByteArrayOutputStream lastESA = new ByteArrayOutputStream();
-
+        logi("universalHexToDFU");
         try {
-            fis = new FileInputStream(inputPath);
-            byte[] bs = new byte[Integer.valueOf(FileUtils.getFileSize(inputPath))];
+            FileInputStream fis = new FileInputStream(inputPath);
+            int fileSize = Integer.valueOf(FileUtils.getFileSize(inputPath));
+            byte[] bs = new byte[fileSize];
             int i = 0;
             i = fis.read(bs);
 
-            for (int b_x = 0; b_x < bs.length - 1; /* empty */) {
+            logi("universalHexToDFU - read file");
 
-                // Get record from following bytes
-                char b_type = (char) bs[b_x + 8];
-
-                // Find next record start, or EOF
-                next = 1;
-                while ((b_x + next) < i && bs[b_x + next] != ':') {
-                    next++;
-                }
-
-                // Switch type and determine what to do with this record
-                switch (b_type) {
-                    case 'A': // Block start
-                        is_fat = true;
-                        records_wanted = false;
-
-                        // Check data for id
-                        if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '0') {
-                            records_wanted = (hardwareType == MICROBIT_V1);
-                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
-                            records_wanted = (hardwareType == MICROBIT_V1);
-                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '3') {
-                            records_wanted = (hardwareType == MICROBIT_V2);
-                        }
-                        break;
-                    case 'E':
-                        break;
-                    case '4':
-                        ByteArrayOutputStream currentELA = new ByteArrayOutputStream();
-                        currentELA.write(bs, b_x, next);
-
-                        uses_ESA = false;
-
-                        // If ELA has changed write
-                        if (!currentELA.toString().equals(lastELA.toString())) {
-                            lastELA.reset();
-                            lastELA.write(bs, b_x, next);
-                            Log.v(TAG, "TEST ELA " + lastELA.toString());
-                            outputHex.write(bs, b_x, next);
-                        }
-
-                        break;
-                    case '2':
-                        uses_ESA = true;
-
-                        ByteArrayOutputStream currentESA = new ByteArrayOutputStream();
-                        currentESA.write(bs, b_x, next);
-
-                        // If ESA has changed write
-                        if (!Arrays.equals(currentESA.toByteArray(), lastESA.toByteArray())) {
-                            lastESA.reset();
-                            lastESA.write(bs, b_x, next);
-                            outputHex.write(bs, b_x, next);
-                        }
-                        break;
-                    case '1':
-                        // EOF
-                        // Ensure KV storage is erased
-                        if(hardwareType == MICROBIT_V1) {
-                            String kv_address = ":020000040003F7\n";
-                            String kv_data = ":1000000000000000000000000000000000000000F0\n";
-                            outputHex.write(kv_address.getBytes());
-                            outputHex.write(kv_data.getBytes());
-                        }
-
-                        // Write final block
-                        outputHex.write(bs, b_x, next);
-                        break;
-                    case 'D': // V2 section of Universal Hex
-                        // Remove D
-                        bs[b_x + 8] = '0';
-                        // Find first \n. PXT adds in extra padding occasionally
-                        int first_cr = 0;
-                        while(bs[b_x + first_cr] != '\n') {
-                            first_cr++;
-                        }
-
-                        // Skip 1 word records
-                        // TODO: Pad this record for uPY FS scratch
-                        if(bs[b_x + 2] == '1') break;
-
-                        // Recalculate checksum
-                        int checksum = (charToInt((char) bs[b_x + first_cr - 2]) * 16) + charToInt((char) bs[b_x + first_cr - 1]) + 0xD;
-                        String checksum_hex = Integer.toHexString(checksum);
-                        checksum_hex = "00" + checksum_hex.toUpperCase(); // Pad to ensure we have 2 characters
-                        checksum_hex = checksum_hex.substring(checksum_hex.length() - 2);
-                        bs[b_x + first_cr - 2] = (byte) checksum_hex.charAt(0);
-                        bs[b_x + first_cr - 1] = (byte) checksum_hex.charAt(1);
-                    case '3':
-                    case '5':
-                    case '0':
-                        // Copy record to hex
-                        // Record starts at b_x, next long
-                        // Calculate address of record
-                        int b_a = 0;
-                        if(lastELA.size() > 0 && !uses_ESA) {
-                            b_a = 0;
-                            b_a = (charToInt((char) lastELA.toByteArray()[9]) << 12) | (charToInt((char) lastELA.toByteArray()[10]) << 8) | (charToInt((char) lastELA.toByteArray()[11]) << 4) | (charToInt((char) lastELA.toByteArray()[12]));
-                            b_a = b_a << 16;
-                        }
-                        if(lastESA.size() > 0 && uses_ESA) {
-                            b_a = 0;
-                            b_a = (charToInt((char) lastESA.toByteArray()[9]) << 12) | (charToInt((char) lastESA.toByteArray()[10]) << 8) | (charToInt((char) lastESA.toByteArray()[11]) << 4) | (charToInt((char) lastESA.toByteArray()[12]));
-                            b_a = b_a * 16;
-                        }
-
-                        int b_raddr = (charToInt((char) bs[b_x + 3]) << 12) | (charToInt((char) bs[b_x + 4]) << 8) | (charToInt((char) bs[b_x + 5]) << 4) | (charToInt((char) bs[b_x + 6]));
-                        int b_addr = b_a | b_raddr;
-
-                        int lower_bound = 0; int upper_bound = 0;
-                        if(hardwareType == MICROBIT_V1) { lower_bound = 0x18000; upper_bound = 0x38000; }
-                        if(hardwareType == MICROBIT_V2) { lower_bound = 0x1C000; upper_bound = 0x77000; }
-
-                        // Check for Cortex-M4 Vector Table
-                        if(b_addr == 0x10 && bs[b_x + 41] != 'E' && bs[b_x + 42] != '0') { // Vectors exist
-                            is_v2 = true;
-                        }
-
-                        if ((records_wanted || !is_fat) && b_addr >= lower_bound && b_addr < upper_bound) {
-
-                            outputHex.write(bs, b_x, next);
-                            // Add to app size
-                            application_size = application_size + charToInt((char) bs[b_x + 1]) * 16 + charToInt((char) bs[b_x + 2]);
-                        } else {
-                            // Log.v(TAG, "TEST " + Integer.toHexString(b_addr) + " BA " + b_a + " LELA " + lastELA.toString() + " " + uses_ESA);
-                            // test.write(bs, b_x, next);
-                        }
-
-                        break;
-                    case 'C':
-                    case 'B':
-                        records_wanted = false;
-                        break;
-                    default:
-                        Log.e(TAG, "Record type not recognised; TYPE: " + b_type);
-                }
-
-                // Record handled. Move to next ':'
-                if ((b_x + next) >= i) {
-                    break;
-                } else {
-                    b_x = b_x + next;
-                }
-
+            irmHexUtils irmHexUtil = new irmHexUtils();
+            int hexBlock = hardwareType == MICROBIT_V1
+                    ? irmHexUtils.irmHexBlock01
+                    : irmHexUtils.irmHexBlock03;
+            if ( !irmHexUtil.universalHexToApplicationHex( bs, hexBlock)) {
+                return new String[]{"-1", "-1"};
             }
-
-            byte[] output = outputHex.toByteArray();
-            byte[] testBytes = test.toByteArray();
-
-            Log.v(TAG, "Finished parsing HEX. Writing application HEX for flashing");
+            byte [] dataHex = irmHexUtil.resultHex;
+            int application_size = irmHexUtil.resultDataSize;
+            logi("universalHexToDFU - Finished parsing HEX");
 
             try {
                 File hexToFlash = new File(this.getCacheDir() + "/application.hex");
@@ -1490,8 +1534,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 }
                 hexToFlash.createNewFile();
 
-                outputStream = new FileOutputStream(hexToFlash);
-                outputStream.write(output);
+                FileOutputStream outputStream = new FileOutputStream(hexToFlash);
+                outputStream.write( dataHex);
                 outputStream.flush();
 
                 // Should return from here
@@ -1500,22 +1544,17 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 ret[0] = hexToFlash.getAbsolutePath();
                 ret[1] = Integer.toString(application_size);
 
-                /*
-                if(hardwareType == MICROBIT_V2 && (!is_v2 && !is_fat)) {
-                    ret[1] = Integer.toString(-1); // Invalidate hex file
-                }
-                 */
-
+                logi("universalHexToDFU - Finished");
                 return ret;
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
         } catch (FileNotFoundException e) {
-            Log.v(TAG, "File not found.");
+            Log.e(TAG, "File not found.");
             e.printStackTrace();
         } catch (IOException e) {
-            Log.v(TAG, "IO Exception.");
+            Log.e(TAG, "IO Exception.");
             e.printStackTrace();
         }
 
@@ -1523,16 +1562,245 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         return new String[]{"-1", "-1"};
     }
 
+//    /**
+//     * Convert a HEX char to int
+//     */
+//    int charToInt(char in) {
+//        // 0 - 9
+//        if(in - '0' >= 0 && in - '0' < 10) return (in - '0');
+//
+//        // A - F
+//        return in - 55;
+//    }
+
     /**
-     * Registers callbacks that allows to handle flashing process
-     * and react to flashing progress, errors and log some messages.
+     * Process Universal Hex
+     * @return
      */
-    private void registerCallbacksForFlashing() {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(DfuService.BROADCAST_PROGRESS);
-        filter.addAction(DfuService.BROADCAST_ERROR);
-        filter.addAction(DfuService.BROADCAST_LOG);
-        dfuResultReceiver = new DFUResultReceiver();
+//    private String[] universalHexToDFUOld(String inputPath, int hardwareType) {
+//        FileInputStream fis;
+//        ByteArrayOutputStream outputHex;
+//        outputHex = new ByteArrayOutputStream();
+//
+//        ByteArrayOutputStream test = new ByteArrayOutputStream();
+//
+//        FileOutputStream outputStream;
+//
+//        int application_size = 0;
+//        int next = 0;
+//        boolean records_wanted = true;
+//        boolean is_fat = false;
+//        boolean is_v2 = false;
+//        boolean uses_ESA = false;
+//        ByteArrayOutputStream lastELA = new ByteArrayOutputStream();
+//        ByteArrayOutputStream lastESA = new ByteArrayOutputStream();
+//
+//        try {
+//            fis = new FileInputStream(inputPath);
+//            byte[] bs = new byte[Integer.valueOf(FileUtils.getFileSize(inputPath))];
+//            int i = 0;
+//            i = fis.read(bs);
+//
+//            for (int b_x = 0; b_x < bs.length - 1; /* empty */) {
+//
+//                // Get record from following bytes
+//                char b_type = (char) bs[b_x + 8];
+//
+//                // Find next record start, or EOF
+//                next = 1;
+//                while ((b_x + next) < i && bs[b_x + next] != ':') {
+//                    next++;
+//                }
+//
+//                // Switch type and determine what to do with this record
+//                switch (b_type) {
+//                    case 'A': // Block start
+//                        is_fat = true;
+//                        records_wanted = false;
+//
+//                        // Check data for id
+//                        if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '0') {
+//                            records_wanted = (hardwareType == MICROBIT_V1);
+//                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '1') {
+//                            records_wanted = (hardwareType == MICROBIT_V1);
+//                        } else if (bs[b_x + 9] == '9' && bs[b_x + 10] == '9' && bs[b_x + 11] == '0' && bs[b_x + 12] == '3') {
+//                            records_wanted = (hardwareType == MICROBIT_V2);
+//                        }
+//                        break;
+//                    case 'E':
+//                        break;
+//                    case '4':
+//                        ByteArrayOutputStream currentELA = new ByteArrayOutputStream();
+//                        currentELA.write(bs, b_x, next);
+//
+//                        uses_ESA = false;
+//
+//                        // If ELA has changed write
+//                        if (!currentELA.toString().equals(lastELA.toString())) {
+//                            lastELA.reset();
+//                            lastELA.write(bs, b_x, next);
+//                            Log.v(TAG, "TEST ELA " + lastELA.toString());
+//                            outputHex.write(bs, b_x, next);
+//                        }
+//
+//                        break;
+//                    case '2':
+//                        uses_ESA = true;
+//
+//                        ByteArrayOutputStream currentESA = new ByteArrayOutputStream();
+//                        currentESA.write(bs, b_x, next);
+//
+//                        // If ESA has changed write
+//                        if (!Arrays.equals(currentESA.toByteArray(), lastESA.toByteArray())) {
+//                            lastESA.reset();
+//                            lastESA.write(bs, b_x, next);
+//                            outputHex.write(bs, b_x, next);
+//                        }
+//                        break;
+//                    case '1':
+//                        // EOF
+//                        // Ensure KV storage is erased
+//                        if(hardwareType == MICROBIT_V1) {
+//                            String kv_address = ":020000040003F7\n";
+//                            String kv_data = ":1000000000000000000000000000000000000000F0\n";
+//                            outputHex.write(kv_address.getBytes());
+//                            outputHex.write(kv_data.getBytes());
+//                        }
+//
+//                        // Write final block
+//                        outputHex.write(bs, b_x, next);
+//                        break;
+//                    case 'D': // V2 section of Universal Hex
+//                        // Remove D
+//                        bs[b_x + 8] = '0';
+//                        // Find first \n. PXT adds in extra padding occasionally
+//                        int first_cr = 0;
+//                        while(bs[b_x + first_cr] != '\n') {
+//                            first_cr++;
+//                        }
+//
+//                        // Skip 1 word records
+//                        // TODO: Pad this record for uPY FS scratch
+//                        if(bs[b_x + 2] == '1') break;
+//
+//                        // Recalculate checksum
+//                        int checksum = (charToInt((char) bs[b_x + first_cr - 2]) * 16) + charToInt((char) bs[b_x + first_cr - 1]) + 0xD;
+//                        String checksum_hex = Integer.toHexString(checksum);
+//                        checksum_hex = "00" + checksum_hex.toUpperCase(); // Pad to ensure we have 2 characters
+//                        checksum_hex = checksum_hex.substring(checksum_hex.length() - 2);
+//                        bs[b_x + first_cr - 2] = (byte) checksum_hex.charAt(0);
+//                        bs[b_x + first_cr - 1] = (byte) checksum_hex.charAt(1);
+//                    case '3':
+//                    case '5':
+//                    case '0':
+//                        // Copy record to hex
+//                        // Record starts at b_x, next long
+//                        // Calculate address of record
+//                        int b_a = 0;
+//                        if(lastELA.size() > 0 && !uses_ESA) {
+//                            b_a = 0;
+//                            b_a = (charToInt((char) lastELA.toByteArray()[9]) << 12) | (charToInt((char) lastELA.toByteArray()[10]) << 8) | (charToInt((char) lastELA.toByteArray()[11]) << 4) | (charToInt((char) lastELA.toByteArray()[12]));
+//                            b_a = b_a << 16;
+//                        }
+//                        if(lastESA.size() > 0 && uses_ESA) {
+//                            b_a = 0;
+//                            b_a = (charToInt((char) lastESA.toByteArray()[9]) << 12) | (charToInt((char) lastESA.toByteArray()[10]) << 8) | (charToInt((char) lastESA.toByteArray()[11]) << 4) | (charToInt((char) lastESA.toByteArray()[12]));
+//                            b_a = b_a * 16;
+//                        }
+//
+//                        int b_raddr = (charToInt((char) bs[b_x + 3]) << 12) | (charToInt((char) bs[b_x + 4]) << 8) | (charToInt((char) bs[b_x + 5]) << 4) | (charToInt((char) bs[b_x + 6]));
+//                        int b_addr = b_a | b_raddr;
+//
+//                        int lower_bound = 0; int upper_bound = 0;
+//                        if(hardwareType == MICROBIT_V1) { lower_bound = 0x18000; upper_bound = 0x38000; }
+//                        if(hardwareType == MICROBIT_V2) { lower_bound = 0x1C000; upper_bound = 0x77000; }
+//
+//                        // Check for Cortex-M4 Vector Table
+//                        if(b_addr == 0x10 && bs[b_x + 41] != 'E' && bs[b_x + 42] != '0') { // Vectors exist
+//                            is_v2 = true;
+//                        }
+//
+//                        if ((records_wanted || !is_fat) && b_addr >= lower_bound && b_addr < upper_bound) {
+//
+//                            outputHex.write(bs, b_x, next);
+//                            // Add to app size
+//                            application_size = application_size + charToInt((char) bs[b_x + 1]) * 16 + charToInt((char) bs[b_x + 2]);
+//                        } else {
+//                            // Log.v(TAG, "TEST " + Integer.toHexString(b_addr) + " BA " + b_a + " LELA " + lastELA.toString() + " " + uses_ESA);
+//                            // test.write(bs, b_x, next);
+//                        }
+//
+//                        break;
+//                    case 'C':
+//                    case 'B':
+//                        records_wanted = false;
+//                        break;
+//                    default:
+//                        Log.e(TAG, "Record type not recognised; TYPE: " + b_type);
+//                }
+//
+//                // Record handled. Move to next ':'
+//                if ((b_x + next) >= i) {
+//                    break;
+//                } else {
+//                    b_x = b_x + next;
+//                }
+//
+//            }
+//
+//            byte[] output = outputHex.toByteArray();
+//            byte[] testBytes = test.toByteArray();
+//
+//            Log.v(TAG, "Finished parsing HEX. Writing application HEX for flashing");
+//
+//            try {
+//                File hexToFlash = new File(this.getCacheDir() + "/application.hex");
+//                if (hexToFlash.exists()) {
+//                    hexToFlash.delete();
+//                }
+//                hexToFlash.createNewFile();
+//
+//                outputStream = new FileOutputStream(hexToFlash);
+//                outputStream.write(output);
+//                outputStream.flush();
+//
+//                // Should return from here
+//                Log.v(TAG, hexToFlash.getAbsolutePath());
+//                String[] ret = new String[2];
+//                ret[0] = hexToFlash.getAbsolutePath();
+//                ret[1] = Integer.toString(application_size);
+//
+//                /*
+//                if(hardwareType == MICROBIT_V2 && (!is_v2 && !is_fat)) {
+//                    ret[1] = Integer.toString(-1); // Invalidate hex file
+//                }
+//                 */
+//
+//                return ret;
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//
+//        } catch (FileNotFoundException e) {
+//            Log.v(TAG, "File not found.");
+//            e.printStackTrace();
+//        } catch (IOException e) {
+//            Log.v(TAG, "IO Exception.");
+//            e.printStackTrace();
+//        }
+//
+//        // Should not reach this
+//        return new String[]{"-1", "-1"};
+//    }
+
+
+    private void pfRegister() {
+        if (pfRegistered) {
+            return;
+        }
+
+        if (pfResultReceiver == null)
+            pfResultReceiver = new PFResultReceiver();
 
         IntentFilter pfFilter = new IntentFilter();
         pfFilter.addAction(PartialFlashingService.BROADCAST_START);
@@ -1540,10 +1808,62 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         pfFilter.addAction(PartialFlashingService.BROADCAST_PF_FAILED);
         pfFilter.addAction(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU);
         pfFilter.addAction(PartialFlashingService.BROADCAST_COMPLETE);
-        pfResultReceiver = new pfResultReceiver();
 
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(pfResultReceiver, pfFilter);
+        pfRegistered = true;
+    }
+
+    private void pfUnregister() {
+        if (!pfRegistered) {
+            return;
+        }
+        LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(pfResultReceiver);
+        pfRegistered = false;
+    }
+
+    private void dfuRegister() {
+        if (dfuRegistered) {
+            return;
+        }
+
+        if (dfuResultReceiver == null)
+            dfuResultReceiver = new DFUResultReceiver();
+
+        dfuResultReceiver.reset();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(DfuService.BROADCAST_PROGRESS);
+        filter.addAction(DfuService.BROADCAST_ERROR);
+        filter.addAction(DfuService.BROADCAST_LOG);
         LocalBroadcastManager.getInstance(MBApp.getApp()).registerReceiver(dfuResultReceiver, filter);
+        dfuRegistered = true;
+    }
+
+    private void dfuUnregister() {
+        if (!dfuRegistered) {
+            return;
+        }
+        LocalBroadcastManager.getInstance(MBApp.getApp()).unregisterReceiver(dfuResultReceiver);
+        dfuRegistered = false;
+    }
+
+    /**
+     * Registers callbacks that allows to handle flashing process
+     * and react to flashing progress, errors and log some messages.
+     */
+    private void registerCallbacksForFlashing() {
+        unregisterCallbacksForFlashing();
+
+        Log.v(TAG, "registerCallbacksForFlashing");
+
+        pfRegister();
+        dfuRegister();
+    }
+
+    private void unregisterCallbacksForFlashing() {
+        Log.v(TAG, "unregisterCallbacksForFlashing");
+        dfuUnregister();
+        pfUnregister();
     }
 
     /**
@@ -1571,7 +1891,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * Represents a broadcast receiver that allows to handle states of
      * partial flashing process.
      */
-    class pfResultReceiver extends BroadcastReceiver {
+    class PFResultReceiver extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1596,6 +1916,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 flashSuccess.putExtra(INTENT_GIFF_ANIMATION_CODE, 1);
                 flashSuccess.putExtra(INTENT_EXTRA_TYPE, TYPE_ALERT);
                 localBroadcastManager.sendBroadcast( flashSuccess );
+                onFlashComplete();
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_START)) {
                 // Display progress
                 PopUp.show("",
@@ -1613,8 +1934,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         },//override click listener for ok button
                         null);//pass null to use default listener
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU)) {
-                Log.v(TAG, "Use Nordic DFU");
-                startFlashing(FLASH_TYPE_DFU);
+                Log.v(TAG, "Use Nordic DFU"); 
+                startDFUFlash();
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
 
                 Log.v(TAG, "Partial flashing failed");
@@ -1629,6 +1950,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         TYPE_ALERT, //type of popup.
                         popupOkHandler,//override click listener for ok button
                         popupOkHandler);//pass null to use default listener
+                onFlashComplete();
             }
 
         }
@@ -1644,10 +1966,19 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         private boolean inInit = false;
         private boolean inProgress = false;
 
+        private int progressState = -1;
+
+        public void reset() {
+            isCompleted = false;
+            inInit = false;
+            inProgress = false;
+            progressState = -1;
+        }
+
         private View.OnClickListener okFinishFlashingHandler = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                logi("popupOkHandler");
+                logi("okFinishFlashingHandler");
                 PopUp.hide();
             }
         };
@@ -1662,6 +1993,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     logi("DFUResultReceiver.onReceive :: state -- " + state);
                     switch(state) {
                         case DfuService.PROGRESS_STARTING:
+                            progressState = 0;
                             setActivityState(FlashActivityState.FLASH_STATE_INIT_DEVICE);
                             PopUp.show(getString(R.string.dfu_status_starting_msg), //message
                                     getString(R.string.send_project), //title
@@ -1683,8 +2015,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                                 MBApp application = MBApp.getApp();
 
-                                LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                                dfuResultReceiver = null;
+                                dfuUnregister();
                                 /* Update Stats
                                 GoogleAnalyticsManager.getInstance().sendFlashStats(
                                         ProjectActivity.class.getSimpleName(),
@@ -1703,6 +2034,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         TYPE_ALERT, //type of popup.
                                         okFinishFlashingHandler,//override click listener for ok button
                                         okFinishFlashingHandler);//pass null to use default listener
+                                onFlashComplete();
                             }
 
                             isCompleted = true;
@@ -1799,8 +2131,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
 
-                            LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                            dfuResultReceiver = null;
+                            dfuUnregister();
                             break;
                         */
                         case DfuService.PROGRESS_ABORTED:
@@ -1824,9 +2155,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
 
-                            LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                            dfuResultReceiver = null;
+                            dfuUnregister();
                             removeReconnectionRunnable();
+                            onFlashComplete();
                             break;
                         /*
                         case DfuService.PROGRESS_SERVICE_NOT_FOUND:
@@ -1849,8 +2180,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler,//override click listener for ok button
                                     popupOkHandler);//pass null to use default listener
 
-                            LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                            dfuResultReceiver = null;
+                            dfuUnregister();
                             removeReconnectionRunnable();
                             break;
                             */
@@ -1876,8 +2206,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         removeReconnectionRunnable();
                     }
 
-                    PopUp.updateProgressBar(state);
-
+                    if ( state != progressState) {
+                        progressState = state;
+                        PopUp.updateProgressBar(state);
+                    }
                 }
             } else if(intent.getAction().equals(DfuService.BROADCAST_ERROR)) {
                 int errorCode = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
@@ -1899,8 +2231,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                 MBApp application = MBApp.getApp();
 
-                LocalBroadcastManager.getInstance(application).unregisterReceiver(dfuResultReceiver);
-                dfuResultReceiver = null;
+                dfuUnregister();
+                removeReconnectionRunnable();
                 //Update Stats
                 /*
                 GoogleAnalyticsManager.getInstance().sendFlashStats(
@@ -1923,7 +2255,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     flashingChecks();
                                 }
                             },
-                            popupOkHandler);
+                            new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    PopUp.hide();
+                                    onFlashComplete();
+                                }
+                            });
                 } else {
                     PopUp.show(error_message + "\n\n" + getString(R.string.connect_tip_text), //message
                             getString(R.string.flashing_failed_title), //title
@@ -1932,8 +2270,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             TYPE_ALERT, //type of popup.
                             popupOkHandler,//override click listener for ok button
                             popupOkHandler);//pass null to use default listener
+                    onFlashComplete();
                 }
-                removeReconnectionRunnable();
             } else if(intent.getAction().equals(DfuService.BROADCAST_LOG)) {
                 //Only used for Stats at the moment
                 String data;
@@ -1967,4 +2305,5 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
+
 }
