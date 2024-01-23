@@ -1,6 +1,7 @@
 package com.samsung.microbit.ui.activity;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -23,11 +24,13 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -76,6 +79,8 @@ import pl.droidsonroids.gif.GifImageView;
 
 import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
 import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTED;
+import static android.bluetooth.BluetoothAdapter.STATE_CONNECTING;
+import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTING;
 import static com.samsung.microbit.BuildConfig.DEBUG;
 
 /**
@@ -165,6 +170,13 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     private String MICROBIT_NAME_OLD = "BBC MicroBit";
     private String MICROBIT_NAME = "BBC micro:bit";
 
+    public static final int PAIRING_GATT_DISCONNECTED = 0;
+    public static final int PAIRING_GATT_CONNECTING = 1;
+    public static final int PAIRING_GATT_CONNECTED = 2;
+    private static final int PAIRING_GATT_CONNECTED_AND_READY = 4;
+    private static final int PAIRING_GATT_ERROR = 5;
+    private int mPairingGattState = PAIRING_GATT_DISCONNECTED;
+
 
     public boolean nameIsMicrobit( String name)
     {
@@ -194,6 +206,20 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         if (!havePermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
             yes = false;
         return yes;
+    }
+
+    private boolean pairingNeedsLocationEnabled() {
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return false; // Not needed
+        }
+        LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+        List<String> lp = lm.getProviders(true);
+        for (String p : lp) {
+            if (!p.equals(LocationManager.PASSIVE_PROVIDER)) {
+                return false; // enabled
+            }
+        }
+        return true;
     }
 
     private boolean havePermissionsPairing() {
@@ -399,9 +425,9 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 		// Check the changed device is the one we are trying to pair 
                 if ( pairingGatt != null && nameIsMicrobitWithCode(device.getName(), newDeviceCode)) {
                     if (state == BluetoothDevice.BOND_BONDED) {
-                        pairingSuccess();
+                        notifyLock();
                     } else if (state == BluetoothDevice.BOND_NONE) {
-                        pairingFail();
+                        notifyLock();
                     }
                 }
             }
@@ -727,53 +753,60 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     boolean setupBleController() {
-        boolean retvalue = true;
-
-        if(bluetoothAdapter == null) {
+        if ( bluetoothAdapter == null) {
             final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
             bluetoothAdapter = bluetoothManager.getAdapter();
-            retvalue = false;
-        }
-
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && leScanner == null) {
-            if(bluetoothAdapter == null) {
-                retvalue = false;
-            } else {
-                leScanner = bluetoothAdapter.getBluetoothLeScanner();
-                if(leScanner == null)
-                    retvalue = false;
+            if ( bluetoothAdapter == null) {
+                return false;
             }
         }
-        return retvalue;
+
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if ( leScanner == null) {
+                leScanner = bluetoothAdapter.getBluetoothLeScanner();
+                if (leScanner == null) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
 
         logi("onActivityResult");
-        if(requestCode == RequestCodes.REQUEST_ENABLE_BT) {
-
-            switch(resultCode) {
-                case RESULT_OK:
-                    if(activityState == PairingActivityState.STATE_ENABLE_BT_FOR_PAIRING) {
-                        startWithPairing();
-                    } else if(activityState == PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
-                        toggleConnection();
-                    }
-                    break;
-                case RESULT_CANCELED:
-                    //Change state back to Idle
+        switch (requestCode) {
+            case RequestCodes.REQUEST_ENABLE_BT:
+                switch (resultCode) {
+                    case RESULT_OK:
+                        if (activityState == PairingActivityState.STATE_ENABLE_BT_FOR_PAIRING) {
+                            proceedAfterBlePermissionGranted();
+                        } else if (activityState == PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
+                            toggleConnection();
+                        }
+                        break;
+                    case RESULT_CANCELED:
+                        //Change state back to Idle
+                        setActivityState(PairingActivityState.STATE_IDLE);
+                        PopUp.show(getString(R.string.bluetooth_off_cannot_continue), //message
+                                "",
+                                R.drawable.error_face, R.drawable.red_btn,
+                                PopUp.GIFF_ANIMATION_ERROR,
+                                PopUp.TYPE_ALERT,
+                                null, null);
+                        break;
+                }
+                break;
+            case RequestCodes.REQUEST_ENABLE_LOCATION:
+                if ( pairingNeedsLocationEnabled()) {
                     setActivityState(PairingActivityState.STATE_IDLE);
-
-                    PopUp.show(getString(R.string.bluetooth_off_cannot_continue), //message
-                            "",
-                            R.drawable.error_face, R.drawable.red_btn,
-                            PopUp.GIFF_ANIMATION_ERROR,
-                            PopUp.TYPE_ALERT,
-                            null, null);
-                    break;
-            }
-
+                    popupLocationNeeded();
+                } else {
+                    proceedAfterBlePermissionGranted();
+                }
+                break;
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
@@ -1056,6 +1089,39 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         startActivityForResult(enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
     }
 
+    private void enableLocation() {
+        PopUp.show( "Please enable Location Services", //message
+                "Location Services Not Active", //title
+                R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
+                PopUp.TYPE_CHOICE,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        PopUp.hide();
+                        //Unpair the device for secure BLE
+                        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        startActivityForResult( intent, RequestCodes.REQUEST_ENABLE_LOCATION);
+                    }
+                },//override click listener for ok button
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        PopUp.hide();
+                        setActivityState(PairingActivityState.STATE_IDLE);
+                        popupLocationNeeded();
+                    }
+                });
+    }
+
+    public void popupLocationNeeded() {
+        PopUp.show("Cannot continue without enabling location", //message
+                "",
+                R.drawable.error_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_ALERT,
+                null, null);
+    }
+
     /**
      * Starts Step 1 pairing screen.
      */
@@ -1152,6 +1218,11 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         if(!BluetoothChecker.getInstance().isBluetoothON()) {
             setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_PAIRING);
             enableBluetooth();
+            return;
+        }
+        if ( pairingNeedsLocationEnabled()) {
+            setActivityState(PairingActivityState.STATE_ENABLE_LOCATION_FOR_PAIRING);
+            enableLocation();
             return;
         }
         startWithPairing();
@@ -1611,66 +1682,23 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         }
     }
 
-    /**
-     * Occurs when the pairing time ends.
-     * Check bond state and handle success or falure 
-     */
-    private Runnable pairingTimeout = new Runnable() {
-        @Override
-        public void run() {
-            logi("pairingTimeout");
-            boolean success = hardwareVersion != 0 && pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED;
-            if ( success) {
-                pairingSuccess();
-            } else {
-                pairingStop();
-                popupPairingTimeout();
+    private boolean timeoutOnLock( long timeout)
+    {
+        synchronized (pairingLock) {
+            try {
+                pairingLock.wait(timeout);
+            } catch (final Exception e) {
+                e.printStackTrace();
+                return false;
             }
         }
-    };
-
-    private void pairingTimeoutCancel() {
-        handler.removeCallbacks( pairingTimeout);
+        return true;
     }
 
-    private void pairingTimeoutStart() {
-        pairingTimeoutCancel();
-        handler.postDelayed(pairingTimeout, 10000);
-    }
-
-    private void pairingStop() {
-        logi("pairingStop");
-        BluetoothGatt gatt = pairingGatt;
-        pairingGatt = null;
-        pairingTimeoutCancel();
-        stopScanning();
-        if( gatt != null) {
-            synchronized (pairingLock) {
-                pairingLock.notifyAll();
-            }
-            gatt.close();
-        }
-    }
-
-    private void pairingFail() {
-        logi("pairingFail");
-        pairingStop();
-        popupPairingFailed();
-    }
-
-    private void pairingSuccess() {
-        logi("pairingSuccess");
-        pairingStop();
-        handlePairingSuccessful();
-    }
-
-    private void pairingDisconnected() {
-        logi("pairingDisconnected");
-        boolean success = hardwareVersion != 0 && pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED;
-        if ( success) {
-            pairingSuccess();
-        } else {
-            pairingFail();
+    private void notifyLock()
+    {
+        synchronized (pairingLock) {
+            pairingLock.notifyAll();
         }
     }
 
@@ -1680,7 +1708,26 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      *
      * @param device Device to pair with.
      */
+    @SuppressLint("MissingPermission")
     private void startPairingSecureBle(BluetoothDevice device) throws InterruptedException {
+        pairingDevice = device;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                pairingConnect();
+                if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
+                    logi("pairingSuccess");
+                    handlePairingSuccessful();
+                } else {
+                    logi("pairingFail");
+                    popupPairingFailed();
+                }
+            }
+        });
+    }
+
+    @SuppressLint("MissingPermission")
+    private void pairingConnect() {
         logi("###>>>>>>>>>>>>>>>>>>>>> startPairingSecureBle");
         // Service to connect
         //Check if the device is already bonded
@@ -1690,90 +1737,137 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
                 super.onConnectionStateChange(gatt, status, newState);
 
-                Log.v(TAG, "onConnectionStateChange");
+                logi("onConnectionStateChange " + newState + " status " + status);
                 if(newState == STATE_CONNECTED) {
-                    pairingTimeoutStart();
+                    logi("STATE_CONNECTED");
+                    mPairingGattState = PAIRING_GATT_CONNECTED;
                     /*
                      * Nordic says to wait 1600ms for possible service changed before discovering
                      * https://github.com/NordicSemiconductor/Android-DFU-Library/blob/e0ab213a369982ae9cf452b55783ba0bdc5a7916/dfu/src/main/java/no/nordicsemi/android/dfu/DfuBaseService.java#L888
                      */
-                    if (gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
-                        Log.v(TAG, "Already bonded");
-                        synchronized (pairingLock) {
-                            try {
-                                pairingLock.wait(1600);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            Log.v(TAG, "Bond timeout");
-                        }
+                    if ( gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
+                        logi("Already bonded");
+                        timeoutOnLock( 1600);
+                        logi("Bond timeout");
                         // After 1.6s the services are already discovered so the following gatt.discoverServices() finishes almost immediately.
                         // NOTE: This also works with shorted waiting time. The gatt.discoverServices() must be called after the indication is received which is
                         // about 600ms after establishing connection. Values 600 - 1600ms should be OK.
                     }
-                    boolean success = false;
-                    if ( pairingGatt != null) {
-                        success = gatt.discoverServices();
-                        if (!success) {
-                            Log.e(TAG, "ERROR_SERVICE_DISCOVERY_NOT_STARTED");
-                            pairingFail();
-                            return;
-                        }
-                        pairingTimeoutStart();
+                    boolean success = gatt.discoverServices();
+                    if (!success) {
+                        logi("ERROR_SERVICE_DISCOVERY_NOT_STARTED");
+                        mPairingGattState = PAIRING_GATT_ERROR;
+                        notifyLock();
+                        return;
                     }
                 }
-                else if(newState == STATE_DISCONNECTED) {
+                else if( newState == STATE_DISCONNECTED) {
                     // If actually pairing, micro:bit will break the connection
-                    pairingDisconnected();
+                    logi("STATE_DISCONNECTED");
+                    notifyLock();
                 }
             }
 
             @Override
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                 super.onServicesDiscovered(gatt, status);
-                Log.v(TAG, "onServicesDiscovered");
+                logi("onServicesDiscovered");
                 if(gatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb")) != null ) {
-                    Log.v(TAG, "Hardware Type: V2");
+                    logi("Hardware Type: V2");
                     hardwareVersion = 2;
                 } else {
-                    Log.v(TAG, "Hardware Type: V1");
+                    logi("Hardware Type: V1");
                     hardwareVersion = 1;
                 }
-                pairingTimeoutCancel();
-                if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
-                    pairingSuccess();
-                } else {
+
+                mPairingGattState = PAIRING_GATT_CONNECTED_AND_READY;
+
+                if ( pairingDevice.getBondState() != BluetoothDevice.BOND_BONDED) {
                     // Wait a bit for bonding to start
-                    synchronized (pairingLock) {
-                        try {
-                            pairingLock.wait(1000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
+                    timeoutOnLock( 1000);
                     if ( pairingDevice.getBondState() == BluetoothDevice.BOND_NONE) {
                         boolean started = pairingDevice.createBond();
-                        if (started) {
-                            Log.v(TAG, "create bond: started");
-                        } else {
-                            pairingFail();
+                        if (!started) {
+                            logi("create bond not started");
+                            mPairingGattState = PAIRING_GATT_ERROR;
                         }
                     }
                 }
+                notifyLock();
             }
         };
 
         hardwareVersion = 0;
 
-        pairingTimeoutStart();
-
         // Connect to device and discover services
-        pairingDevice = device;
-        pairingGatt = pairingDevice.connectGatt(this, true, bluetoothGattCallback);
 
-        synchronized (pairingLock) {
-            pairingLock.wait(10000);
+        pairingGatt = null;
+
+        for ( int i = 0; i < 3; i++) {
+            mPairingGattState = PAIRING_GATT_CONNECTING;
+
+            pairingGatt = connect( pairingDevice, bluetoothGattCallback);
+
+            logi("pairingGatt " + pairingGatt);
+
+            if ( pairingGatt == null) {
+                timeoutOnLock( 1000);
+            } else {
+                timeoutOnLock( 20000);
+
+                logi("mPairingGattState " + mPairingGattState);
+                logi("bondState " + pairingDevice.getBondState());
+
+                if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED)
+                    break;
+
+                if ( mPairingGattState == PAIRING_GATT_CONNECTED_AND_READY) {
+                    timeoutOnLock( 10000);
+                    break;
+                }
+
+                pairingGatt.disconnect();
+                pairingGatt.close();
+                pairingGatt = null;
+            }
         }
+
+        if ( pairingGatt != null) {
+            if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
+                timeoutOnLock( 20000);
+            }
+            pairingGatt.disconnect();
+            pairingGatt.close();
+            pairingGatt = null;
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private  BluetoothGatt connect(BluetoothDevice device, BluetoothGattCallback bluetoothGattCallback)
+    {
+        BluetoothGatt gatt;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            gatt = device.connectGatt(
+                    this,
+                    false,
+                    bluetoothGattCallback,
+                    BluetoothDevice.TRANSPORT_LE,
+                    BluetoothDevice.PHY_LE_1M_MASK | BluetoothDevice.PHY_LE_2M_MASK);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            gatt = device.connectGatt(
+                    this,
+                    false,
+                    bluetoothGattCallback,
+                    BluetoothDevice.TRANSPORT_LE);
+        } else {
+            gatt = device.connectGatt(
+                    this,
+                    false,
+                    bluetoothGattCallback);
+        }
+
+        return gatt;
     }
 
     @Override
