@@ -59,6 +59,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
     public static final String FIRST_RUN = "firstrun";
     public static final String FIRST_RUN_300 = "firstrun300";
+    public static final String FIRST_RUN_301 = "firstrun301";
 
     // share stats checkbox
     private CheckBox mShareStatsCheckBox;
@@ -496,6 +497,14 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         mPrefs.edit().putBoolean(FIRST_RUN_300, yes).apply();
     }
 
+    private boolean isFirstRun301() {
+        return mPrefs.getBoolean(FIRST_RUN_301, true);
+    }
+
+    private void setFirstRun301( boolean yes) {
+        mPrefs.edit().putBoolean(FIRST_RUN_301, yes).apply();
+    }
+
     /**
      * Loads standard samples provided by Samsung. The samples can be used to
      * flash on a micro:bit board.
@@ -503,10 +512,12 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     private void installSamples( boolean withThanks) {
         boolean firstRun    = isFirstRun();
         boolean firstRun300 = isFirstRun300();
+        boolean firstRun301 = isFirstRun301();
         if ( firstRun) setFirstRun(false);
         if ( firstRun300) setFirstRun300(false);
+        if ( firstRun301) setFirstRun301(false);
 
-        if( firstRun || firstRun300 && !ProjectsHelper.legacyStorage()) {
+        if( firstRun || firstRun301 || firstRun300 && !ProjectsHelper.legacyStorage()) {
             //First Run. Install the Sample applications
             if ( withThanks) {
                 new Thread(new Runnable() {
@@ -542,6 +553,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 } else {
                     setFirstRun(false);
                     setFirstRun300(false);
+                    setFirstRun301(false);
                     PopUp.show(getString(R.string.storage_permission_for_samples_error),
                             "",
                             R.drawable.error_face, R.drawable.red_btn,
@@ -587,6 +599,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     null, null);
             setFirstRun(false);
             setFirstRun300(false);
+            setFirstRun301(false);
         }
     };
 
@@ -596,7 +609,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
      */
     private void checkMinimumPermissionsForThisScreen() {
         //Check reading permissions & writing permission to populate the HEX files & show program list
-        if(isFirstRun() || isFirstRun300() && !ProjectsHelper.legacyStorage()) {
+        if( isFirstRun() || isFirstRun301() || isFirstRun300() && !ProjectsHelper.legacyStorage()) {
             if( !ProjectsHelper.havePermissions(this)) {
                 PopUp.show(getString(R.string.storage_permission_for_samples),
                         getString(R.string.permissions_needed_title),
