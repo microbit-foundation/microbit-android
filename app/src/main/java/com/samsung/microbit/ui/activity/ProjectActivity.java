@@ -1259,34 +1259,27 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             @Override
             public void run() {
                 prepareToFlashResult = prepareToFlash();
-                switch ( prepareToFlashResult) {
-                    case 0: {
-                        startPartialFlash();
-                        break;
-                    }
-                    case 1: {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        switch (prepareToFlashResult) {
+                            case 0:
+                                startPartialFlash();
+                                break;
+                            case 1:
                                 PopUp.hide();
                                 popupHexNotCompatible();
-                            }
-                        });
-                        break;
-                    }
-                    case 2: {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
+                                break;
+                            case 2:
                                 PopUp.hide();
                                 popupFailedToCreateFiles();
-                            }
-                        });
-                        break;
+                                break;
+                        }
                     }
-                }
+                });
             }
         }).start();
+        logi("startFlashing End");
     }
 
     protected void popupHexNotCompatible() {
@@ -1402,13 +1395,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     protected void startPartialFlash() {
         logi("startPartialFlash");
-        PopUp.hide();
-        PopUp.show(getString(R.string.dfu_status_starting_msg),
-                "",
-                R.drawable.flash_face, R.drawable.blue_btn,
-                PopUp.GIFF_ANIMATION_FLASH,
-                TYPE_SPINNER_NOT_CANCELABLE,
-                null, null);
 
         MBApp application = MBApp.getApp();
         ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
@@ -1425,6 +1411,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         service.putExtra("hardwareType", hardwareType); // a path or URI must be provided.
         service.putExtra("pf", true); // Enable partial flashing
         application.startService(service);
+        logi("startPartialFlash End");
     }
 
 
@@ -1900,8 +1887,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             MBApp application = MBApp.getApp();
             LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(application);
 
-            String message = "Broadcast intent detected " + intent.getAction();
-            logi("PFResultReceiver.onReceive :: " + message);
+            String action = intent.getAction();
+            logi("PFResultReceiver.onReceive :: action " + action);
             if(intent.getAction().equals(PartialFlashingService.BROADCAST_PROGRESS)) {
                 // Update UI
                 Intent progressUpdate = new Intent();
@@ -1986,8 +1973,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            String message = "Broadcast intent detected " + intent.getAction();
-            logi("DFUResultReceiver.onReceive :: " + message);
+            String action = intent.getAction();
+            logi("DFUResultReceiver.onReceive :: action " + action);
             if(intent.getAction().equals(DfuService.BROADCAST_PROGRESS)) {
                 int state = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
                 if(state < 0) {

@@ -18,3 +18,4 @@ public class PartialFlashingService extends PartialFlashingBaseService {
         return com.samsung.microbit.BuildConfig.DEBUG;
     }
 }
+
