@@ -790,9 +790,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     case RESULT_OK:
                         if (activityState == PairingActivityState.STATE_ENABLE_BT_FOR_PAIRING) {
                             proceedAfterBlePermissionGranted();
-                        } else if (activityState == PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
-                            toggleConnection();
                         }
+//                        else if (activityState == PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT) {
+//                            toggleConnection();
+//                        }
                         break;
                     case RESULT_CANCELED:
                         //Change state back to Idle
@@ -1139,37 +1140,37 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     /**
      * Enables or disables connection with a currently paired micro:bit board.
      */
-    public void toggleConnection() {
-        ConnectedDevice currentDevice = BluetoothUtils.getPairedMicrobit(this);
-        Log.v(TAG, "currentDevice.toString()");
-
-        if(currentDevice.mAddress != null) {
-            boolean currentState = currentDevice.mStatus;
-
-            if(!currentState) {
-                setActivityState(PairingActivityState.STATE_CONNECTING);
-                requestPermissions.clear();
-                PopUp.show(getString(R.string.init_connection),
-                        "",
-                        R.drawable.message_face, R.drawable.blue_btn,
-                        PopUp.GIFF_ANIMATION_NONE,
-                        PopUp.TYPE_SPINNER,
-                        null, null);
-
-                ServiceUtils.sendConnectDisconnectMessage(true);
-            } else {
-                setActivityState(PairingActivityState.STATE_DISCONNECTING);
-                PopUp.show(getString(R.string.disconnecting),
-                        "",
-                        R.drawable.message_face, R.drawable.blue_btn,
-                        PopUp.GIFF_ANIMATION_NONE,
-                        PopUp.TYPE_SPINNER,
-                        null, null);
-
-                ServiceUtils.sendConnectDisconnectMessage(false);
-            }
-        }
-    }
+//    private void toggleConnection() {
+//        ConnectedDevice currentDevice = BluetoothUtils.getPairedMicrobit(this);
+//        Log.v(TAG, "currentDevice.toString()");
+//
+//        if(currentDevice.mAddress != null) {
+//            boolean currentState = currentDevice.mStatus;
+//
+//            if(!currentState) {
+//                setActivityState(PairingActivityState.STATE_CONNECTING);
+//                requestPermissions.clear();
+//                PopUp.show(getString(R.string.init_connection),
+//                        "",
+//                        R.drawable.message_face, R.drawable.blue_btn,
+//                        PopUp.GIFF_ANIMATION_NONE,
+//                        PopUp.TYPE_SPINNER,
+//                        null, null);
+//
+//                ServiceUtils.sendConnectDisconnectMessage(true);
+//            } else {
+//                setActivityState(PairingActivityState.STATE_DISCONNECTING);
+//                PopUp.show(getString(R.string.disconnecting),
+//                        "",
+//                        R.drawable.message_face, R.drawable.blue_btn,
+//                        PopUp.GIFF_ANIMATION_NONE,
+//                        PopUp.TYPE_SPINNER,
+//                        null, null);
+//
+//                ServiceUtils.sendConnectDisconnectMessage(false);
+//            }
+//        }
+//    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],
@@ -1326,12 +1327,12 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 logi("onClick() :: connectBtn");
                 Toast.makeText(MBApp.getApp(), getString(R.string.no_longer_required_to_connect), Toast.LENGTH_LONG).show();
 
-                if(!BluetoothChecker.getInstance().isBluetoothON()) {
-                    setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT);
-                    enableBluetooth();
-                    return;
-                }
-                toggleConnection();
+//                if(!BluetoothChecker.getInstance().isBluetoothON()) {
+//                    setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT);
+//                    enableBluetooth();
+//                    return;
+//                }
+//                toggleConnection();
                 break;
 
             //TODO: there is no ability to delete paired device on Connect screen, so add or remove the case.

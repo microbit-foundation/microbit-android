@@ -911,10 +911,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             if (resultCode == Activity.RESULT_OK) {
                 if (flash) {
                     proceedAfterBlePermissionGrantedAndBleEnabled();
-                } else if (connect) {
-                    setActivityState(FlashActivityState.STATE_IDLE);
-                    toggleConnection();
                 }
+//                else if (connect) {
+//                    setActivityState(FlashActivityState.STATE_IDLE);
+//                    toggleConnection();
+//                }
             }
             else if (resultCode == Activity.RESULT_CANCELED) {
                 setActivityState(FlashActivityState.STATE_IDLE);
@@ -1061,32 +1062,32 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     /**
      * Allows to enable or disable connection to a micro:bit board.
      */
-    private void toggleConnection() {
-        ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
-        if(connectedDevice.mPattern != null) {
-            if(connectedDevice.mStatus) {
-                setActivityState(FlashActivityState.STATE_DISCONNECTING);
-                PopUp.show(getString(R.string.disconnecting),
-                        "",
-                        R.drawable.flash_face, R.drawable.blue_btn,
-                        PopUp.GIFF_ANIMATION_NONE,
-                        PopUp.TYPE_SPINNER,
-                        null, null);
-                ServiceUtils.sendConnectDisconnectMessage(false);
-            } else {
-                mRequestPermissions.clear();
-                setActivityState(FlashActivityState.STATE_CONNECTING);
-                PopUp.show(getString(R.string.init_connection),
-                        "",
-                        R.drawable.flash_face, R.drawable.blue_btn,
-                        PopUp.GIFF_ANIMATION_NONE,
-                        PopUp.TYPE_SPINNER,
-                        null, null);
-
-                ServiceUtils.sendConnectDisconnectMessage(true);
-            }
-        }
-    }
+//    private void toggleConnection() {
+//        ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
+//        if(connectedDevice.mPattern != null) {
+//            if(connectedDevice.mStatus) {
+//                setActivityState(FlashActivityState.STATE_DISCONNECTING);
+//                PopUp.show(getString(R.string.disconnecting),
+//                        "",
+//                        R.drawable.flash_face, R.drawable.blue_btn,
+//                        PopUp.GIFF_ANIMATION_NONE,
+//                        PopUp.TYPE_SPINNER,
+//                        null, null);
+//                ServiceUtils.sendConnectDisconnectMessage(false);
+//            } else {
+//                mRequestPermissions.clear();
+//                setActivityState(FlashActivityState.STATE_CONNECTING);
+//                PopUp.show(getString(R.string.init_connection),
+//                        "",
+//                        R.drawable.flash_face, R.drawable.blue_btn,
+//                        PopUp.GIFF_ANIMATION_NONE,
+//                        PopUp.TYPE_SPINNER,
+//                        null, null);
+//
+//                ServiceUtils.sendConnectDisconnectMessage(true);
+//            }
+//        }
+//    }
 
     /**
      * Sends a project to flash on a micro:bit board. If bluetooth is off then turn it on.
@@ -1878,14 +1879,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     };
 
 
-    View.OnClickListener reconnectHandler = new View.OnClickListener() {
-        @Override
-        public void onClick(View v) {
-            logi("reconnectOkHandler");
-            PopUp.hide();
-            toggleConnection();
-        }
-    };
+//    View.OnClickListener reconnectHandler = new View.OnClickListener() {
+//        @Override
+//        public void onClick(View v) {
+//            logi("reconnectOkHandler");
+//            PopUp.hide();
+//            toggleConnection();
+//        }
+//    };
 
     /**
      * Represents a broadcast receiver that allows to handle states of
