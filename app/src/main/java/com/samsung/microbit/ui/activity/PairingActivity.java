@@ -201,12 +201,13 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         return yes;
     }
 
-    private boolean havePermissionsLocationBackground() {
-        boolean yes = true;
-        if (!havePermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
-            yes = false;
-        return yes;
-    }
+//    // REMOVE BACKGROUND
+//    private boolean havePermissionsLocationBackground() {
+//        boolean yes = true;
+//        if (!havePermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+//            yes = false;
+//        return yes;
+//    }
 
     private boolean pairingNeedsLocationEnabled() {
         if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -233,8 +234,9 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         else if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             if ( !havePermissionsLocationForeground())
                 yes = false;
-            if (!havePermissionsLocationBackground())
-                yes = false;
+//            // REMOVE BACKGROUND
+//            if (!havePermissionsLocationBackground())
+//                yes = false;
         }
         else {
             if ( !havePermissionsLocationForeground())
@@ -257,8 +259,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         } else if ( Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
             String[] permissionsNeeded = {
                     Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_BACKGROUND_LOCATION };
+                    Manifest.permission.ACCESS_FINE_LOCATION
+//                    // REMOVE BACKGROUND
+//                    , Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            };
             requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API29);
         } else {
             String[] permissionsNeeded = {
@@ -268,12 +272,13 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         }
     }
 
-    private void requestPermissionsPairingAPI30Background() {
-        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            String[] permissionsNeeded = { Manifest.permission.ACCESS_BACKGROUND_LOCATION };
-            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND);
-        }
-    }
+//    // REMOVE BACKGROUND
+//    private void requestPermissionsPairingAPI30Background() {
+//        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//            String[] permissionsNeeded = { Manifest.permission.ACCESS_BACKGROUND_LOCATION };
+//            requestPermission(permissionsNeeded, PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND);
+//        }
+//    }
 
     public void requestPermissionsPairingResult(int requestCode,
                                                 @NonNull String permissions[],
@@ -287,7 +292,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         switch(requestCode) {
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_FOREGROUND: {
                 if ( havePermissionsLocationForeground()) {
-                    requestPermissionsPairingAPI30Background();
+//                    // REMOVE BACKGROUND
+//                    requestPermissionsPairingAPI30Background();
                 } else {
                     popupPermissionLocationError();
                 }
@@ -295,7 +301,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             }
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API28:
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API29:
-            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND:
+//                // REMOVE BACKGROUND
+//            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND:
                 popupPermissionLocationError();;
                 break;
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API31: {
@@ -1171,7 +1178,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API28:
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API29:
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_FOREGROUND:
-            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND:
+//                // REMOVE BACKGROUND
+//            case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API30_BACKGROUND:
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_API31: {
                 requestPermissionsPairingResult(requestCode, permissions, grantResults);
                 break;
