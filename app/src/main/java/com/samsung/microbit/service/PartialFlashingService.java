@@ -12,4 +12,9 @@ public class PartialFlashingService extends PartialFlashingBaseService {
     protected Class<? extends Activity> getNotificationTarget() {
         return NotificationActivity.class;
     }
+
+    @Override
+    protected boolean isDebug() {
+        return com.samsung.microbit.BuildConfig.DEBUG;
+    }
 }
