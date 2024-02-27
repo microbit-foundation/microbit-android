@@ -66,6 +66,7 @@ import com.samsung.microbit.ui.adapter.LEDAdapter;
 import com.samsung.microbit.utils.BLEConnectionHandler;
 import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
+import com.samsung.microbit.utils.BLEPair;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -89,7 +90,7 @@ import static com.samsung.microbit.BuildConfig.DEBUG;
  * Pairing provides few steps which guides a user through pairing process.
  */
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-public class PairingActivity extends Activity implements View.OnClickListener, BluetoothAdapter.LeScanCallback,
+public class PairingActivity extends Activity implements View.OnClickListener, BLEPair.BLEPairCallback,
         BLEConnectionHandler.BLEConnectionManager {
 
     private static final String TAG = PairingActivity.class.getSimpleName();
@@ -110,9 +111,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             "Z", "U", "Z", "U", "Z"};
     // @formatter:on
 
-    // Stops scanning after 15 seconds.
-    private static final long SCAN_PERIOD = 15000;
-
     /**
      * Allows to navigate through pairing process and
      * provide appropriate action.
@@ -132,7 +130,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     private PAIRING_STATE pairingState;
     private String newDeviceName = "";
     private String newDeviceCode = "";
-    private String newDeviceAddress;
 
     LinearLayout pairButtonView;
     LinearLayout pairTipView;
@@ -144,48 +141,112 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     // Connected Device Status
     Button deviceConnectionStatusBtn;
 
-    private Handler handler;
-
-    private BluetoothAdapter bluetoothAdapter;
-    private volatile boolean scanning;
-
     private int currentOrientation;
-    private BluetoothLeScanner leScanner;
 
     private List<Integer> requestPermissions = new ArrayList<>();
 
     private int requestingPermission = -1;
 
-    private ScanCallback newScanCallback;
-
     private boolean justPaired;
+    
+    private BLEPair blePair = null;
 
-    private final Object pairingLock = new Object();
-
-    private BluetoothGatt pairingGatt = null;
-    private BluetoothDevice pairingDevice = null;
-
-    private int hardwareVersion = 0;
-
-    private String MICROBIT_NAME_OLD = "BBC MicroBit";
-    private String MICROBIT_NAME = "BBC micro:bit";
-
-    public static final int PAIRING_GATT_DISCONNECTED = 0;
-    public static final int PAIRING_GATT_CONNECTING = 1;
-    public static final int PAIRING_GATT_CONNECTED = 2;
-    private static final int PAIRING_GATT_CONNECTED_AND_READY = 4;
-    private static final int PAIRING_GATT_ERROR = 5;
-    private int mPairingGattState = PAIRING_GATT_DISCONNECTED;
-
-
-    public boolean nameIsMicrobit( String name)
-    {
-        return name.startsWith( MICROBIT_NAME) || name.startsWith( MICROBIT_NAME_OLD);
+    private BLEPair getBLEPair() {
+        if ( blePair == null) {
+            blePair = new BLEPair( this);
+        }
+        return blePair;
+    }
+    @Override
+    public Activity BLEPairGetActivity() {
+        return this;
+    }
+    @Override
+    public String BLEPairGetDeviceName() {
+        return newDeviceName;
+    }
+    @Override
+    public String BLEPairGetDeviceCode() {
+        return newDeviceCode;
+    }
+    @Override
+    public void BLEPairResult() {
+        BLEPair.enumResult result = getBLEPair().resultState;
+        runOnUiThread(new Runnable() {
+            @SuppressLint("MissingPermission")
+            @Override
+            public void run() {
+                logi("BLEPairResult " + result);
+                switch ( result) {
+                    case Found:
+                        updateOnScanFound();
+//                        We need to connect even if bonded, to get resultHardwareVersion
+//                        if ( getBLEPair().resultDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
+//                            logi("scan found device already paired");
+//                            handlePairingSuccessful();
+//                        } else {
+//                            if ( !getBLEPair().startPair()) {
+//                                popupPairingFailed();
+//                            }
+//                        }
+                        if ( !getBLEPair().startPair()) {
+                            popupPairingFailed();
+                        }
+                        break;
+                    case Connected:
+                        updateOnConnected();
+                        break;
+                    case Paired:
+                        handlePairingSuccessful();
+                        break;
+                    case TimeoutScan:
+                        popupScanningTimeout();
+                        break;
+                    case TimeoutConnect:
+                        popupPairingTimeout();
+                        break;
+                    case TimeoutPair:
+                        popupPairingFailed();
+                        break;
+                    default:
+                        break;
+                }
+            }
+        });
     }
 
-    public boolean nameIsMicrobitWithCode( String name, String code)
-    {
-        return nameIsMicrobit( name) && name.toLowerCase().contains( code.toLowerCase());
+    private void stopScanning() {
+        logi("###>>>>>>>>>>>>>>>>>>>>> stopScanning");
+        getBLEPair().stopScanAndPair();
+    }
+
+    private void startScanning() {
+        logi("###>>>>>>>>>>>>>>>>>>>>> startScanning");
+
+        ((TextView) findViewById(R.id.search_microbit_step_3_title))
+                .setText(getString(R.string.searchingTitle));
+
+        getBLEPair().startScan();
+    }
+
+    /**
+     * Provides actions after BLE permission has been granted:
+     * check if bluetooth is disabled then enable it and
+     * start the pairing steps.
+     */
+    private void proceedAfterBlePermissionGranted() {
+        if(!BluetoothChecker.getInstance().isBluetoothON()) {
+            setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_PAIRING);
+            enableBluetooth();
+            return;
+        }
+        if ( pairingNeedsLocationEnabled()) {
+            setActivityState(PairingActivityState.STATE_ENABLE_LOCATION_FOR_PAIRING);
+            enableLocation();
+            return;
+        }
+
+        displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_1);
     }
 
     private boolean havePermission(String permission) {
@@ -385,10 +446,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     /**
      * Allows to do device scanning after unsuccessful one.
      */
-    private View.OnClickListener retryPairing = new View.OnClickListener() {
+    private View.OnClickListener retryScanning = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            logi("======retryPairing======");
+            logi("======retryScanning======");
             PopUp.hide();
             startScanning();
             displayScreen(PAIRING_STATE.PAIRING_STATE_SEARCHING);
@@ -403,40 +464,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         @Override
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals(BLEService.GATT_FORCE_CLOSED)) {
+                logi("gattForceClosedReceiver");
                 updatePairedDeviceCard();
-            }
-        }
-    };
-
-    /**
-     * Occurs when a bond state has been changed and provides action to handle that.
-     */
-    private final BroadcastReceiver pairReceiver = new BroadcastReceiver() {
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-
-            if ( BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(action)) {
-                final BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-                if (device == null) {
-                    Log.e(TAG, "pairReceiver - no device");
-                    return;
-                }
-                final String name = device.getName();
-                final String addr = device.getAddress();
-                final int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR);
-                final int prevState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR);
-                logi(" pairReceiver -" + " name = " + name + " addr = " + addr + " state = " + state + " prevState = " + prevState);
-                if (name.isEmpty() || addr.isEmpty()) {
-                    return;
-                }
-		// Check the changed device is the one we are trying to pair 
-                if ( pairingGatt != null && nameIsMicrobitWithCode(device.getName(), newDeviceCode)) {
-                    if (state == BluetoothDevice.BOND_BONDED) {
-                        notifyLock();
-                    } else if (state == BluetoothDevice.BOND_NONE) {
-                        notifyLock();
-                    }
-                }
             }
         }
     };
@@ -450,6 +479,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     @Override
     public void preUpdateUi() {
+        logi("preUpdateUi");
         updatePairedDeviceCard();
     }
 
@@ -648,6 +678,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      * Initializes views, sets onClick listeners and sets font style.
      */
     private void initViews() {
+        logi("initViews");
         deviceConnectionStatusBtn = (Button) findViewById(R.id.connected_device_status_button);
         bottomPairButton = (LinearLayout) findViewById(R.id.ll_pairing_activity_screen);
         pairButtonView = (LinearLayout) findViewById(R.id.pairButtonView);
@@ -665,6 +696,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         findViewById(R.id.cancel_search_microbit_step_3_btn).setOnClickListener(this);
 
         setupFontStyle();
+        logi("initViews End");
     }
 
     private void releaseViews() {
@@ -690,6 +722,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     @Override
     public void onResume() {
         super.onResume();
+        logi("onResume");
         updatePairedDeviceCard();
 
         // Step 1 - How to pair
@@ -714,11 +747,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         MBApp application = MBApp.getApp();
 
-        registerReceiver(pairReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
-
-        handler = new Handler(Looper.getMainLooper());;
-
         if(savedInstanceState == null) {
+            logi("savedInstanceState == null");
             activityState = PairingActivityState.STATE_IDLE;
             pairingState = PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON;
             justPaired = false;
@@ -734,13 +764,11 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             pairingState = (PAIRING_STATE) savedInstanceState.getSerializable(PAIRING_STATE_KEY);
         }
 
-
-        setupBleController();
-
         // ************************************************
-        //Remove title barproject_list
+        //Remove title bar project_list
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
+        // setContentView takes just over 2s
         setContentView(R.layout.activity_connect);
 
         initViews();
@@ -757,27 +785,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putSerializable(PAIRING_STATE_KEY, pairingState);
-    }
-
-    boolean setupBleController() {
-        if ( bluetoothAdapter == null) {
-            final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
-            bluetoothAdapter = bluetoothManager.getAdapter();
-            if ( bluetoothAdapter == null) {
-                return false;
-            }
-        }
-
-        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if ( leScanner == null) {
-                leScanner = bluetoothAdapter.getBluetoothLeScanner();
-                if (leScanner == null) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
     }
 
     @Override
@@ -999,6 +1006,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      * Updates bond and connection status UI.
      */
     private void updatePairedDeviceCard() {
+        logi("updatePairedDeviceCard");
+
         ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
         if(connectedDevice.mName == null) {
             // No device is Paired
@@ -1011,6 +1020,45 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             updateConnectionStatus();
             deviceConnectionStatusBtn.setOnClickListener(this);
         }
+        logi("updatePairedDeviceCard End");
+    }
+
+    private void updateOnScanFound() {
+        logi("updateOnScanFound");
+        TextView textView = (TextView) findViewById(R.id.search_microbit_step_3_title);
+        TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
+        TextView tvSearchingInstructions = (TextView) findViewById(R.id.searching_microbit_step_instructions);
+        if (textView != null) {
+            textView.setText(getString(R.string.searchingTitle));
+            //findViewById(R.id.searching_progress_spinner).setVisibility(View.GONE);
+            ((GifImageView) findViewById(R.id.searching_microbit_found_giffview))
+                    .setImageResource(R.drawable.emoji_microbit_found);
+//            if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+//                tvSearchingStep.setText(R.string.searching_microbit_found_message_one_line);
+//            } else {
+//                tvSearchingStep.setText(R.string.searching_microbit_found_message);
+//            }
+//            tvSearchingInstructions.setText(R.string.searching_tip_text_instructions);
+        }
+    }
+
+    private void updateOnConnected() {
+        logi("updateOnConnected");
+        TextView textView = (TextView) findViewById(R.id.search_microbit_step_3_title);
+        TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
+        TextView tvSearchingInstructions = (TextView) findViewById(R.id.searching_microbit_step_instructions);
+        if (textView != null) {
+            textView.setText(getString(R.string.searchingTitle));
+            findViewById(R.id.searching_progress_spinner).setVisibility(View.GONE);
+            ((GifImageView) findViewById(R.id.searching_microbit_found_giffview))
+                    .setImageResource(R.drawable.emoji_microbit_found);
+            if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
+                tvSearchingStep.setText(R.string.searching_microbit_found_message_one_line);
+            } else {
+                tvSearchingStep.setText(R.string.searching_microbit_found_message);
+            }
+            tvSearchingInstructions.setText(R.string.searching_tip_text_instructions);
+        }
     }
 
     /**
@@ -1020,6 +1068,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      * @param gotoState New pairing state.
      */
     private void displayScreen(PAIRING_STATE gotoState) {
+        logi("displayScreen");
         //Reset all screens first
         pairTipView.setVisibility(View.GONE);
         newDeviceView.setVisibility(View.GONE);
@@ -1087,6 +1136,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 }
                 break;
         }
+        logi("displayScreen End");
     }
 
     /**
@@ -1128,13 +1178,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 PopUp.GIFF_ANIMATION_ERROR,
                 PopUp.TYPE_ALERT,
                 null, null);
-    }
-
-    /**
-     * Starts Step 1 pairing screen.
-     */
-    public void startWithPairing() {
-        displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_1);
     }
 
     /**
@@ -1216,25 +1259,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 break;
              }
         }
-    }
-
-    /**
-     * Provides actions after BLE permission has been granted:
-     * check if bluetooth is disabled then enable it and
-     * start the pairing steps.
-     */
-    private void proceedAfterBlePermissionGranted() {
-        if(!BluetoothChecker.getInstance().isBluetoothON()) {
-            setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_PAIRING);
-            enableBluetooth();
-            return;
-        }
-        if ( pairingNeedsLocationEnabled()) {
-            setActivityState(PairingActivityState.STATE_ENABLE_LOCATION_FOR_PAIRING);
-            enableLocation();
-            return;
-        }
-        startWithPairing();
     }
 
     private void requestPermission(String[] permissions, final int requestCode) {
@@ -1366,6 +1390,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
+                        logi("handleDeleteMicrobit OK");
                         PopUp.hide();
                         //Unpair the device for secure BLE
                         unPairDevice();
@@ -1406,7 +1431,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     private void handleResetAll() {
         Arrays.fill(DEVICE_CODE_ARRAY, 0);
         stopScanning();
-        stopScanning();
 
         if(pairingState == PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON) {
             finish();
@@ -1427,7 +1451,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 R.drawable.red_btn,
                 PopUp.GIFF_ANIMATION_ERROR,
                 PopUp.TYPE_CHOICE, //type of popup.
-                retryPairing,//override click listener for ok button
+                retryScanning,//override click listener for ok button
                 failedPairingHandler);
     }
 
@@ -1439,7 +1463,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 R.drawable.red_btn,
                 PopUp.GIFF_ANIMATION_ERROR,
                 PopUp.TYPE_CHOICE, //type of popup.
-                retryPairing,//override click listener for ok button
+                retryScanning,//override click listener for ok button
                 failedPairingHandler);
     }
 
@@ -1481,11 +1505,11 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 newDeviceCode.toUpperCase(),
                 newDeviceCode.toUpperCase(),
                 false,
-                newDeviceAddress,
+                getBLEPair().resultDevice.getAddress(),
                 0,
                 null,
                 System.currentTimeMillis(),
-                hardwareVersion);
+                getBLEPair().resultHardwareVersion);
         BluetoothUtils.setPairedMicroBit(MBApp.getApp(), newDev);
         updatePairedDeviceCard();
         // Pop up to show pairing successful
@@ -1507,386 +1531,19 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         }
     }
 
-    private void stopScanning() {
-        logi("###>>>>>>>>>>>>>>>>>>>>> stopScanning");
-        scanLeDevice(false);
-    }
 
-    private void startScanning() {
-        scanLeDevice(true);
-    }
 
-    /**
-     * Allows to start or stop scanning for a low energy device.
-     *
-     * @param enable True - start scanning, false - stop scanning.
-     */
-    private void scanLeDevice(final boolean enable) {
-        logi("scanLeDevice() :: enable = " + enable);
-
-        if(!BluetoothChecker.getInstance().isBluetoothON()) {
-            setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT);
-            enableBluetooth();
-            return;
-        }
-
-        if(enable) {
-            //Start scanning.
-            if(!setupBleController()) {
-                logi("scanLeDevice() :: FAILED ");
-                return;
-            }
-            if(!scanning) {
-                logi("scanLeDevice ::   Searching For " + newDeviceName.toLowerCase());
-                // Stops scanning after a pre-defined scan period.
-                scanning = true;
-                ((TextView) findViewById(R.id.search_microbit_step_3_title))
-                        .setText(getString(R.string.searchingTitle));
-                handler.postDelayed(scanTimedOut, SCAN_PERIOD);
-                if(Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                    bluetoothAdapter.startLeScan(getOldScanCallback());
-                } else {
-                    List<ScanFilter> filters = new ArrayList<>();
-                    // TODO: play with ScanSettings further to ensure the Kit kat devices connectMaybeInit with higher success rate
-                    ScanSettings settings;
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        settings = new ScanSettings.Builder().setLegacy(true).setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
-                    } else {
-                        settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
-                    }
-                    leScanner.startScan(filters, settings, getNewScanCallback());
-                }
-            }
-        } else {
-            //Stop scanning.
-            if(scanning) {
-                scanning = false;
-                handler.removeCallbacks(scanTimedOut);
-                if(Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                    bluetoothAdapter.stopLeScan(getOldScanCallback());
-                } else {
-                    leScanner.stopScan(getNewScanCallback());
-                }
-            }
-        }
-    }
-
-    /**
-     * Gets newScanCallback. If it is null it creates a new one.
-     *
-     * @return Current scan callback or a new one.
-     */
-    private ScanCallback getNewScanCallback() {
-        if(newScanCallback == null) {
-            newScanCallback = new ScanCallback() {
-                @Override
-                public void onScanResult(int callbackType, ScanResult result) {
-                    super.onScanResult(callbackType, result);
-                    Log.i("callbackType = ", String.valueOf(callbackType));
-                    Log.i("result = ", result.toString());
-                    BluetoothDevice btDevice = result.getDevice();
-                    final ScanRecord scanRecord = result.getScanRecord();
-                    if(scanRecord != null) {
-                        onLeScan(btDevice, result.getRssi(), scanRecord.getBytes());
-                    }
-                }
-
-                @Override
-                public void onBatchScanResults(List<ScanResult> results) {
-                    super.onBatchScanResults(results);
-                    for(ScanResult sr : results) {
-                        Log.i("Scan result - Results ", sr.toString());
-                    }
-                }
-
-                @Override
-                public void onScanFailed(int errorCode) {
-                    super.onScanFailed(errorCode);
-                    Log.i("Scan failed", "Error Code : " + errorCode);
-                }
-            };
-        }
-
-        return newScanCallback;
-    }
-
-    private BluetoothAdapter.LeScanCallback getOldScanCallback() {
-        return this;
-    }
-
-    /**
-     * Occurs when the scanning time ends, stops scanning and
-     * shows a dialog window about failed scanning.
-     */
-    private Runnable scanTimedOut = new Runnable() {
-        @Override
-        public void run() {
-            boolean scanning = PairingActivity.this.scanning;
-            stopScanning();
-
-            if(scanning) { // was scanning
-                popupScanningTimeout();
-            }
-        }
-    };
-
-    @Override
-    public void onLeScan(final BluetoothDevice device, int rssi, byte[] scanRecord) {
-        logi("mLeScanCallback.onLeScan() [+]");
-
-        if (!scanning) {
-            return;
-        }
-
-        if (device == null) {
-            return;
-        }
-
-        if ((newDeviceName.isEmpty()) || (device.getName() == null)) {
-            logi("mLeScanCallback.onLeScan() ::   Cannot Compare " + device.getAddress() + " " + rssi + " " + Arrays.toString(scanRecord));
-            Log.v(TAG, String.valueOf(device));
-            Log.v(TAG, String.valueOf(newDeviceName));
-        } else {
-            String s = device.getName().toLowerCase();
-            //Replace all : to blank - Fix for #64
-            //TODO Use pattern recognition instead
-            s = s.replaceAll(":", "");
-            if (newDeviceName.toLowerCase().startsWith(s)) {
-                logi("mLeScanCallback.onLeScan() ::   Found micro:bit -" + device.getName().toLowerCase() + " " +
-                        device.getAddress());
-
-                // Stop scanning as device is found.
-                stopScanning();
-                newDeviceAddress = device.getAddress();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        TextView textView = (TextView) findViewById(R.id.search_microbit_step_3_title);
-                        TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
-                        TextView tvSearchingInstructions = (TextView) findViewById(R.id.searching_microbit_step_instructions);
-                        if (textView != null) {
-                            textView.setText(getString(R.string.searchingTitle));
-                            findViewById(R.id.searching_progress_spinner).setVisibility(View.GONE);
-                            ((GifImageView) findViewById(R.id.searching_microbit_found_giffview))
-                                    .setImageResource(R.drawable.emoji_microbit_found);
-                            if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-                                tvSearchingStep.setText(R.string.searching_microbit_found_message_one_line);
-                            } else {
-                                tvSearchingStep.setText(R.string.searching_microbit_found_message);
-                            }
-                            tvSearchingInstructions.setText(R.string.searching_tip_text_instructions);
-                            try {
-                                startPairingSecureBle(device);
-                            } catch (InterruptedException e) {
-                                Log.v(TAG, "startPairingSecureBle Interrupted");
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                });
-            } else {
-                logi("mLeScanCallback.onLeScan() ::   Found - device.getName() == " + device.getName().toLowerCase()
-                        + " , device address - " + device.getAddress());
-            }
-        }
-    }
-
-    private boolean timeoutOnLock( long timeout)
-    {
-        synchronized (pairingLock) {
-            try {
-                pairingLock.wait(timeout);
-            } catch (final Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private void notifyLock()
-    {
-        synchronized (pairingLock) {
-            pairingLock.notifyAll();
-        }
-    }
-
-    /**
-     * Checks if device is paired, if true - stops scanning and proceeds with success message,
-     * else - starts pairing to the device.
-     *
-     * @param device Device to pair with.
-     */
-    @SuppressLint("MissingPermission")
-    private void startPairingSecureBle(BluetoothDevice device) throws InterruptedException {
-        pairingDevice = device;
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                pairingConnect();
-                if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
-                    logi("pairingSuccess");
-                    handlePairingSuccessful();
-                } else {
-                    logi("pairingFail");
-                    popupPairingFailed();
-                }
-            }
-        });
-    }
-
-    @SuppressLint("MissingPermission")
-    private void pairingConnect() {
-        logi("###>>>>>>>>>>>>>>>>>>>>> startPairingSecureBle");
-        // Service to connect
-        //Check if the device is already bonded
-
-        BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
-            @Override
-            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                super.onConnectionStateChange(gatt, status, newState);
-
-                logi("onConnectionStateChange " + newState + " status " + status);
-                if(newState == STATE_CONNECTED) {
-                    logi("STATE_CONNECTED");
-                    mPairingGattState = PAIRING_GATT_CONNECTED;
-                    /*
-                     * Nordic says to wait 1600ms for possible service changed before discovering
-                     * https://github.com/NordicSemiconductor/Android-DFU-Library/blob/e0ab213a369982ae9cf452b55783ba0bdc5a7916/dfu/src/main/java/no/nordicsemi/android/dfu/DfuBaseService.java#L888
-                     */
-                    if ( gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
-                        logi("Already bonded");
-                        timeoutOnLock( 1600);
-                        logi("Bond timeout");
-                        // After 1.6s the services are already discovered so the following gatt.discoverServices() finishes almost immediately.
-                        // NOTE: This also works with shorted waiting time. The gatt.discoverServices() must be called after the indication is received which is
-                        // about 600ms after establishing connection. Values 600 - 1600ms should be OK.
-                    }
-                    boolean success = gatt.discoverServices();
-                    if (!success) {
-                        logi("ERROR_SERVICE_DISCOVERY_NOT_STARTED");
-                        mPairingGattState = PAIRING_GATT_ERROR;
-                        notifyLock();
-                        return;
-                    }
-                }
-                else if( newState == STATE_DISCONNECTED) {
-                    // If actually pairing, micro:bit will break the connection
-                    logi("STATE_DISCONNECTED");
-                    notifyLock();
-                }
-            }
-
-            @Override
-            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-                super.onServicesDiscovered(gatt, status);
-                logi("onServicesDiscovered");
-                if(gatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb")) != null ) {
-                    logi("Hardware Type: V2");
-                    hardwareVersion = 2;
-                } else {
-                    logi("Hardware Type: V1");
-                    hardwareVersion = 1;
-                }
-
-                mPairingGattState = PAIRING_GATT_CONNECTED_AND_READY;
-
-                if ( pairingDevice.getBondState() != BluetoothDevice.BOND_BONDED) {
-                    // Wait a bit for bonding to start
-                    timeoutOnLock( 1000);
-                    if ( pairingDevice.getBondState() == BluetoothDevice.BOND_NONE) {
-                        boolean started = pairingDevice.createBond();
-                        if (!started) {
-                            logi("create bond not started");
-                            mPairingGattState = PAIRING_GATT_ERROR;
-                        }
-                    }
-                }
-                notifyLock();
-            }
-        };
-
-        hardwareVersion = 0;
-
-        // Connect to device and discover services
-
-        pairingGatt = null;
-
-        for ( int i = 0; i < 3; i++) {
-            mPairingGattState = PAIRING_GATT_CONNECTING;
-
-            pairingGatt = connect( pairingDevice, bluetoothGattCallback);
-
-            logi("pairingGatt " + pairingGatt);
-
-            if ( pairingGatt == null) {
-                timeoutOnLock( 1000);
-            } else {
-                timeoutOnLock( 20000);
-
-                logi("mPairingGattState " + mPairingGattState);
-                logi("bondState " + pairingDevice.getBondState());
-
-                if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDED)
-                    break;
-
-                if ( mPairingGattState == PAIRING_GATT_CONNECTED_AND_READY) {
-                    timeoutOnLock( 10000);
-                    break;
-                }
-
-                pairingGatt.disconnect();
-                pairingGatt.close();
-                pairingGatt = null;
-            }
-        }
-
-        if ( pairingGatt != null) {
-            if ( pairingDevice.getBondState() == BluetoothDevice.BOND_BONDING) {
-                timeoutOnLock( 20000);
-            }
-            pairingGatt.disconnect();
-            pairingGatt.close();
-            pairingGatt = null;
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private  BluetoothGatt connect(BluetoothDevice device, BluetoothGattCallback bluetoothGattCallback)
-    {
-        BluetoothGatt gatt;
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            gatt = device.connectGatt(
-                    this,
-                    false,
-                    bluetoothGattCallback,
-                    BluetoothDevice.TRANSPORT_LE,
-                    BluetoothDevice.PHY_LE_1M_MASK | BluetoothDevice.PHY_LE_2M_MASK);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            gatt = device.connectGatt(
-                    this,
-                    false,
-                    bluetoothGattCallback,
-                    BluetoothDevice.TRANSPORT_LE);
-        } else {
-            gatt = device.connectGatt(
-                    this,
-                    false,
-                    bluetoothGattCallback);
-        }
-
-        return gatt;
-    }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        getBLEPair().stopScanAndPair();
+
         pairTipView.setVisibility(View.GONE);
         newDeviceView.setVisibility(View.GONE);
         pairSearchView.setVisibility(View.GONE);
         connectDeviceView.setVisibility(View.GONE);
-        handler.removeCallbacks(null);
 
         releaseViews();
 
@@ -1918,8 +1575,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         Utils.unbindDrawables(findViewById(R.id.cancel_search_microbit_step_3_btn));
         Utils.unbindDrawables(findViewById(R.id.searching_progress_spinner));
 
-        unregisterReceiver(pairReceiver);
-
         LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(MBApp.getApp());
 
         localBroadcastManager.unregisterReceiver(gattForceClosedReceiver);
@@ -1938,7 +1593,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     @Override
     public void onBackPressed() {
-        logi("onKeyDown() :: Cancel");
+        logi("onBackPressed() :: Cancel");
         handleResetAll();
     }
 
