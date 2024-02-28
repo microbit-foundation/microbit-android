@@ -1,6 +1,7 @@
 package com.samsung.microbit.ui.activity;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
@@ -21,8 +22,10 @@ import android.os.Handler;
 import android.provider.DocumentsContract;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -31,6 +34,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
@@ -62,6 +66,7 @@ import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 import com.samsung.microbit.utils.irmHexUtils;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -70,6 +75,7 @@ import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
@@ -98,6 +104,8 @@ import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TITLE;
 import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_EXTRA_TYPE;
 import static com.samsung.microbit.ui.activity.PopUpActivity.INTENT_GIFF_ANIMATION_CODE;
 import static com.samsung.microbit.utils.FileUtils.getFileSize;
+
+import org.microbit.android.partialflashing.HexUtils;
 
 // import com.samsung.microbit.core.GoogleAnalyticsManager;
 
@@ -768,7 +776,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 || mActivityState == FlashActivityState.FLASH_STATE_WAIT_DEVICE_REBOOT
                 || mActivityState == FlashActivityState.FLASH_STATE_INIT_DEVICE
                 || mActivityState == FlashActivityState.FLASH_STATE_PROGRESS
-                ) {
+        ) {
             // connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
             connectedIndicatorText.setText(getString(R.string.connected_to));
 
@@ -903,8 +911,19 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch ( requestCode) {
+            case REQUEST_CODE_IMPORT:
+                onActivityResultScriptsImport( requestCode, resultCode, data);
+                super.onActivityResult(requestCode, resultCode, data);
+                return;
+            case REQUEST_CODE_EXPORT:
+                onActivityResultScriptsExport( requestCode, resultCode, data);
+                super.onActivityResult(requestCode, resultCode, data);
+                return;
+        }
+
         boolean flash   = mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
-                          mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST;
+                mActivityState == FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST;
         boolean connect = mActivityState == FlashActivityState.STATE_ENABLE_BT_FOR_CONNECT;
 
         if (requestCode == RequestCodes.REQUEST_ENABLE_BT) {
@@ -982,6 +1001,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     /**
      * Starts activity to enable bluetooth.
      */
+    @SuppressLint("MissingPermission")
     private void enableBluetooth() {
         Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
         startActivityForResult(enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
@@ -991,7 +1011,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         return ContextCompat.checkSelfPermission( this, permission) == PermissionChecker.PERMISSION_GRANTED;
     }
 
-   private boolean havePermissionsFlashing() {
+    private boolean havePermissionsFlashing() {
         boolean yes = true;
         if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if ( !havePermission( Manifest.permission.BLUETOOTH_CONNECT))
@@ -1103,15 +1123,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     public void onClick(final View v) {
         switch(v.getId()) {
-            case R.id.createProject: {
-                Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
-                startActivity(launchMakeCodeIntent);
-                /*
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse(getString(R.string.my_scripts_url)));
-                startActivity(intent);
-                 */
-            }
+            case R.id.createProject:
+                scriptsPopup();
             break;
 
             case R.id.backBtn:
@@ -1781,7 +1794,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 //        return new String[]{"-1", "-1"};
 //    }
 
-
     private void pfRegister() {
         if (pfRegistered) {
             return;
@@ -1922,7 +1934,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         },//override click listener for ok button
                         null);//pass null to use default listener
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU)) {
-                Log.v(TAG, "Use Nordic DFU"); 
+                Log.v(TAG, "Use Nordic DFU");
                 startDFUFlash();
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
 
@@ -2294,4 +2306,246 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         return true;
     }
 
+
+
+    private void scriptsPopup() {
+        PopupMenu popupMenu = new PopupMenu( this, findViewById(R.id.createProject));
+        int itemID = Menu.FIRST;
+        popupMenu.getMenu().add( 0, itemID, 0, "Create Code");
+        itemID++;
+        popupMenu.getMenu().add( 0, itemID, 1, "Import");
+        itemID++;
+        popupMenu.getMenu().add( 0, itemID, 2, "Export");
+        itemID++;
+
+        popupMenu.setOnMenuItemClickListener( new PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                switch ( item.getItemId() - Menu.FIRST) {
+                    case 0: scriptsCreateCode(); break;
+                    case 1: scriptsImport(); break;
+                    case 2: scriptsExport(); break;
+                }
+                return false;
+            }
+        });
+        popupMenu.show();
+    }
+
+    private void scriptsCreateCode() {
+        Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
+        startActivity(launchMakeCodeIntent);
+    }
+
+    private static final int REQUEST_CODE_EXPORT = 1;
+    private static final int REQUEST_CODE_IMPORT = 2;
+
+
+    private void scriptsImport() {
+        String messageTitle = "Import";
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.setType("application/octet-stream");
+        startActivityForResult( Intent.createChooser(intent, messageTitle), REQUEST_CODE_IMPORT);
+    }
+
+    protected void onActivityResultScriptsImport(int requestCode, int resultCode, Intent data) {
+        if ( resultCode != RESULT_OK) {
+            return;
+        }
+        Toast.makeText(this, "Importing project", Toast.LENGTH_LONG).show();
+        new Thread( new Runnable() {
+            @Override
+            public void run() {
+                int error = scriptsImportOpen( data.getData());
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        switch (error) {
+                            case 0:
+                                if ( minimumPermissionsGranted) {
+                                    updateProjectsListSortOrder(true);
+                                }
+                                break;
+                            case 1:
+                                Toast.makeText( ProjectActivity.this,
+                                        "Project import failed", Toast.LENGTH_LONG).show();
+                                break;
+                            case 2:
+                                Toast.makeText( ProjectActivity.this,
+                                        "A project with the same name already exists",
+                                        Toast.LENGTH_LONG).show();
+                                break;
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private int scriptsImportOpen( Uri uri) {
+        String fileName = "microbit-import.hex";
+
+        String scheme = uri.getScheme();
+        String mime = getContentResolver().getType(uri);
+        if ( scheme.equals("file")) {
+            String encodedPath = uri.getEncodedPath();
+            String path = URLDecoder.decode(encodedPath);
+            fileName = fileNameForFlashing( path);
+        } else if( scheme.equals("content")) {
+            Cursor cursor = null;
+            cursor = getContentResolver().query(uri, null, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
+                if (index >= 0) {
+                    fileName = cursor.getString(index);
+                }
+            }
+        }
+
+        String projectPath = ProjectsHelper.projectPath(this, fileName);
+        if ( FileUtils.fileExists( projectPath)) {
+            return 2;
+        }
+
+        boolean ok = true;
+        FileInputStream fis = null;
+        BufferedReader reader = null;
+        try {
+            IOUtils.copy(getContentResolver().openInputStream(uri), new FileOutputStream(projectPath));
+
+            // Check file is hex
+            int lineCount = 0;
+            fis = new FileInputStream( projectPath);
+            reader = new BufferedReader( new InputStreamReader( fis));
+            while ( true) {
+                String line = reader.readLine();
+                if ( line == null) {
+                    break;
+                }
+                lineCount++;
+                if ( !line.isEmpty() && !line.startsWith(":")) {
+                    ok = false;
+                    break;
+                }
+                if ( lineCount == 0) {
+                    ok = false;
+                }
+            }
+        } catch (Exception e) {
+            logi( e.toString());
+            ok = false;
+        }
+
+        if ( reader != null) {
+            try {
+                reader.close();
+            } catch (IOException e) {
+            }
+        }
+
+        if ( fis != null) {
+            try {
+                fis.close();
+            } catch (IOException e) {
+            }
+        }
+
+        if ( !ok) {
+            FileUtils.deleteFile( projectPath);
+        }
+        return ok ? 0 : 1;
+    }
+
+    private void scriptsExport() {
+        String messageTitle = "Export";
+        String name = "microbit-projects";
+        String mimetype = "application/zip";
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        intent.setType( mimetype);
+        intent.putExtra(Intent.EXTRA_TITLE, name);
+        startActivityForResult( Intent.createChooser(intent, messageTitle), REQUEST_CODE_EXPORT);
+    }
+
+    protected void onActivityResultScriptsExport(int requestCode, int resultCode, Intent data) {
+        if ( resultCode != RESULT_OK) {
+            return;
+        }
+        Toast.makeText(this, "Saving Projects ZIP file", Toast.LENGTH_LONG).show();
+        new Thread( new Runnable() {
+            @Override
+            public void run() {
+                int error = scriptsExportSave( data.getData());
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        switch ( error) {
+                            case 0:
+                                Toast.makeText( ProjectActivity.this,
+                                        "Saved Projects ZIP file", Toast.LENGTH_LONG).show();
+                                break;
+                            case 1:
+                                Toast.makeText( ProjectActivity.this,
+                                        "Projects export failed", Toast.LENGTH_LONG).show();
+                                break;
+                            case 2:
+                                Toast.makeText( ProjectActivity.this,
+                                        "A file with the same name already exists",
+                                        Toast.LENGTH_LONG).show();
+                                break;
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private int scriptsExportSave( Uri uri) {
+        boolean ok = true;
+
+        byte[] buffer = new byte[1024];
+        File[] projects = ProjectsHelper.projectFilesListHEX( this);
+
+        OutputStream os = null;
+        ZipOutputStream zipOutputStream = null;
+        FileInputStream fileInputStream = null;
+        try {
+            os = getContentResolver().openOutputStream( uri);
+            zipOutputStream = new ZipOutputStream(os);
+            for ( int i = 0; i < projects.length; i++) {
+                fileInputStream = new FileInputStream( projects[i]);
+                zipOutputStream.putNextEntry(new ZipEntry( projects[i].getName()));
+
+                int length;
+                while ((length = fileInputStream.read(buffer)) > 0) {
+                    zipOutputStream.write(buffer, 0, length);
+                }
+
+                zipOutputStream.closeEntry();
+                fileInputStream.close();
+                fileInputStream = null;
+            }
+            zipOutputStream.close();
+            os.close();
+        } catch (Exception e) {
+            ok = false;
+            try {
+                if ( fileInputStream != null) {
+                    fileInputStream.close();
+                }
+                if ( zipOutputStream != null) {
+                    zipOutputStream.close();
+                }
+                if ( os != null) {
+                    os.close();
+                }
+            } catch (Exception e2) {
+                e.printStackTrace();
+            }
+        }
+        return ok ? 0 : 1;
+    }
 }

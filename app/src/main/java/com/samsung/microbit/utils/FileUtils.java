@@ -65,6 +65,17 @@ public class FileUtils {
     }
 
     /**
+     * Check if a path is a file
+     *
+     * @param filePath Full file path.
+     * @return True if the file exists.
+     */
+    public static boolean fileExists( String filePath) {
+        File file = new File( filePath);
+        return file.exists() && file.isFile();
+    }
+
+    /**
      * Tries to delete a file by given path.
      *
      * @param filePath Full file path.
