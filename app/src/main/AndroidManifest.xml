@@ -114,6 +114,15 @@
                       android:scheme="content"/>
             </intent-filter>
 
+            <!-- This filter works, when sharing a hex file from Files app -->
+            <!-- https://developer.android.com/training/sharing/receive#update-manifest -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+
         </activity>
         <activity
             android:name=".ui.activity.NotificationActivity"

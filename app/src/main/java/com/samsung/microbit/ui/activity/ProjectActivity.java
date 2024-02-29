@@ -77,6 +77,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -466,11 +467,18 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         String fileName;
 
         Project externalProject = null;
+        Uri uri = null;
 
-        if(intent.getData() != null && intent.getData().getEncodedPath() != null) {
+        String action = intent.getAction();
+        String type = intent.getType();
+        if ( Intent.ACTION_SEND.equals(action) && intent.hasExtra( Intent.EXTRA_STREAM)) {
+            uri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        } else if(intent.getData() != null && intent.getData().getEncodedPath() != null) {
+            uri = intent.getData();
+        }
+
+        if ( uri != null) {
             isOpenByOtherApp = true;
-
-            Uri uri = intent.getData();
             String encodedPath = uri.getEncodedPath();
 
             String scheme = uri.getScheme();
@@ -479,9 +487,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 fileName = fileNameForFlashing(fullPathOfFile);
                 externalProject = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
             } else if(scheme.equals("content")) {
-
                 Cursor cursor = null;
-
                 try {
                     cursor = getContentResolver().query(uri, null, null, null, null);
 
@@ -541,7 +547,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         if ( mProgramToSend != null) {
             startBluetoothForFlashing();
         } else {
-            if (isOpenByOtherApp) {
+            if ( isOpenByOtherApp) {
                 Toast.makeText(this, "Not a micro:bit HEX file", Toast.LENGTH_LONG).show();
                 onFlashComplete();
             }
