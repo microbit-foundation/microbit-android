@@ -103,7 +103,7 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
     public BLEPair( BLEPairCallback callback) {
         super();
         paramCallback = callback;
-        mainLooperHandler = new Handler( Looper.getMainLooper());;
+        mainLooperHandler = new Handler( Looper.getMainLooper());
     }
 
     public void stopScanAndPair() {

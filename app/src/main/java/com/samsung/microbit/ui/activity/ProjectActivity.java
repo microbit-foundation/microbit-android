@@ -66,6 +66,7 @@ import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 import com.samsung.microbit.utils.irmHexUtils;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -2553,5 +2554,40 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
         }
         return ok ? 0 : 1;
+    }
+
+    public void makecodeEditProject(final Project project) {
+        File file = new File( project.filePath);
+        makecodeEditFile( file);
+    }
+
+    private void makecodeEditFile( File file) {
+        String hex = readHexFileToString( file);
+        makecodeEditHex( hex, file.getName());
+    }
+
+    private void makecodeEditHex( String hex, String name) {
+        Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
+        if ( !hex.isEmpty()) {
+            launchMakeCodeIntent.putExtra("importHex", hex);
+            launchMakeCodeIntent.putExtra("importName", name);
+        }
+        startActivity(launchMakeCodeIntent);
+    }
+
+    private String readHexFileToString( File file) {
+        String hex = "";
+
+        int size = (int) file.length();
+        byte[] bytes = new byte[size];
+        try {
+            BufferedInputStream buf = new BufferedInputStream( new FileInputStream(file));
+            buf.read(bytes, 0, bytes.length);
+            buf.close();
+            hex = new String( bytes);
+        } catch (Exception e) {
+            hex = "";
+        }
+        return hex;
     }
 }

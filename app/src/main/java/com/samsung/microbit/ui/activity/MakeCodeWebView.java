@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
@@ -228,6 +230,12 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
         //Check parameters Before load
         Intent intent = getIntent();
+
+        importHex = intent.getStringExtra("importHex");
+        importName = intent.getStringExtra("importName");
+
+        importInitialise();
+
         webView.loadUrl(makecodeUrl);
     } // onCreate
 
@@ -300,6 +308,88 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         i.setData(hexToFlash);
         startActivity(i);
     }
+
+    private static String importHex  = null;
+    private static String importName = null;
+    private boolean importPosting = false;
+    Handler importHandler = null;
+
+    private void importInitialise() {
+        if ( importHex != null) {
+            importHex = importHex.replaceAll("\r\n", "\\\\n");
+            importHex = importHex.replaceAll("\r", "\\\\n");
+            importHex = importHex.replaceAll("\n", "\\\\n");
+
+            //TODO - does MakeCode signal when ready?
+            Looper looper = Looper.getMainLooper();
+            importHandler = new Handler(looper);
+            importHandler.postDelayed(importCallback, 1000);
+        }
+    }
+    private final Runnable importCallback = new Runnable() {
+        @Override
+        public void run() {
+            if ( importHex != null) {
+                importPostMessage();
+                importHandler.postDelayed( importCallback, 1000);
+            } else {
+                importHandler.removeCallbacks( importCallback);
+                importHandler = null;
+            }
+        }
+    };
+
+    public void importPostMessage() {
+        if ( importHex == null) {
+            return;
+        }
+        if ( importPosting) {
+            return;
+        }
+        if ( webView == null) {
+            return;
+        }
+        if ( importName == null || importName.isEmpty()) {
+            importName = "import.hex";
+        }
+
+        importPosting = true;
+
+        String nl = "\n";
+        String script = "javascript:(";
+        script += nl + "function f() { ";
+        script += nl +   "var ret = 'OK'";
+        script += nl +   "try {";
+        script += nl +     "var loading = document.getElementById('loading')";
+        script += nl +     "if ( loading && loading.parentElement) {";
+        script += nl +       "ret = 'loading'";
+        script += nl +     "} else {";
+        script += nl +       "var name = \"" + importName + "\"";
+        script += nl +       "var hex = \"" + importHex + "\"";
+        script += nl +       "var msg = {";
+        script += nl +         "type: 'importfile',";
+        script += nl +         "filename: name,";
+        script += nl +         "parts: [ hex ]";
+        script += nl +       "}";
+        script += nl +       "window.postMessage( msg, '*')";
+        script += nl +     "}";
+        script += nl +   "} catch( err) {";
+        script += nl +     "ret = err.message";
+        script += nl +   "}";
+        script += nl +   "return ret;";
+        script += nl + "}";
+        script += nl + ")()";
+        webView.evaluateJavascript( script, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String s) {
+                Log.d(TAG, s);
+                if ( s != "loading") {
+                    importHex = null;
+                }
+            }
+        });
+        importPosting = false;
+   }
 }
 
 /* Javascript Interface */
