@@ -385,6 +385,8 @@
     <string name="v2_button_label">V2</string>
 
     <string name="no_longer_required_to_connect">It is no longer necessary to connect to your micro:bit before flashing</string>
+    <string name="desc_edit_project_btn">Edit project</string>
+    <string name="edit">Edit</string>
 
 </resources>
 

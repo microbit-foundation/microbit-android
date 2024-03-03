@@ -293,6 +293,18 @@ public class ProjectAdapter extends BaseAdapter {
     };
 
     /**
+     * Occurs when a user clicks on the Flash button on some project item.
+     * Sends clicked project to flash to a micro:bit board.
+     */
+    private View.OnClickListener editBtnClickListener = new View.OnClickListener() {
+
+        @Override
+        public void onClick(View v) {
+            logi("editBtnClickListener() :: ");
+        }
+    };
+
+    /**
      * Occurs when a user clicks on the Delete button on some project item.
      * Shows a dialog window to confirm deletion.
      */
@@ -403,6 +415,12 @@ public class ProjectAdapter extends BaseAdapter {
         LinearLayout sendBtnLayout = (LinearLayout) convertView.findViewById(R.id.sendBtn);
         sendBtnLayout.setTag(position);
         sendBtnLayout.setOnClickListener(sendBtnClickListener);
+
+        TextView editBtnText = (TextView) convertView.findViewById(R.id.project_edit_text);
+        editBtnText.setTypeface(MBApp.getApp().getRobotoTypeface());
+        LinearLayout editBtnLayout = (LinearLayout) convertView.findViewById(R.id.editBtn);
+        editBtnLayout.setTag(position);
+        editBtnLayout.setOnClickListener(editBtnClickListener);
 
         ImageButton deleteBtn = (ImageButton) convertView.findViewById(R.id.deleteBtn);
         deleteBtn.setTag(position);
