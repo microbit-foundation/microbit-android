@@ -148,10 +148,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private BroadcastReceiver connectionChangedReceiver = BLEConnectionHandler.bleConnectionChangedReceiver(this);
 
     private Handler handler = new Handler();
-    private int countOfReconnecting;
-    private boolean sentPause;
 
-    private boolean notAValidFlashHexFile;
+//    // REMOVE tryToConnectAgain
+//    private int countOfReconnecting;
+//    private boolean sentPause;
+//    private boolean notAValidFlashHexFile;
 
     private boolean minimumPermissionsGranted;
 
@@ -186,44 +187,45 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
     };
 
-    private final Runnable tryToConnectAgain = new Runnable() {
-
-        @Override
-        public void run() {
-            if(sentPause) {
-                countOfReconnecting++;
-            }
-
-            final LocalBroadcastManager localBroadcastManager = LocalBroadcastManager
-                    .getInstance(ProjectActivity.this);
-
-            if(countOfReconnecting == Constants.MAX_COUNT_OF_RE_CONNECTIONS_FOR_DFU) {
-                countOfReconnecting = 0;
-                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
-                intent.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_ABORT);
-                localBroadcastManager.sendBroadcast(intent);
-            } else {
-                final int nextAction;
-                final long delayForNewlyBroadcast;
-
-                if(sentPause) {
-                    nextAction = DfuService.ACTION_RESUME;
-                    delayForNewlyBroadcast = Constants.TIME_FOR_CONNECTION_COMPLETED;
-                } else {
-                    nextAction = DfuService.ACTION_PAUSE;
-                    delayForNewlyBroadcast = Constants.DELAY_BETWEEN_PAUSE_AND_RESUME;
-                }
-
-                sentPause = !sentPause;
-
-                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
-                intent.putExtra(DfuService.EXTRA_ACTION, nextAction);
-                localBroadcastManager.sendBroadcast(intent);
-
-                handler.postDelayed(this, delayForNewlyBroadcast);
-            }
-        }
-    };
+//    // REMOVE tryToConnectAgain
+//    private final Runnable tryToConnectAgain = new Runnable() {
+//
+//        @Override
+//        public void run() {
+//            if (sentPause) {
+//                countOfReconnecting++;
+//            }
+//
+//            final LocalBroadcastManager localBroadcastManager = LocalBroadcastManager
+//                    .getInstance(ProjectActivity.this);
+//
+//            if (countOfReconnecting == Constants.MAX_COUNT_OF_RE_CONNECTIONS_FOR_DFU) {
+//                countOfReconnecting = 0;
+//                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
+//                intent.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_ABORT);
+//                localBroadcastManager.sendBroadcast(intent);
+//            } else {
+//                final int nextAction;
+//                final long delayForNewlyBroadcast;
+//
+//                if (sentPause) {
+//                    nextAction = DfuService.ACTION_RESUME;
+//                    delayForNewlyBroadcast = Constants.TIME_FOR_CONNECTION_COMPLETED;
+//                } else {
+//                    nextAction = DfuService.ACTION_PAUSE;
+//                    delayForNewlyBroadcast = Constants.DELAY_BETWEEN_PAUSE_AND_RESUME;
+//                }
+//
+//                sentPause = !sentPause;
+//
+//                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
+//                intent.putExtra(DfuService.EXTRA_ACTION, nextAction);
+//                localBroadcastManager.sendBroadcast(intent);
+//
+//                handler.postDelayed(this, delayForNewlyBroadcast);
+//            }
+//        }
+//    };
 
     /**
      * Allows to handle forced closing of the bluetooth service and
@@ -618,7 +620,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     protected void onDestroy() {
 
-        handler.removeCallbacks(tryToConnectAgain);
+//        handler.removeCallbacks(tryToConnectAgain); // REMOVE tryToConnectAgain
 
         MBApp application = MBApp.getApp();
 
@@ -2069,17 +2071,18 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         },//override click listener for ok button
                                         null);//pass null to use default listener
 
-                                countOfReconnecting = 0;
-                                sentPause = false;
-
-                                long delayForCheckOnConnection = Constants.TIME_FOR_CONNECTION_COMPLETED;
-
-                                if (notAValidFlashHexFile) {
-                                    notAValidFlashHexFile = false;
-                                    delayForCheckOnConnection += Constants.JUST_PAIRED_DELAY_ON_CONNECTION;
-                                }
-
-                                handler.postDelayed(tryToConnectAgain, delayForCheckOnConnection);
+//                                // REMOVE tryToConnectAgain
+//                                countOfReconnecting = 0;
+//                                sentPause = false;
+//
+//                                long delayForCheckOnConnection = Constants.TIME_FOR_CONNECTION_COMPLETED;
+//
+//                                if (notAValidFlashHexFile) {
+//                                    notAValidFlashHexFile = false;
+//                                    delayForCheckOnConnection += Constants.JUST_PAIRED_DELAY_ON_CONNECTION;
+//                                }
+//
+//                                handler.postDelayed(tryToConnectAgain, delayForCheckOnConnection);
                             }
 
                             inInit = true;
@@ -2163,7 +2166,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler);//pass null to use default listener
 
                             dfuUnregister();
-                            removeReconnectionRunnable();
+//                            removeReconnectionRunnable(); // REMOVE tryToConnectAgain
                             onFlashComplete();
                             break;
                         /*
@@ -2188,7 +2191,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler);//pass null to use default listener
 
                             dfuUnregister();
-                            removeReconnectionRunnable();
+//                            removeReconnectionRunnable();// REMOVE tryToConnectAgain
                             break;
                             */
                         default:
@@ -2209,8 +2212,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                 TYPE_PROGRESS_NOT_CANCELABLE, null, null);
 
                         inProgress = true;
-
-                        removeReconnectionRunnable();
+//                        removeReconnectionRunnable(); // REMOVE tryToConnectAgain
                     }
 
                     if ( state != progressState) {
@@ -2221,9 +2223,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             } else if(intent.getAction().equals(DfuService.BROADCAST_ERROR)) {
                 int errorCode = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
 
-                if(errorCode == DfuService.ERROR_FILE_INVALID) {
-                    notAValidFlashHexFile = true;
-                }
+//                // REMOVE tryToConnectAgain
+//                if(errorCode == DfuService.ERROR_FILE_INVALID) {
+//                    notAValidFlashHexFile = true;
+//                }
 
                 String error_message = GattError.parse(errorCode);
 
@@ -2239,7 +2242,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 MBApp application = MBApp.getApp();
 
                 dfuUnregister();
-                removeReconnectionRunnable();
+//                removeReconnectionRunnable(); // REMOVE tryToConnectAgain
                 //Update Stats
                 /*
                 GoogleAnalyticsManager.getInstance().sendFlashStats(
@@ -2300,11 +2303,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     }
 
-    private void removeReconnectionRunnable() {
-        handler.removeCallbacks(tryToConnectAgain);
-        countOfReconnecting = 0;
-        sentPause = false;
-    }
+//    // REMOVE tryToConnectAgain
+//    private void removeReconnectionRunnable() {
+//        handler.removeCallbacks(tryToConnectAgain);
+//        countOfReconnecting = 0;
+//        sentPause = false;
+//    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
