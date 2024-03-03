@@ -42,6 +42,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     public static String makecodeUrl = "https://makecode.microbit.org/?androidapp=" + BuildConfig.VERSION_CODE;
     public static Activity activityHandle = null;
 
+    boolean projectDownload = false;
     Uri hexToFlash;
 
     private static final int REQUEST_CODE_SAVEDATA = 1;
@@ -83,15 +84,9 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webSettings.setBuiltInZoomControls(true);
         webSettings.setDisplayZoomControls(false);
         webSettings.setDomStorageEnabled(true);
-        webView.setWebContentsDebuggingEnabled(true);
+        WebView.setWebContentsDebuggingEnabled(false);
 
         webView.addJavascriptInterface(new JavaScriptInterface(this), "AndroidFunction");
-        webView.evaluateJavascript("javascript:(function f() { document.getElementsByClassName(\"brand\")[0].addEventListener(\"click\", function(e) { AndroidFunction.returnToHome(); e.preventDefault(); return false; }) })()", new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(String s) {
-                Log.d(TAG, s);
-            }
-        });
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -105,6 +100,13 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             public void onLoadResource(WebView view, String url) {
                 super.onLoadResource(view, url);
                 Log.v(TAG, "onLoadResource(" + url + ");");
+            }
+
+            @Override
+            public void onPageFinished (WebView view, String url) {
+                super.onPageFinished(view, url);
+                Log.v(TAG, "onPageFinished(" + url + ");");
+                onPageFinishedJS( view, url);
             }
         }); //setWebViewClient
 
@@ -323,7 +325,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             //TODO - does MakeCode signal when ready?
             Looper looper = Looper.getMainLooper();
             importHandler = new Handler(looper);
-            importHandler.postDelayed(importCallback, 1000);
+            importHandler.postDelayed(importCallback, 2000);
         }
     }
     private final Runnable importCallback = new Runnable() {
@@ -340,6 +342,8 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     };
 
     public void importPostMessage() {
+        Log.d(TAG, "importPostMessage");
+
         if ( importHex == null) {
             return;
         }
@@ -355,55 +359,110 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
         importPosting = true;
 
+        StringBuilder sb = new StringBuilder();
         String nl = "\n";
-        String script = "javascript:(";
-        script += nl + "function f() { ";
-        script += nl +   "var ret = 'OK'";
-        script += nl +   "try {";
-        script += nl +     "var loading = document.getElementById('loading')";
-        script += nl +     "if ( loading && loading.parentElement) {";
-        script += nl +       "ret = 'loading'";
-        script += nl +     "} else {";
-        script += nl +       "var name = \"" + importName + "\"";
-        script += nl +       "var hex = \"" + importHex + "\"";
-        script += nl +       "var msg = {";
-        script += nl +         "type: 'importfile',";
-        script += nl +         "filename: name,";
-        script += nl +         "parts: [ hex ]";
-        script += nl +       "}";
-        script += nl +       "window.postMessage( msg, '*')";
-        script += nl +     "}";
-        script += nl +   "} catch( err) {";
-        script += nl +     "ret = err.message";
-        script += nl +   "}";
-        script += nl +   "return ret;";
-        script += nl + "}";
-        script += nl + ")()";
-        webView.evaluateJavascript( script, new ValueCallback<String>() {
+        sb.append( "javascript:(");
+        sb.append(nl).append("function f() {");
+        sb.append(nl).append(   "var ret = 'OK'");
+        sb.append(nl).append(   "try {");
+        sb.append(nl).append(       "var loading = document.getElementById('loading')");
+        sb.append(nl).append(       "if ( loading && loading.parentElement) {");
+        sb.append(nl).append(           "ret = 'loading'");
+        sb.append(nl).append(       "} else {");
+        sb.append(nl).append(           "var name = '").append(importName).append("'");
+        sb.append(nl).append(           "var hex = '").append(importHex).append("'");
+        sb.append(nl).append(           "var msg = {");
+        sb.append(nl).append(               "type: 'importfile',");
+        sb.append(nl).append(               "filename: name,");
+        sb.append(nl).append(               "parts: [ hex ]");
+        sb.append(nl).append(           "}");
+        sb.append(nl).append(           "window.postMessage( msg, '*')");
+        sb.append(nl).append(       "}");
+        sb.append(nl).append(   "} catch( err) {");
+        sb.append(nl).append(       "ret = err.message");
+        sb.append(nl).append(   "}");
+        sb.append(nl).append(   "return ret");
+        sb.append(nl).append("}");
+        sb.append(nl).append(")()");
+
+        webView.evaluateJavascript( sb.toString(), new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String s) {
-                Log.d(TAG, s);
-                if ( s != "loading") {
+                Log.i(TAG, "importPostMessage: " + s);
+                String loading = "\"loading\"";
+                String ok = "\"OK\"";
+                if ( s.equals( ok)) {
                     importHex = null;
+                } else if ( !s.equals( loading)) {
                 }
             }
         });
         importPosting = false;
-   }
-}
+    }
+
+    public void onPageFinishedJS( WebView view, String url) {
+        Log.v(TAG, "addListeners(" + url + ");");
+
+        StringBuilder sb = new StringBuilder();
+        String nl = "\n";
+        sb.append( "javascript:(");
+        sb.append(nl).append("function f() {");
+        sb.append(nl).append(   "var ret = 'OK'");
+        sb.append(nl).append(   "try {");
+        sb.append(nl).append(       "var brands = document.getElementsByClassName(\"brand\")");
+        sb.append(nl).append(       "for (let i = 0; brands != null && i < brands.length; i++) {");
+        sb.append(nl).append(           "brands[i].addEventListener(\"click\",");
+        sb.append(nl).append(               "function(e) {");
+        sb.append(nl).append(                   "AndroidFunction.clickBrand();");
+        sb.append(nl).append(                   "e.preventDefault();");
+        sb.append(nl).append(                   "return false;");
+        sb.append(nl).append(               "})");
+        sb.append(nl).append(       "}");
+        sb.append(nl).append(       "var downs = document.getElementsByClassName(\"download-button\")");
+        sb.append(nl).append(       "for (let i = 0; downs != null && i < downs.length; i++) {");
+        sb.append(nl).append(           "downs[i].addEventListener(\"click\",");
+        sb.append(nl).append(               "function(e) {");
+        sb.append(nl).append(                   "AndroidFunction.clickDownload();");
+        sb.append(nl).append(                   "e.preventDefault();");
+        sb.append(nl).append(                   "return false;");
+        sb.append(nl).append(               "})");
+        sb.append(nl).append(       "}");
+        sb.append(nl).append(   "} catch( err) {");
+        sb.append(nl).append(       "ret = err.message");
+        sb.append(nl).append(   "}");
+        sb.append(nl).append(   "return ret");
+        sb.append(nl).append("}");
+        sb.append(nl).append(")()");
+
+        webView.evaluateJavascript( sb.toString(), new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String s) {
+                Log.d(TAG, s);
+            }
+        });
+    }}
 
 /* Javascript Interface */
 class JavaScriptInterface {
-    Context mContext;
+    MakeCodeWebView mContext;
 
-    JavaScriptInterface(Context c) {
+    JavaScriptInterface( MakeCodeWebView c) {
         mContext = c;
     }
 
     @JavascriptInterface
-    public void returnToHome() {
+    public void clickBrand() {
         try {
             MakeCodeWebView.activityHandle.finish();
+        } catch(Exception e) {
+            Log.v(TAG, e.toString());
+        }
+    }
+
+    @JavascriptInterface
+    public void clickDownload() {
+        try {
+            mContext.projectDownload = true;
         } catch(Exception e) {
             Log.v(TAG, e.toString());
         }
