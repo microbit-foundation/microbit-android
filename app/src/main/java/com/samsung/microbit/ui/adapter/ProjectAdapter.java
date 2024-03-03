@@ -301,6 +301,7 @@ public class ProjectAdapter extends BaseAdapter {
         @Override
         public void onClick(View v) {
             logi("editBtnClickListener() :: ");
+            mProjectActivity.editProject((Project) ProjectAdapter.this.getItem((Integer) v.getTag()));
         }
     };
 

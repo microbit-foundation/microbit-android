@@ -18,9 +18,11 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import com.samsung.microbit.BuildConfig;
 import com.samsung.microbit.R;
+import com.samsung.microbit.utils.FileUtils;
 import com.samsung.microbit.utils.ProjectsHelper;
 
 import java.io.File;
@@ -43,10 +45,10 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     public static Activity activityHandle = null;
 
     boolean projectDownload = false;
-    Uri hexToFlash;
 
     private static final int REQUEST_CODE_SAVEDATA = 1;
     private static final int REQUEST_CODE_CHOOSE_FILE = 2;
+    private static final int REQUEST_CODE_FLASH = 3;
     private byte[] dataToSave = null;
     private ValueCallback<Uri[]> onShowFileChooser_filePathCallback;
 
@@ -198,33 +200,33 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                     else if ( !hexName.isEmpty()) {
                         hexToWrite = getProjectFile(hexName);
 
-                        /*
-                        // Append n to file until it doesn't exist
-                        int i = 0;
+//                        // Replace existing file rather than creating *-n.hex
+//                        // Append n to file until it doesn't exist
+//                        int i = 0;
+//
+//                        while (hexToWrite.exists()) {
+//                            hexName = hexName.replaceAll("-?\\d*\\.","-" + i + ".");
+//                            hexToWrite = getProjectFile( hexName);
+//                            i++;
+//                        }
 
-                        while (hexToWrite.exists()) {
-                            hexName = hexName.replaceAll("-?\\d*\\.","-" + i + ".");
-                            hexToWrite = getProjectFile( hexName);
-                            i++;
+                        if ( !FileUtils.writeBytesToFile( hexToWrite, decode)) {
+                            ProjectsHelper.importToProjectsToast(
+                                    ProjectsHelper.enumImportResult.WriteFailed, MakeCodeWebView.this);
+                            return;
                         }
-                         */
-                        // Replace existing file rather than creating *-n.hex
-                        if (hexToWrite.exists()) {
-                            hexToWrite.delete();
+
+                        boolean download = projectDownload;
+                        projectDownload = false;
+
+                        if ( download) {
+                            openProjectActivity( hexToWrite);
+                        } else {
+                            Toast.makeText( MakeCodeWebView.this,
+                                    "Saved to FLASH page", Toast.LENGTH_LONG).show();
                         }
-
-                        // Create file
-                        hexToWrite.createNewFile();
-                        outputStream = new FileOutputStream(hexToWrite);
-                        outputStream.write(decode);
-                        outputStream.flush();
-
-                        // Get file path
-                        hexToFlash = Uri.fromFile(hexToWrite);
-
-                        openProjectActivity();
                     }
-                } catch (IOException e) {
+                } catch ( Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -233,10 +235,13 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         //Check parameters Before load
         Intent intent = getIntent();
 
-        importHex = intent.getStringExtra("importHex");
-        importName = intent.getStringExtra("importName");
-
-        importInitialise();
+        boolean importExtra = intent.getBooleanExtra("import", false);
+        if ( importExtra) {
+            importInitialise();
+        } else {
+            importHex = null;
+            importName = null;
+        }
 
         webView.loadUrl(makecodeUrl);
     } // onCreate
@@ -254,27 +259,22 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if ( requestCode == REQUEST_CODE_SAVEDATA) {
+        if ( requestCode == REQUEST_CODE_FLASH) {
+            if ( resultCode != RESULT_OK) {
+                return;
+            }
+        } else if ( requestCode == REQUEST_CODE_SAVEDATA) {
             if ( resultCode != RESULT_OK) {
                 dataToSave = null;
                 return;
             }
-            OutputStream os = null;
-            try {
-                os = getContentResolver().openOutputStream( data.getData());
-                if ( dataToSave != null && dataToSave.length > 0) {
-                    os.write(dataToSave, 0, dataToSave.length);
+            if ( dataToSave != null && dataToSave.length > 0) {
+                Uri uri = data.getData();
+                if ( !FileUtils.writeBytesToUri( uri, dataToSave, this)) {
+                    Toast.makeText(this, "Could not save file", Toast.LENGTH_LONG).show();
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    dataToSave = null;
-                    if ( os != null) {
-                        os.close();
-                    }
-                } catch (IOException e) { }
             }
+            dataToSave = null;
         } else if (requestCode == REQUEST_CODE_CHOOSE_FILE) {
             if ( resultCode != RESULT_OK) {
                 onShowFileChooser_filePathCallback.onReceiveValue( null);
@@ -305,14 +305,17 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         }
     }
 
-    void openProjectActivity() {
+    public final static String ACTION_FLASH = "com.samsung.microbit.ACTION_FLASH";
+
+    void openProjectActivity( File hexToWrite) {
         Intent i = new Intent(this, ProjectActivity.class);
-        i.setData(hexToFlash);
-        startActivity(i);
+        i.setAction( ACTION_FLASH);
+        i.putExtra("path", hexToWrite.getAbsolutePath());
+        startActivityForResult( i, REQUEST_CODE_FLASH);
     }
 
-    private static String importHex  = null;
-    private static String importName = null;
+    public static String importHex  = null;
+    public static String importName = null;
     private boolean importPosting = false;
     Handler importHandler = null;
 

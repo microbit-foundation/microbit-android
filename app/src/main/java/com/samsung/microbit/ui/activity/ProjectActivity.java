@@ -156,9 +156,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     private boolean minimumPermissionsGranted;
 
-    private boolean previousPartialFlashFailed = false;
-
-    private boolean finishWhenFlashComplete = true;
+    private boolean inMakeCodeActionFlash = false;
     private String applicationHexAbsolutePath;
     private int prepareToFlashResult;
 
@@ -168,9 +166,26 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     BLEService bleService;
 
-    private void onFlashComplete() {
-        if ( finishWhenFlashComplete) {
+    private void goToMakeCode( String hex, String name) {
+        if ( inMakeCodeActionFlash) {
+            inMakeCodeActionFlash = false;
+            setResult( Activity.RESULT_OK);
             finish();
+        } else {
+            Intent intent = new Intent(this, MakeCodeWebView.class);
+            if ( hex != null && !hex.isEmpty()) {
+                MakeCodeWebView.importHex  = hex;
+                MakeCodeWebView.importName = name;
+                intent.putExtra("import", true);
+            }
+            startActivity(intent);
+            finish();
+        }
+    }
+
+    private void onFlashComplete() {
+        if ( inMakeCodeActionFlash) {
+            goToMakeCode( null, null);
         }
     }
 
@@ -450,8 +465,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         checkMinimumPermissionsForThisScreen();
         setConnectedDeviceText();
 
-        if(savedInstanceState == null && getIntent() != null) {
-            finishWhenFlashComplete = getIntent().getData() != null;
+        if (savedInstanceState == null && getIntent() != null) {
             handleIncomingIntent(getIntent());
         }
     }
@@ -465,148 +479,47 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     private void handleIncomingIntent(Intent intent) {
-        boolean isOpenByOtherApp = false;
-        String fullPathOfFile;
-        String fileName;
-
-        Project externalProject = null;
-        Uri uri = null;
-
         String action = intent.getAction();
-        String type = intent.getType();
-        if ( Intent.ACTION_SEND.equals(action) && intent.hasExtra( Intent.EXTRA_STREAM)) {
+        if (action != null && action.equals(MakeCodeWebView.ACTION_FLASH)) {
+            makeCodeActionFlash(intent);
+            return;
+        }
+
+        inMakeCodeActionFlash = false;
+
+        Uri uri = null;
+        if (action != null && action.equals(Intent.ACTION_SEND) && intent.hasExtra(Intent.EXTRA_STREAM)) {
             uri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        } else if(intent.getData() != null && intent.getData().getEncodedPath() != null) {
+        } else if (intent.getData() != null && intent.getData().getEncodedPath() != null) {
             uri = intent.getData();
-        }
-
-        if ( uri != null) {
-            isOpenByOtherApp = true;
-            String encodedPath = uri.getEncodedPath();
-
-            String scheme = uri.getScheme();
-            if (scheme.equals("file")) {
-                fullPathOfFile = URLDecoder.decode(encodedPath);
-                fileName = fileNameForFlashing(fullPathOfFile);
-                externalProject = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
-            } else if(scheme.equals("content")) {
-                Cursor cursor = null;
-                try {
-                    cursor = getContentResolver().query(uri, null, null, null, null);
-
-                    if (cursor != null && cursor.moveToFirst()) {
-                        String selectedFileName = cursor.getString(cursor.getColumnIndex(DocumentsContract.Document
-                                .COLUMN_DISPLAY_NAME));
-
-                        // If application is opened from My Files (Android 6.0), cursor don't contains
-                        // COLUMN_DOCUMENT_ID, and stream not needed to copy to Download directory. It is already
-                        // there
-                        boolean isShareableApp = cursor.getColumnIndex(DocumentsContract.Document
-                                .COLUMN_DOCUMENT_ID) != -1;
-
-                        fullPathOfFile = ProjectsHelper.projectPath(this, selectedFileName);
-
-                        if (isShareableApp) {
-                            try {
-                                IOUtils.copy(getContentResolver().openInputStream(uri), new FileOutputStream(fullPathOfFile));
-                            } catch (Exception e) {
-                                Log.e(TAG, e.toString());
-                            }
-                        }
-
-                        fileName = fileNameForFlashing(fullPathOfFile);
-                        externalProject = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
-                    } else {
-                        try {
-                            AssetFileDescriptor fileDescriptor = getContentResolver().openAssetFileDescriptor(uri, "r");
-
-                            if(fileDescriptor != null) {
-                                long length = fileDescriptor.getLength();
-
-                                fileDescriptor.close();
-                                externalProject = getLatestProjectFromFolder(length);
-                            }
-                        } catch(IOException e) {
-                            Log.e(TAG, e.toString());
-                        }
-                    }
-                } finally {
-                    if (cursor != null) {
-                        cursor.close();
-                    }
-                }
-
-            } else {
-                Log.e(TAG, "Unknown schema: " + scheme);
-                return;
-            }
-        }
-
-        if ( externalProject != null) {
-            mProgramToSend = externalProject;
-            setActivityState(FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST);
-        }
-
-        if ( mProgramToSend != null) {
-            startBluetoothForFlashing();
         } else {
-            if ( isOpenByOtherApp) {
-                Toast.makeText(this, "Not a micro:bit HEX file", Toast.LENGTH_LONG).show();
-                onFlashComplete();
-            }
+            return;
         }
+        importToProjects( uri);
     }
 
-    private Project getLatestProjectFromFolder(long lengthOfSearchingFile) {
-        FilenameFilter hexFilenameFilter = new FilenameFilter() {
-            @Override
-            public boolean accept(File dir, String filename) {
-                return filename.endsWith(".hex");
-            }
-        };
+    private void makeCodeActionFlash(Intent intent) {
+        setActivityState(FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST);
 
-        File nowDownloadedFile = null;
+        inMakeCodeActionFlash = true;
 
-        // TODO: What folder should we search - downloads or projects?
-        File[] downloadFiles = ProjectsHelper.downloadsFilesListHEX( this);
-
-        if(downloadFiles != null) {
-            for(File file : downloadFiles) {
-                if(nowDownloadedFile == null) {
-                    if(file.length() == lengthOfSearchingFile) {
-                        nowDownloadedFile = file;
-                    }
-                } else if(file.length() == lengthOfSearchingFile && file.lastModified() > nowDownloadedFile.lastModified
-                        ()) {
-                    nowDownloadedFile = file;
-                }
+        mProgramToSend = null;
+        String fullPathOfFile = intent.getStringExtra("path");
+        if ( fullPathOfFile != null) {
+            String fileName = FileUtils.fileNameFromPath( fullPathOfFile);
+            if ( fileName != null) {
+                mProgramToSend = new Project(fileName, fullPathOfFile,
+                        0, null, false);
             }
         }
 
-        String fullPathOfFile;
-        if(nowDownloadedFile == null) {
-            Log.e(TAG, "Can't find file");
-            return null;
-        } else {
-            fullPathOfFile = nowDownloadedFile.getAbsolutePath();
-            String fileName = fileNameForFlashing(fullPathOfFile);
-            return fileName == null ? null : new Project(fileNameForFlashing(fullPathOfFile), fullPathOfFile, 0, null, false);
+        if ( mProgramToSend == null) {
+            Toast.makeText(this, "Not a micro:bit HEX file", Toast.LENGTH_LONG).show();
+            onFlashComplete();
+            return;
         }
-    }
 
-    /**
-     * Check file path. If file ends with .hex, then just return it name, else return {@code null}
-     *
-     * @param fullPathOfFile Path to file, that checks
-     * @return
-     */
-    private String fileNameForFlashing(String fullPathOfFile) {
-        String path[] = fullPathOfFile.split("/");
-        if(path[path.length - 1].endsWith(".hex")) {
-            return path[path.length - 1];
-        } else {
-            return null;
-        }
+        startBluetoothForFlashing();
     }
 
     @Override
@@ -1127,6 +1040,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         mProgramToSend = project;
         setActivityState(FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST);
         startBluetoothForFlashing();
+    }
+
+    /**
+     * Sends a project to the editor.
+     *
+     * @param project Project to edit.
+     */
+    public void editProject(final Project project) {
+        makecodeEditProject( project);
     }
 
     @Override
@@ -1948,8 +1870,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
 
                 Log.v(TAG, "Partial flashing failed");
-                previousPartialFlashFailed = true;
-
                 // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU automatically
                 // Set flag to avoid partial flash next time
                 PopUp.show(getString(R.string.could_not_connect), //message
@@ -2033,8 +1953,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         m_BinSizeStats, m_MicroBitFirmware);
                                         */
                                 ServiceUtils.sendConnectDisconnectMessage(false);
-
-                                previousPartialFlashFailed = false;
 
                                 PopUp.show(getString(R.string.flashing_success_message), //message
                                         getString(R.string.flashing_success_title), //title
@@ -2344,8 +2262,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     private void scriptsCreateCode() {
-        Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
-        startActivity(launchMakeCodeIntent);
+        goToMakeCode( null, null);
     }
 
     private static final int REQUEST_CODE_EXPORT = 1;
@@ -2365,108 +2282,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         if ( resultCode != RESULT_OK) {
             return;
         }
-        Toast.makeText(this, "Importing project", Toast.LENGTH_LONG).show();
-        new Thread( new Runnable() {
-            @Override
-            public void run() {
-                int error = scriptsImportOpen( data.getData());
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        switch (error) {
-                            case 0:
-                                if ( minimumPermissionsGranted) {
-                                    updateProjectsListSortOrder(true);
-                                }
-                                break;
-                            case 1:
-                                Toast.makeText( ProjectActivity.this,
-                                        "Project import failed", Toast.LENGTH_LONG).show();
-                                break;
-                            case 2:
-                                Toast.makeText( ProjectActivity.this,
-                                        "A project with the same name already exists",
-                                        Toast.LENGTH_LONG).show();
-                                break;
-                        }
-                    }
-                });
-            }
-        }).start();
-    }
-
-    private int scriptsImportOpen( Uri uri) {
-        String fileName = "microbit-import.hex";
-
-        String scheme = uri.getScheme();
-        String mime = getContentResolver().getType(uri);
-        if ( scheme.equals("file")) {
-            String encodedPath = uri.getEncodedPath();
-            String path = URLDecoder.decode(encodedPath);
-            fileName = fileNameForFlashing( path);
-        } else if( scheme.equals("content")) {
-            Cursor cursor = null;
-            cursor = getContentResolver().query(uri, null, null, null, null);
-            if (cursor != null && cursor.moveToFirst()) {
-                int index = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
-                if (index >= 0) {
-                    fileName = cursor.getString(index);
-                }
-            }
-        }
-
-        String projectPath = ProjectsHelper.projectPath(this, fileName);
-        if ( FileUtils.fileExists( projectPath)) {
-            return 2;
-        }
-
-        boolean ok = true;
-        FileInputStream fis = null;
-        BufferedReader reader = null;
-        try {
-            IOUtils.copy(getContentResolver().openInputStream(uri), new FileOutputStream(projectPath));
-
-            // Check file is hex
-            int lineCount = 0;
-            fis = new FileInputStream( projectPath);
-            reader = new BufferedReader( new InputStreamReader( fis));
-            while ( true) {
-                String line = reader.readLine();
-                if ( line == null) {
-                    break;
-                }
-                lineCount++;
-                if ( !line.isEmpty() && !line.startsWith(":")) {
-                    ok = false;
-                    break;
-                }
-                if ( lineCount == 0) {
-                    ok = false;
-                }
-            }
-        } catch (Exception e) {
-            logi( e.toString());
-            ok = false;
-        }
-
-        if ( reader != null) {
-            try {
-                reader.close();
-            } catch (IOException e) {
-            }
-        }
-
-        if ( fis != null) {
-            try {
-                fis.close();
-            } catch (IOException e) {
-            }
-        }
-
-        if ( !ok) {
-            FileUtils.deleteFile( projectPath);
-        }
-        return ok ? 0 : 1;
+        Uri uri = data.getData();
+        importToProjects( uri);
     }
 
     private void scriptsExport() {
@@ -2566,32 +2383,51 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     private void makecodeEditFile( File file) {
-        String hex = readHexFileToString( file);
-        makecodeEditHex( hex, file.getName());
+        String hex = FileUtils.readStringFromHexFile( file);
+        // Look for MakeCode script magic
+        CharSequence s = "41140E2FB82FA2BB";
+        if ( hex.contains( s)) {
+            makecodeEditHex(hex, file.getName());
+        } else {
+            Toast.makeText(this, "Not a MakeCode HEX file", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void makecodeEditHex( String hex, String name) {
-        Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
-        if ( !hex.isEmpty()) {
-            launchMakeCodeIntent.putExtra("importHex", hex);
-            launchMakeCodeIntent.putExtra("importName", name);
-        }
-        startActivity(launchMakeCodeIntent);
+        goToMakeCode( hex, name);
     }
 
-    private String readHexFileToString( File file) {
-        String hex = "";
+    protected void importToProjects( Uri uri) {
+        Toast.makeText(this, "Importing micro:bit HEX", Toast.LENGTH_LONG).show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                ProjectsHelper.ProjectsHelperImportResult result = ProjectsHelper.importToProjectsWork(uri, ProjectActivity.this);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ProjectsHelper.importToProjectsToast( result.result, ProjectActivity.this);
+                        if (result.result == ProjectsHelper.enumImportResult.Success) {
+                            importToProjectsSuccess( result.file);
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
 
-        int size = (int) file.length();
-        byte[] bytes = new byte[size];
-        try {
-            BufferedInputStream buf = new BufferedInputStream( new FileInputStream(file));
-            buf.read(bytes, 0, bytes.length);
-            buf.close();
-            hex = new String( bytes);
-        } catch (Exception e) {
-            hex = "";
+    protected void importToProjectsSuccess( File file) {
+        if ( minimumPermissionsGranted) {
+            updateProjectsListSortOrder(true);
         }
-        return hex;
+
+        // TODO - expand the project list item?
+
+        String hex = FileUtils.readStringFromHexFile( file);
+        // Look for MakeCode script magic
+        CharSequence s = "41140E2FB82FA2BB";
+        if ( hex.contains( s)) {
+            makecodeEditHex(hex, file.getName());
+        }
     }
 }
