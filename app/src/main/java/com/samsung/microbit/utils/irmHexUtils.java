@@ -48,6 +48,7 @@ public class irmHexUtils {
     public long resultAddrNext;
     public int resultDataSize;
     public byte [] resultHex;
+    public byte [] resultData;
 
     public void scanInit() {
         scanHexSize = 0;
@@ -493,5 +494,96 @@ public class irmHexUtils {
         scanAddrMin = mnp[0];
         scanAddrNext = mnp[1];
         return scanForDataHex( universalHex, hexBlock);
+    }
+
+    // Extract data from records (0x00, 0x0D)
+    public int scanForData( byte [] data, final byte [] hex, final int hexSize) {
+        scanHexSize = hexSize;
+
+        for ( lineNext = 0; lineNext < scanHexSize; /*empty*/) {
+            if (!parseLine( hex))
+                return 0;
+
+            int rlen = lineNext - lineHidx;
+            if ( rlen == 0)
+                continue;
+
+            switch ( lineType) {
+                case 0:                 // Data
+                case 0x0D:
+                    long fullAddr = lastBaseAddr + lineAddr;
+                    if ( fullAddr + lineCount > scanAddrMin && fullAddr < scanAddrNext) {
+                        int first = (int) ( scanAddrMin > fullAddr ? scanAddrMin - fullAddr : 0);
+                        int next  = (int) ( scanAddrNext < fullAddr + lineCount ? scanAddrNext - fullAddr : lineCount);
+                        int length = next - first;
+                        int dataOffset = (int) ( fullAddr + first - scanAddrMin);
+                        if ( data != null) {
+                            byte [] lineBytes = new byte[ lineCount];
+                            if ( !lineData( hex, lineHidx, lineBytes, 0)) {
+                                return 0;
+                            }
+                            System.arraycopy( lineBytes, first, data, dataOffset, length);
+                        }
+                        if ( resultAddrMin > fullAddr + first) {
+                            resultAddrMin = fullAddr + first;
+                        }
+                        if ( resultAddrNext < fullAddr + next) {
+                            resultAddrNext = fullAddr + next;
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        // calculate size of data from scanMin
+        if ( resultAddrNext > resultAddrMin) {
+            resultDataSize = ( int) ( resultAddrNext - scanAddrMin);
+        } else {
+            resultDataSize = 0; // no data between
+        }
+
+        return resultDataSize;
+    }
+
+    // Scan for single target data hex from universal hex
+    //
+    // return false on failure
+    public boolean scanForData( final byte [] hex) {
+        resultData = null;
+
+        try {
+            long dataSize = scanForData( null, hex, hex.length);
+            if ( dataSize == 0)
+                return false;
+
+            if ( dataSize % 4 != 0) {
+                // Android DFU library will not proceed if data is not word aligned
+                // iOS library doesn't seem to mind
+                dataSize += 4 - dataSize % 4;
+            }
+            resultData = new byte[ (int) dataSize];
+            Arrays.fill( resultData, (byte) 0xFF);
+            dataSize = scanForData( resultData, hex, hex.length);
+            if ( dataSize == 0) {
+                return false;
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+
+    // Extract data from application hex
+    //
+    // return false on failure
+    // generated data is in resultData
+    public boolean applicationHexToData( final byte [] hex, final int hexBlock) {
+        scanInit();
+        long [] mnp = hexBlockToAppRegion( hexBlock);
+        scanAddrMin = mnp[0];
+        scanAddrNext = mnp[1];
+        return scanForData( hex);
     }
 };
