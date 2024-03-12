@@ -157,7 +157,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private boolean minimumPermissionsGranted;
 
     private boolean inMakeCodeActionFlash = false;
-    private String applicationHexAbsolutePath;
+    private int applicationSize;
     private int prepareToFlashResult;
 
 
@@ -1246,6 +1246,22 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 popupClickFlashComplete, popupClickFlashComplete);
     }
 
+    public String getCachePathAppHex() {
+        return this.getCacheDir() + "/application.hex";
+    }
+
+    public String getCachePathAppBin() {
+        return this.getCacheDir() + "/application.bin";
+    }
+
+    public String getCachePathAppDat() {
+        return this.getCacheDir() + "/application.dat";
+    }
+
+    public String getCachePathAppZip() {
+        return this.getCacheDir() + "/update.zip";
+    }
+
     protected int prepareToFlash() {
         logi("prepareToFlash");
 
@@ -1264,27 +1280,33 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 //        hexAbsolutePath = oldret[0];
 //        int oldapplicationSize = Integer.parseInt(oldret[1]);
 
-        String[] ret = universalHexToDFU(mProgramToSend.filePath, hardwareType);
-        applicationHexAbsolutePath = ret[0];
-        int applicationSize = Integer.parseInt(ret[1]);
+        applicationSize = universalHexToDFU( mProgramToSend.filePath, hardwareType);
 
-        if(applicationSize == -1) {
-            // V1 Hex on a V2
+        if( applicationSize <= 0) {
+            // incompatible hex
             return 1;
         }
 
-        // If V2 create init packet
-        String initPacketAbsolutePath = "-1";
-        if(hardwareType == MICROBIT_V2) {
-            try {
-                initPacketAbsolutePath = createDFUInitPacket(applicationSize);
-                String[] files = new String[]{initPacketAbsolutePath, applicationHexAbsolutePath};
-                createDFUZip(files);
-            } catch (IOException e) {
-                Log.v(TAG, "Failed to create init packet");
-                e.printStackTrace();
+        try {
+            applicationSize = createAppBin( hardwareType);
+            if ( applicationSize <= 0) {
                 return 2;
             }
+
+            if ( hardwareType == MICROBIT_V2) {
+                // If V2 create init packet and zip package
+                if ( !createAppDat(applicationSize)) {
+                    return 2;
+                }
+                String[] files = new String[]{ getCachePathAppDat(), getCachePathAppBin()};
+                if ( !createDFUZip(files)) {
+                    return 2;
+                }
+            }
+        } catch (IOException e) {
+            Log.v(TAG, "Failed to create init packet");
+            e.printStackTrace();
+            return 2;
         }
 
         return 0;
@@ -1306,7 +1328,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         // Start DFU Service
         Log.v(TAG, "Start Full DFU");
-        Log.v(TAG, "DFU hex: " + applicationHexAbsolutePath);
+        Log.v(TAG, "DFU bin: " + getCachePathAppBin());
         if(hardwareType == MICROBIT_V2) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 DfuServiceInitiator.createDfuNotificationChannel(this);
@@ -1321,7 +1343,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     .setRestoreBond(true)
                     .setKeepBond(true)
                     .setForeground(true)
-                    .setZip(this.getCacheDir() + "/update.zip");
+                    .setZip( getCachePathAppZip());
             final DfuServiceController controller = starter.start(this, DfuService.class);
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -1332,7 +1354,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     .setKeepBond(true)
                     .setForceDfu(true)
                     .setPacketsReceiptNotificationsEnabled(true)
-                    .setBinOrHex(DfuBaseService.TYPE_APPLICATION, applicationHexAbsolutePath);
+                    .setBinOrHex(DfuBaseService.TYPE_APPLICATION, getCachePathAppBin());
             final DfuServiceController controller = starter.start(this, DfuService.class);
         }
     }
@@ -1351,7 +1373,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
         service = new Intent(application, PartialFlashingService.class);
         service.putExtra("deviceAddress", currentMicrobit.mAddress);
-        service.putExtra("filepath", applicationHexAbsolutePath); // a path or URI must be provided.
+        service.putExtra("filepath", getCachePathAppHex()); // a path or URI must be provided.
         service.putExtra("hardwareType", hardwareType); // a path or URI must be provided.
         service.putExtra("pf", true); // Enable partial flashing
         application.startService(service);
@@ -1362,16 +1384,16 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     /**
      * Create zip for DFU
      */
-    private String createDFUZip(String[] srcFiles ) throws IOException {
+    private boolean createDFUZip(String[] srcFiles ) throws IOException {
         byte[] buffer = new byte[1024];
 
-        File zipFile = new File(this.getCacheDir() + "/update.zip");
+        File zipFile = new File( getCachePathAppZip());
         if (zipFile.exists()) {
             zipFile.delete();
         }
         zipFile.createNewFile();
 
-        FileOutputStream fileOutputStream = new FileOutputStream(this.getCacheDir() + "/update.zip");
+        FileOutputStream fileOutputStream = new FileOutputStream( getCachePathAppZip());
         ZipOutputStream zipOutputStream = new ZipOutputStream(fileOutputStream);
 
         for (int i=0; i < srcFiles.length; i++) {
@@ -1393,105 +1415,102 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         // close the ZipOutputStream
         zipOutputStream.close();
 
-        return this.getCacheDir() + "/update.zip";
+        return true;
     }
 
     /**
      * Create DFU init packet from HEX
-     * @param hexLength
+     * @param appSize
      */
-    private String createDFUInitPacket(int hexLength) throws IOException {
-        ByteArrayOutputStream outputInitPacket;
-        outputInitPacket = new ByteArrayOutputStream();
+    private boolean createAppDat( int appSize) throws IOException {
+        Log.v(TAG, "createAppDat " + appSize);
 
-        Log.v(TAG, "DFU App Length: " + hexLength);
-
-        outputInitPacket.write("microbit_app".getBytes()); // "microbit_app"
-        outputInitPacket.write(new byte[]{0x1, 0, 0, 0});  // Init packet version
-        outputInitPacket.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(hexLength).array());  // App size
-        outputInitPacket.write(new byte[]{0, 0, 0, 0x0});  // Hash Size. 0: Ignore Hash
-        outputInitPacket.write(new byte[]{
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0
-        }); // Hash
+        //typedef struct {
+        //    uint8_t  magic[12];                 // identify this struct "microbit_app"
+        //    uint32_t version;                   // version of this struct == 1
+        //    uint32_t app_size;                  // only used for DFU_FW_TYPE_APPLICATION
+        //    uint32_t hash_size;                 // 32 => DFU_HASH_TYPE_SHA256 or zero to bypass hash check
+        //    uint8_t  hash_bytes[32];            // hash of whole DFU download
+        //} microbit_dfu_app_t;
+        byte [] magic  = "microbit_app".getBytes();
+        byte [] sizeLE = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt( appSize).array();
+        byte [] dat = new byte[ 56];
+        Arrays.fill( dat, (byte) 0);
+        System.arraycopy( magic, 0, dat, 0, magic.length);
+        dat[ 12] = 1;
+        System.arraycopy( sizeLE, 0, dat, 16, 4);
 
         // Write to temp file
-        File initPacket = new File(this.getCacheDir() + "/application.dat");
-        if (initPacket.exists()) {
-            initPacket.delete();
+        File datFile = new File( getCachePathAppDat());
+        if ( datFile.exists()) {
+            datFile.delete();
         }
-        initPacket.createNewFile();
+        if ( !FileUtils.writeBytesToFile( datFile, dat)) {
+            return false;
+        }
+        return true;
+    }
 
-        FileOutputStream outputStream;
-        outputStream = new FileOutputStream(initPacket);
-        outputStream.write(outputInitPacket.toByteArray());
-        outputStream.flush();
+    /**
+     * Create App BIN from HEX
+     */
+    private int createAppBin( int hardwareType) throws IOException {
+        File appHexFile = new File( getCachePathAppHex());
+        File appBinFile = new File( getCachePathAppBin());
 
-        // Should return from here
-        return initPacket.getAbsolutePath();
+        byte [] appHex = FileUtils.readBytesFromFile( appHexFile);
+        if ( appHex == null) {
+            return -1;
+        }
+        irmHexUtils hexUtils = new irmHexUtils();
+        int hexBlock = hardwareType == MICROBIT_V1
+                ? irmHexUtils.irmHexBlock01
+                : irmHexUtils.irmHexBlock03;
+        if ( !hexUtils.applicationHexToData( appHex, hexBlock)) {
+            return -1;
+        }
+        if ( !FileUtils.writeBytesToFile( appBinFile, hexUtils.resultData)) {
+            return -1;
+        }
+        return hexUtils.resultData.length;
     }
 
     /**
      * Process Universal Hex
      * @return
      */
-    private String[] universalHexToDFU(String inputPath, int hardwareType) {
+    private int universalHexToDFU( String inputPath, int hardwareType) {
         logi("universalHexToDFU");
         try {
-            FileInputStream fis = new FileInputStream(inputPath);
-            int fileSize = Integer.valueOf(FileUtils.getFileSize(inputPath));
-            byte[] bs = new byte[fileSize];
-            int i = 0;
-            i = fis.read(bs);
-
-            logi("universalHexToDFU - read file");
+            File inputHexFile = new File( inputPath);
+            byte [] inputHex = FileUtils.readBytesFromFile( inputHexFile);
+            if ( inputHex == null) {
+                return -1;
+            }
+            logi("universalHexToDFU - file read");
 
             irmHexUtils irmHexUtil = new irmHexUtils();
             int hexBlock = hardwareType == MICROBIT_V1
                     ? irmHexUtils.irmHexBlock01
                     : irmHexUtils.irmHexBlock03;
-            if ( !irmHexUtil.universalHexToApplicationHex( bs, hexBlock)) {
-                return new String[]{"-1", "-1"};
+            if ( !irmHexUtil.universalHexToApplicationHex( inputHex, hexBlock)) {
+                return -1;
             }
-            byte [] dataHex = irmHexUtil.resultHex;
-            int application_size = irmHexUtil.resultDataSize;
             logi("universalHexToDFU - Finished parsing HEX");
 
-            try {
-                File hexToFlash = new File(this.getCacheDir() + "/application.hex");
-                if (hexToFlash.exists()) {
-                    hexToFlash.delete();
-                }
-                hexToFlash.createNewFile();
-
-                FileOutputStream outputStream = new FileOutputStream(hexToFlash);
-                outputStream.write( dataHex);
-                outputStream.flush();
-
-                // Should return from here
-                Log.v(TAG, hexToFlash.getAbsolutePath());
-                String[] ret = new String[2];
-                ret[0] = hexToFlash.getAbsolutePath();
-                ret[1] = Integer.toString(application_size);
-
-                logi("universalHexToDFU - Finished");
-                return ret;
-            } catch (IOException e) {
-                e.printStackTrace();
+            File hexFile = new File( getCachePathAppHex());
+            if ( !FileUtils.writeBytesToFile( hexFile, irmHexUtil.resultHex)) {
+                return -1;
             }
+            // Should return from here
+            logi("universalHexToDFU - Finished");
+            return irmHexUtil.resultDataSize;
 
-        } catch (FileNotFoundException e) {
-            Log.e(TAG, "File not found.");
-            e.printStackTrace();
-        } catch (IOException e) {
-            Log.e(TAG, "IO Exception.");
+        } catch ( Exception e) {
             e.printStackTrace();
         }
-
         // Should not reach this
-        return new String[]{"-1", "-1"};
+        return -1;
     }
 
 //    /**
