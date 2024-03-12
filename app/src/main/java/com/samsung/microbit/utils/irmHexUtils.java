@@ -64,6 +64,16 @@ public class irmHexUtils {
         resultAddrNext = 0;
     }
 
+    public static byte digittohex( int d) {
+        if ( d >= 0 && d <= 9) {
+            return (byte) ( '0' + d);
+        }
+        if ( d >= 10 && d <= 16) {
+            return (byte) ( 'A' + ( d - 10));
+        }
+        return -1;
+    }
+
     public static int hextodigit( final byte c) {
         if ( c >= '0' && c <= '9') {
             return c - '0';
@@ -197,6 +207,29 @@ public class irmHexUtils {
         if ( count < 0)
             return -1;
         return hextobyte( hex, hexIdx + 9 + count * 2);
+    }
+
+    public static boolean setCheck( byte [] hex, final int hexIdx) {
+        int sum = calcSum(hex, hexIdx);
+        if (sum < 0) {
+            return false;
+        }
+        int check = (sum == 0 ? 0 : (256 - sum));
+        int count = hextobyte( hex, hexIdx + 1);
+        int checkIdx = hexIdx + 9 + count * 2;
+        hex[ checkIdx]     = digittohex(check / 16);
+        hex[ checkIdx + 1] = digittohex(check % 16);
+
+        int chk = irmHexUtils.lineCheck( hex, hexIdx);
+        if ( chk < 0) {
+            return false;
+        }
+        sum = irmHexUtils.calcSum( hex, hexIdx);
+        sum = ( chk + sum) % 256;
+        if ( sum != 0 ) {
+            return false;
+        }
+        return true;
     }
 
     public static boolean lineData( final byte [] hex, final int hexIdx, byte [] data, final int idx) {
@@ -339,7 +372,6 @@ public class irmHexUtils {
                     if ( !isUniversal || dataWanted) {
                         long fullAddr = lastBaseAddr + lineAddr;
                         if ( fullAddr + lineCount > scanAddrMin && fullAddr < scanAddrNext) {
-                            // TODO support part lines?
                             if ( resultAddrMin > fullAddr) {
                                 resultAddrMin = fullAddr;
                             }
@@ -350,6 +382,9 @@ public class irmHexUtils {
                                 System.arraycopy(universalhex, lineHidx, datahex, hexSize, rlen);
                                 datahex[hexSize + 7] = '0';
                                 datahex[hexSize + 8] = '0';
+                                if ( !setCheck( datahex, hexSize)) {
+                                    return 0;
+                                }
                             }
                             lastSize = hexSize;
                             lastType = lineType;
