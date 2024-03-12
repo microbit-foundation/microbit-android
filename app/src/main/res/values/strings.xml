@@ -354,7 +354,7 @@
     <string name="storage_permission_for_programs">We need storage permission to list all the program files saved on your device.\n Proceed?</string>
     <string name="storage_permission_for_programs_error">Cannot display any program files.</string>
 
-    <string name="location_permission_pairing">We need permission to use your background location to enable BLE. This allows the app to search for and find your micro:bit.\n Proceed?</string>
+    <string name="location_permission_pairing">We need permission to use your location to enable BLE. This allows the app to search for and find your micro:bit.\n Proceed?</string>
     <string name="location_permission_error">Cannot pair new micro:bit without having location permission.</string>
 
     <string name="ble_permission">We need nearby devices permission to connect to your micro:bit.\n Proceed?</string>
