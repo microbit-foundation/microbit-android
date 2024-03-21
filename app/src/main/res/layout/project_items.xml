@@ -40,6 +40,9 @@
         <!-- Flash button -->
         <include layout="@layout/custom_project_items_button" />
 
+        <!-- Edit button -->
+        <include layout="@layout/custom_project_items_edit" />
+
         <!-- Delete button -->
         <ImageButton
             android:id="@+id/deleteBtn"

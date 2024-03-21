@@ -66,6 +66,7 @@ import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 import com.samsung.microbit.utils.irmHexUtils;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -147,17 +148,16 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private BroadcastReceiver connectionChangedReceiver = BLEConnectionHandler.bleConnectionChangedReceiver(this);
 
     private Handler handler = new Handler();
-    private int countOfReconnecting;
-    private boolean sentPause;
 
-    private boolean notAValidFlashHexFile;
+//    // REMOVE tryToConnectAgain
+//    private int countOfReconnecting;
+//    private boolean sentPause;
+//    private boolean notAValidFlashHexFile;
 
     private boolean minimumPermissionsGranted;
 
-    private boolean previousPartialFlashFailed = false;
-
-    private boolean finishWhenFlashComplete = true;
-    private String applicationHexAbsolutePath;
+    private boolean inMakeCodeActionFlash = false;
+    private int applicationSize;
     private int prepareToFlashResult;
 
 
@@ -166,9 +166,26 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     BLEService bleService;
 
-    private void onFlashComplete() {
-        if ( finishWhenFlashComplete) {
+    private void goToMakeCode( String hex, String name) {
+        if ( inMakeCodeActionFlash) {
+            inMakeCodeActionFlash = false;
+            setResult( Activity.RESULT_OK);
             finish();
+        } else {
+            Intent intent = new Intent(this, MakeCodeWebView.class);
+            if ( hex != null && !hex.isEmpty()) {
+                MakeCodeWebView.importHex  = hex;
+                MakeCodeWebView.importName = name;
+                intent.putExtra("import", true);
+            }
+            startActivity(intent);
+            finish();
+        }
+    }
+
+    private void onFlashComplete() {
+        if ( inMakeCodeActionFlash) {
+            goToMakeCode( null, null);
         }
     }
 
@@ -185,44 +202,45 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
     };
 
-    private final Runnable tryToConnectAgain = new Runnable() {
-
-        @Override
-        public void run() {
-            if(sentPause) {
-                countOfReconnecting++;
-            }
-
-            final LocalBroadcastManager localBroadcastManager = LocalBroadcastManager
-                    .getInstance(ProjectActivity.this);
-
-            if(countOfReconnecting == Constants.MAX_COUNT_OF_RE_CONNECTIONS_FOR_DFU) {
-                countOfReconnecting = 0;
-                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
-                intent.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_ABORT);
-                localBroadcastManager.sendBroadcast(intent);
-            } else {
-                final int nextAction;
-                final long delayForNewlyBroadcast;
-
-                if(sentPause) {
-                    nextAction = DfuService.ACTION_RESUME;
-                    delayForNewlyBroadcast = Constants.TIME_FOR_CONNECTION_COMPLETED;
-                } else {
-                    nextAction = DfuService.ACTION_PAUSE;
-                    delayForNewlyBroadcast = Constants.DELAY_BETWEEN_PAUSE_AND_RESUME;
-                }
-
-                sentPause = !sentPause;
-
-                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
-                intent.putExtra(DfuService.EXTRA_ACTION, nextAction);
-                localBroadcastManager.sendBroadcast(intent);
-
-                handler.postDelayed(this, delayForNewlyBroadcast);
-            }
-        }
-    };
+//    // REMOVE tryToConnectAgain
+//    private final Runnable tryToConnectAgain = new Runnable() {
+//
+//        @Override
+//        public void run() {
+//            if (sentPause) {
+//                countOfReconnecting++;
+//            }
+//
+//            final LocalBroadcastManager localBroadcastManager = LocalBroadcastManager
+//                    .getInstance(ProjectActivity.this);
+//
+//            if (countOfReconnecting == Constants.MAX_COUNT_OF_RE_CONNECTIONS_FOR_DFU) {
+//                countOfReconnecting = 0;
+//                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
+//                intent.putExtra(DfuService.EXTRA_ACTION, DfuService.ACTION_ABORT);
+//                localBroadcastManager.sendBroadcast(intent);
+//            } else {
+//                final int nextAction;
+//                final long delayForNewlyBroadcast;
+//
+//                if (sentPause) {
+//                    nextAction = DfuService.ACTION_RESUME;
+//                    delayForNewlyBroadcast = Constants.TIME_FOR_CONNECTION_COMPLETED;
+//                } else {
+//                    nextAction = DfuService.ACTION_PAUSE;
+//                    delayForNewlyBroadcast = Constants.DELAY_BETWEEN_PAUSE_AND_RESUME;
+//                }
+//
+//                sentPause = !sentPause;
+//
+//                Intent intent = new Intent(DfuService.BROADCAST_ACTION);
+//                intent.putExtra(DfuService.EXTRA_ACTION, nextAction);
+//                localBroadcastManager.sendBroadcast(intent);
+//
+//                handler.postDelayed(this, delayForNewlyBroadcast);
+//            }
+//        }
+//    };
 
     /**
      * Allows to handle forced closing of the bluetooth service and
@@ -447,8 +465,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         checkMinimumPermissionsForThisScreen();
         setConnectedDeviceText();
 
-        if(savedInstanceState == null && getIntent() != null) {
-            finishWhenFlashComplete = getIntent().getData() != null;
+        if (savedInstanceState == null && getIntent() != null) {
             handleIncomingIntent(getIntent());
         }
     }
@@ -462,148 +479,47 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     private void handleIncomingIntent(Intent intent) {
-        boolean isOpenByOtherApp = false;
-        String fullPathOfFile;
-        String fileName;
-
-        Project externalProject = null;
-        Uri uri = null;
-
         String action = intent.getAction();
-        String type = intent.getType();
-        if ( Intent.ACTION_SEND.equals(action) && intent.hasExtra( Intent.EXTRA_STREAM)) {
+        if (action != null && action.equals(MakeCodeWebView.ACTION_FLASH)) {
+            makeCodeActionFlash(intent);
+            return;
+        }
+
+        inMakeCodeActionFlash = false;
+
+        Uri uri = null;
+        if (action != null && action.equals(Intent.ACTION_SEND) && intent.hasExtra(Intent.EXTRA_STREAM)) {
             uri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        } else if(intent.getData() != null && intent.getData().getEncodedPath() != null) {
+        } else if (intent.getData() != null && intent.getData().getEncodedPath() != null) {
             uri = intent.getData();
-        }
-
-        if ( uri != null) {
-            isOpenByOtherApp = true;
-            String encodedPath = uri.getEncodedPath();
-
-            String scheme = uri.getScheme();
-            if (scheme.equals("file")) {
-                fullPathOfFile = URLDecoder.decode(encodedPath);
-                fileName = fileNameForFlashing(fullPathOfFile);
-                externalProject = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
-            } else if(scheme.equals("content")) {
-                Cursor cursor = null;
-                try {
-                    cursor = getContentResolver().query(uri, null, null, null, null);
-
-                    if (cursor != null && cursor.moveToFirst()) {
-                        String selectedFileName = cursor.getString(cursor.getColumnIndex(DocumentsContract.Document
-                                .COLUMN_DISPLAY_NAME));
-
-                        // If application is opened from My Files (Android 6.0), cursor don't contains
-                        // COLUMN_DOCUMENT_ID, and stream not needed to copy to Download directory. It is already
-                        // there
-                        boolean isShareableApp = cursor.getColumnIndex(DocumentsContract.Document
-                                .COLUMN_DOCUMENT_ID) != -1;
-
-                        fullPathOfFile = ProjectsHelper.projectPath(this, selectedFileName);
-
-                        if (isShareableApp) {
-                            try {
-                                IOUtils.copy(getContentResolver().openInputStream(uri), new FileOutputStream(fullPathOfFile));
-                            } catch (Exception e) {
-                                Log.e(TAG, e.toString());
-                            }
-                        }
-
-                        fileName = fileNameForFlashing(fullPathOfFile);
-                        externalProject = fileName == null ? null : new Project(fileName, fullPathOfFile, 0, null, false);
-                    } else {
-                        try {
-                            AssetFileDescriptor fileDescriptor = getContentResolver().openAssetFileDescriptor(uri, "r");
-
-                            if(fileDescriptor != null) {
-                                long length = fileDescriptor.getLength();
-
-                                fileDescriptor.close();
-                                externalProject = getLatestProjectFromFolder(length);
-                            }
-                        } catch(IOException e) {
-                            Log.e(TAG, e.toString());
-                        }
-                    }
-                } finally {
-                    if (cursor != null) {
-                        cursor.close();
-                    }
-                }
-
-            } else {
-                Log.e(TAG, "Unknown schema: " + scheme);
-                return;
-            }
-        }
-
-        if ( externalProject != null) {
-            mProgramToSend = externalProject;
-            setActivityState(FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST);
-        }
-
-        if ( mProgramToSend != null) {
-            startBluetoothForFlashing();
         } else {
-            if ( isOpenByOtherApp) {
-                Toast.makeText(this, "Not a micro:bit HEX file", Toast.LENGTH_LONG).show();
-                onFlashComplete();
-            }
+            return;
         }
+        importToProjects( uri);
     }
 
-    private Project getLatestProjectFromFolder(long lengthOfSearchingFile) {
-        FilenameFilter hexFilenameFilter = new FilenameFilter() {
-            @Override
-            public boolean accept(File dir, String filename) {
-                return filename.endsWith(".hex");
-            }
-        };
+    private void makeCodeActionFlash(Intent intent) {
+        setActivityState(FlashActivityState.STATE_ENABLE_BT_EXTERNAL_FLASH_REQUEST);
 
-        File nowDownloadedFile = null;
+        inMakeCodeActionFlash = true;
 
-        // TODO: What folder should we search - downloads or projects?
-        File[] downloadFiles = ProjectsHelper.downloadsFilesListHEX( this);
-
-        if(downloadFiles != null) {
-            for(File file : downloadFiles) {
-                if(nowDownloadedFile == null) {
-                    if(file.length() == lengthOfSearchingFile) {
-                        nowDownloadedFile = file;
-                    }
-                } else if(file.length() == lengthOfSearchingFile && file.lastModified() > nowDownloadedFile.lastModified
-                        ()) {
-                    nowDownloadedFile = file;
-                }
+        mProgramToSend = null;
+        String fullPathOfFile = intent.getStringExtra("path");
+        if ( fullPathOfFile != null) {
+            String fileName = FileUtils.fileNameFromPath( fullPathOfFile);
+            if ( fileName != null) {
+                mProgramToSend = new Project(fileName, fullPathOfFile,
+                        0, null, false);
             }
         }
 
-        String fullPathOfFile;
-        if(nowDownloadedFile == null) {
-            Log.e(TAG, "Can't find file");
-            return null;
-        } else {
-            fullPathOfFile = nowDownloadedFile.getAbsolutePath();
-            String fileName = fileNameForFlashing(fullPathOfFile);
-            return fileName == null ? null : new Project(fileNameForFlashing(fullPathOfFile), fullPathOfFile, 0, null, false);
+        if ( mProgramToSend == null) {
+            Toast.makeText(this, "Not a micro:bit HEX file", Toast.LENGTH_LONG).show();
+            onFlashComplete();
+            return;
         }
-    }
 
-    /**
-     * Check file path. If file ends with .hex, then just return it name, else return {@code null}
-     *
-     * @param fullPathOfFile Path to file, that checks
-     * @return
-     */
-    private String fileNameForFlashing(String fullPathOfFile) {
-        String path[] = fullPathOfFile.split("/");
-        if(path[path.length - 1].endsWith(".hex")) {
-            return path[path.length - 1];
-        } else {
-            return null;
-        }
+        startBluetoothForFlashing();
     }
 
     @Override
@@ -617,7 +533,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     protected void onDestroy() {
 
-        handler.removeCallbacks(tryToConnectAgain);
+//        handler.removeCallbacks(tryToConnectAgain); // REMOVE tryToConnectAgain
 
         MBApp application = MBApp.getApp();
 
@@ -1126,6 +1042,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         startBluetoothForFlashing();
     }
 
+    /**
+     * Sends a project to the editor.
+     *
+     * @param project Project to edit.
+     */
+    public void editProject(final Project project) {
+        makecodeEditProject( project);
+    }
+
     @Override
     public void onClick(final View v) {
         switch(v.getId()) {
@@ -1321,6 +1246,22 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 popupClickFlashComplete, popupClickFlashComplete);
     }
 
+    public String getCachePathAppHex() {
+        return this.getCacheDir() + "/application.hex";
+    }
+
+    public String getCachePathAppBin() {
+        return this.getCacheDir() + "/application.bin";
+    }
+
+    public String getCachePathAppDat() {
+        return this.getCacheDir() + "/application.dat";
+    }
+
+    public String getCachePathAppZip() {
+        return this.getCacheDir() + "/update.zip";
+    }
+
     protected int prepareToFlash() {
         logi("prepareToFlash");
 
@@ -1339,27 +1280,33 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 //        hexAbsolutePath = oldret[0];
 //        int oldapplicationSize = Integer.parseInt(oldret[1]);
 
-        String[] ret = universalHexToDFU(mProgramToSend.filePath, hardwareType);
-        applicationHexAbsolutePath = ret[0];
-        int applicationSize = Integer.parseInt(ret[1]);
+        applicationSize = universalHexToDFU( mProgramToSend.filePath, hardwareType);
 
-        if(applicationSize == -1) {
-            // V1 Hex on a V2
+        if( applicationSize <= 0) {
+            // incompatible hex
             return 1;
         }
 
-        // If V2 create init packet
-        String initPacketAbsolutePath = "-1";
-        if(hardwareType == MICROBIT_V2) {
-            try {
-                initPacketAbsolutePath = createDFUInitPacket(applicationSize);
-                String[] files = new String[]{initPacketAbsolutePath, applicationHexAbsolutePath};
-                createDFUZip(files);
-            } catch (IOException e) {
-                Log.v(TAG, "Failed to create init packet");
-                e.printStackTrace();
+        try {
+            applicationSize = createAppBin( hardwareType);
+            if ( applicationSize <= 0) {
                 return 2;
             }
+
+            if ( hardwareType == MICROBIT_V2) {
+                // If V2 create init packet and zip package
+                if ( !createAppDat(applicationSize)) {
+                    return 2;
+                }
+                String[] files = new String[]{ getCachePathAppDat(), getCachePathAppBin()};
+                if ( !createDFUZip(files)) {
+                    return 2;
+                }
+            }
+        } catch (IOException e) {
+            Log.v(TAG, "Failed to create init packet");
+            e.printStackTrace();
+            return 2;
         }
 
         return 0;
@@ -1381,7 +1328,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         // Start DFU Service
         Log.v(TAG, "Start Full DFU");
-        Log.v(TAG, "DFU hex: " + applicationHexAbsolutePath);
+        Log.v(TAG, "DFU bin: " + getCachePathAppBin());
         if(hardwareType == MICROBIT_V2) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 DfuServiceInitiator.createDfuNotificationChannel(this);
@@ -1396,7 +1343,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     .setRestoreBond(true)
                     .setKeepBond(true)
                     .setForeground(true)
-                    .setZip(this.getCacheDir() + "/update.zip");
+                    .setZip( getCachePathAppZip());
             final DfuServiceController controller = starter.start(this, DfuService.class);
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -1407,7 +1354,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     .setKeepBond(true)
                     .setForceDfu(true)
                     .setPacketsReceiptNotificationsEnabled(true)
-                    .setBinOrHex(DfuBaseService.TYPE_APPLICATION, applicationHexAbsolutePath);
+                    .setBinOrHex(DfuBaseService.TYPE_APPLICATION, getCachePathAppBin());
             final DfuServiceController controller = starter.start(this, DfuService.class);
         }
     }
@@ -1426,7 +1373,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
         service = new Intent(application, PartialFlashingService.class);
         service.putExtra("deviceAddress", currentMicrobit.mAddress);
-        service.putExtra("filepath", applicationHexAbsolutePath); // a path or URI must be provided.
+        service.putExtra("filepath", getCachePathAppHex()); // a path or URI must be provided.
         service.putExtra("hardwareType", hardwareType); // a path or URI must be provided.
         service.putExtra("pf", true); // Enable partial flashing
         application.startService(service);
@@ -1437,16 +1384,16 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     /**
      * Create zip for DFU
      */
-    private String createDFUZip(String[] srcFiles ) throws IOException {
+    private boolean createDFUZip(String[] srcFiles ) throws IOException {
         byte[] buffer = new byte[1024];
 
-        File zipFile = new File(this.getCacheDir() + "/update.zip");
+        File zipFile = new File( getCachePathAppZip());
         if (zipFile.exists()) {
             zipFile.delete();
         }
         zipFile.createNewFile();
 
-        FileOutputStream fileOutputStream = new FileOutputStream(this.getCacheDir() + "/update.zip");
+        FileOutputStream fileOutputStream = new FileOutputStream( getCachePathAppZip());
         ZipOutputStream zipOutputStream = new ZipOutputStream(fileOutputStream);
 
         for (int i=0; i < srcFiles.length; i++) {
@@ -1468,105 +1415,102 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         // close the ZipOutputStream
         zipOutputStream.close();
 
-        return this.getCacheDir() + "/update.zip";
+        return true;
     }
 
     /**
      * Create DFU init packet from HEX
-     * @param hexLength
+     * @param appSize
      */
-    private String createDFUInitPacket(int hexLength) throws IOException {
-        ByteArrayOutputStream outputInitPacket;
-        outputInitPacket = new ByteArrayOutputStream();
+    private boolean createAppDat( int appSize) throws IOException {
+        Log.v(TAG, "createAppDat " + appSize);
 
-        Log.v(TAG, "DFU App Length: " + hexLength);
-
-        outputInitPacket.write("microbit_app".getBytes()); // "microbit_app"
-        outputInitPacket.write(new byte[]{0x1, 0, 0, 0});  // Init packet version
-        outputInitPacket.write(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(hexLength).array());  // App size
-        outputInitPacket.write(new byte[]{0, 0, 0, 0x0});  // Hash Size. 0: Ignore Hash
-        outputInitPacket.write(new byte[]{
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0
-        }); // Hash
+        //typedef struct {
+        //    uint8_t  magic[12];                 // identify this struct "microbit_app"
+        //    uint32_t version;                   // version of this struct == 1
+        //    uint32_t app_size;                  // only used for DFU_FW_TYPE_APPLICATION
+        //    uint32_t hash_size;                 // 32 => DFU_HASH_TYPE_SHA256 or zero to bypass hash check
+        //    uint8_t  hash_bytes[32];            // hash of whole DFU download
+        //} microbit_dfu_app_t;
+        byte [] magic  = "microbit_app".getBytes();
+        byte [] sizeLE = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt( appSize).array();
+        byte [] dat = new byte[ 56];
+        Arrays.fill( dat, (byte) 0);
+        System.arraycopy( magic, 0, dat, 0, magic.length);
+        dat[ 12] = 1;
+        System.arraycopy( sizeLE, 0, dat, 16, 4);
 
         // Write to temp file
-        File initPacket = new File(this.getCacheDir() + "/application.dat");
-        if (initPacket.exists()) {
-            initPacket.delete();
+        File datFile = new File( getCachePathAppDat());
+        if ( datFile.exists()) {
+            datFile.delete();
         }
-        initPacket.createNewFile();
+        if ( !FileUtils.writeBytesToFile( datFile, dat)) {
+            return false;
+        }
+        return true;
+    }
 
-        FileOutputStream outputStream;
-        outputStream = new FileOutputStream(initPacket);
-        outputStream.write(outputInitPacket.toByteArray());
-        outputStream.flush();
+    /**
+     * Create App BIN from HEX
+     */
+    private int createAppBin( int hardwareType) throws IOException {
+        File appHexFile = new File( getCachePathAppHex());
+        File appBinFile = new File( getCachePathAppBin());
 
-        // Should return from here
-        return initPacket.getAbsolutePath();
+        byte [] appHex = FileUtils.readBytesFromFile( appHexFile);
+        if ( appHex == null) {
+            return -1;
+        }
+        irmHexUtils hexUtils = new irmHexUtils();
+        int hexBlock = hardwareType == MICROBIT_V1
+                ? irmHexUtils.irmHexBlock01
+                : irmHexUtils.irmHexBlock03;
+        if ( !hexUtils.applicationHexToData( appHex, hexBlock)) {
+            return -1;
+        }
+        if ( !FileUtils.writeBytesToFile( appBinFile, hexUtils.resultData)) {
+            return -1;
+        }
+        return hexUtils.resultData.length;
     }
 
     /**
      * Process Universal Hex
      * @return
      */
-    private String[] universalHexToDFU(String inputPath, int hardwareType) {
+    private int universalHexToDFU( String inputPath, int hardwareType) {
         logi("universalHexToDFU");
         try {
-            FileInputStream fis = new FileInputStream(inputPath);
-            int fileSize = Integer.valueOf(FileUtils.getFileSize(inputPath));
-            byte[] bs = new byte[fileSize];
-            int i = 0;
-            i = fis.read(bs);
-
-            logi("universalHexToDFU - read file");
+            File inputHexFile = new File( inputPath);
+            byte [] inputHex = FileUtils.readBytesFromFile( inputHexFile);
+            if ( inputHex == null) {
+                return -1;
+            }
+            logi("universalHexToDFU - file read");
 
             irmHexUtils irmHexUtil = new irmHexUtils();
             int hexBlock = hardwareType == MICROBIT_V1
                     ? irmHexUtils.irmHexBlock01
                     : irmHexUtils.irmHexBlock03;
-            if ( !irmHexUtil.universalHexToApplicationHex( bs, hexBlock)) {
-                return new String[]{"-1", "-1"};
+            if ( !irmHexUtil.universalHexToApplicationHex( inputHex, hexBlock)) {
+                return -1;
             }
-            byte [] dataHex = irmHexUtil.resultHex;
-            int application_size = irmHexUtil.resultDataSize;
             logi("universalHexToDFU - Finished parsing HEX");
 
-            try {
-                File hexToFlash = new File(this.getCacheDir() + "/application.hex");
-                if (hexToFlash.exists()) {
-                    hexToFlash.delete();
-                }
-                hexToFlash.createNewFile();
-
-                FileOutputStream outputStream = new FileOutputStream(hexToFlash);
-                outputStream.write( dataHex);
-                outputStream.flush();
-
-                // Should return from here
-                Log.v(TAG, hexToFlash.getAbsolutePath());
-                String[] ret = new String[2];
-                ret[0] = hexToFlash.getAbsolutePath();
-                ret[1] = Integer.toString(application_size);
-
-                logi("universalHexToDFU - Finished");
-                return ret;
-            } catch (IOException e) {
-                e.printStackTrace();
+            File hexFile = new File( getCachePathAppHex());
+            if ( !FileUtils.writeBytesToFile( hexFile, irmHexUtil.resultHex)) {
+                return -1;
             }
+            // Should return from here
+            logi("universalHexToDFU - Finished");
+            return irmHexUtil.resultDataSize;
 
-        } catch (FileNotFoundException e) {
-            Log.e(TAG, "File not found.");
-            e.printStackTrace();
-        } catch (IOException e) {
-            Log.e(TAG, "IO Exception.");
+        } catch ( Exception e) {
             e.printStackTrace();
         }
-
         // Should not reach this
-        return new String[]{"-1", "-1"};
+        return -1;
     }
 
 //    /**
@@ -1945,8 +1889,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
 
                 Log.v(TAG, "Partial flashing failed");
-                previousPartialFlashFailed = true;
-
                 // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU automatically
                 // Set flag to avoid partial flash next time
                 PopUp.show(getString(R.string.could_not_connect), //message
@@ -2031,8 +1973,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         */
                                 ServiceUtils.sendConnectDisconnectMessage(false);
 
-                                previousPartialFlashFailed = false;
-
                                 PopUp.show(getString(R.string.flashing_success_message), //message
                                         getString(R.string.flashing_success_title), //title
                                         R.drawable.message_face, R.drawable.blue_btn,
@@ -2068,17 +2008,18 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         },//override click listener for ok button
                                         null);//pass null to use default listener
 
-                                countOfReconnecting = 0;
-                                sentPause = false;
-
-                                long delayForCheckOnConnection = Constants.TIME_FOR_CONNECTION_COMPLETED;
-
-                                if (notAValidFlashHexFile) {
-                                    notAValidFlashHexFile = false;
-                                    delayForCheckOnConnection += Constants.JUST_PAIRED_DELAY_ON_CONNECTION;
-                                }
-
-                                handler.postDelayed(tryToConnectAgain, delayForCheckOnConnection);
+//                                // REMOVE tryToConnectAgain
+//                                countOfReconnecting = 0;
+//                                sentPause = false;
+//
+//                                long delayForCheckOnConnection = Constants.TIME_FOR_CONNECTION_COMPLETED;
+//
+//                                if (notAValidFlashHexFile) {
+//                                    notAValidFlashHexFile = false;
+//                                    delayForCheckOnConnection += Constants.JUST_PAIRED_DELAY_ON_CONNECTION;
+//                                }
+//
+//                                handler.postDelayed(tryToConnectAgain, delayForCheckOnConnection);
                             }
 
                             inInit = true;
@@ -2162,7 +2103,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler);//pass null to use default listener
 
                             dfuUnregister();
-                            removeReconnectionRunnable();
+//                            removeReconnectionRunnable(); // REMOVE tryToConnectAgain
                             onFlashComplete();
                             break;
                         /*
@@ -2187,7 +2128,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     popupOkHandler);//pass null to use default listener
 
                             dfuUnregister();
-                            removeReconnectionRunnable();
+//                            removeReconnectionRunnable();// REMOVE tryToConnectAgain
                             break;
                             */
                         default:
@@ -2208,8 +2149,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                 TYPE_PROGRESS_NOT_CANCELABLE, null, null);
 
                         inProgress = true;
-
-                        removeReconnectionRunnable();
+//                        removeReconnectionRunnable(); // REMOVE tryToConnectAgain
                     }
 
                     if ( state != progressState) {
@@ -2220,9 +2160,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             } else if(intent.getAction().equals(DfuService.BROADCAST_ERROR)) {
                 int errorCode = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
 
-                if(errorCode == DfuService.ERROR_FILE_INVALID) {
-                    notAValidFlashHexFile = true;
-                }
+//                // REMOVE tryToConnectAgain
+//                if(errorCode == DfuService.ERROR_FILE_INVALID) {
+//                    notAValidFlashHexFile = true;
+//                }
 
                 String error_message = GattError.parse(errorCode);
 
@@ -2238,7 +2179,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 MBApp application = MBApp.getApp();
 
                 dfuUnregister();
-                removeReconnectionRunnable();
+//                removeReconnectionRunnable(); // REMOVE tryToConnectAgain
                 //Update Stats
                 /*
                 GoogleAnalyticsManager.getInstance().sendFlashStats(
@@ -2299,11 +2240,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     }
 
-    private void removeReconnectionRunnable() {
-        handler.removeCallbacks(tryToConnectAgain);
-        countOfReconnecting = 0;
-        sentPause = false;
-    }
+//    // REMOVE tryToConnectAgain
+//    private void removeReconnectionRunnable() {
+//        handler.removeCallbacks(tryToConnectAgain);
+//        countOfReconnecting = 0;
+//        sentPause = false;
+//    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -2339,8 +2281,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     private void scriptsCreateCode() {
-        Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
-        startActivity(launchMakeCodeIntent);
+        goToMakeCode( null, null);
     }
 
     private static final int REQUEST_CODE_EXPORT = 1;
@@ -2360,108 +2301,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         if ( resultCode != RESULT_OK) {
             return;
         }
-        Toast.makeText(this, "Importing project", Toast.LENGTH_LONG).show();
-        new Thread( new Runnable() {
-            @Override
-            public void run() {
-                int error = scriptsImportOpen( data.getData());
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        switch (error) {
-                            case 0:
-                                if ( minimumPermissionsGranted) {
-                                    updateProjectsListSortOrder(true);
-                                }
-                                break;
-                            case 1:
-                                Toast.makeText( ProjectActivity.this,
-                                        "Project import failed", Toast.LENGTH_LONG).show();
-                                break;
-                            case 2:
-                                Toast.makeText( ProjectActivity.this,
-                                        "A project with the same name already exists",
-                                        Toast.LENGTH_LONG).show();
-                                break;
-                        }
-                    }
-                });
-            }
-        }).start();
-    }
-
-    private int scriptsImportOpen( Uri uri) {
-        String fileName = "microbit-import.hex";
-
-        String scheme = uri.getScheme();
-        String mime = getContentResolver().getType(uri);
-        if ( scheme.equals("file")) {
-            String encodedPath = uri.getEncodedPath();
-            String path = URLDecoder.decode(encodedPath);
-            fileName = fileNameForFlashing( path);
-        } else if( scheme.equals("content")) {
-            Cursor cursor = null;
-            cursor = getContentResolver().query(uri, null, null, null, null);
-            if (cursor != null && cursor.moveToFirst()) {
-                int index = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
-                if (index >= 0) {
-                    fileName = cursor.getString(index);
-                }
-            }
-        }
-
-        String projectPath = ProjectsHelper.projectPath(this, fileName);
-        if ( FileUtils.fileExists( projectPath)) {
-            return 2;
-        }
-
-        boolean ok = true;
-        FileInputStream fis = null;
-        BufferedReader reader = null;
-        try {
-            IOUtils.copy(getContentResolver().openInputStream(uri), new FileOutputStream(projectPath));
-
-            // Check file is hex
-            int lineCount = 0;
-            fis = new FileInputStream( projectPath);
-            reader = new BufferedReader( new InputStreamReader( fis));
-            while ( true) {
-                String line = reader.readLine();
-                if ( line == null) {
-                    break;
-                }
-                lineCount++;
-                if ( !line.isEmpty() && !line.startsWith(":")) {
-                    ok = false;
-                    break;
-                }
-                if ( lineCount == 0) {
-                    ok = false;
-                }
-            }
-        } catch (Exception e) {
-            logi( e.toString());
-            ok = false;
-        }
-
-        if ( reader != null) {
-            try {
-                reader.close();
-            } catch (IOException e) {
-            }
-        }
-
-        if ( fis != null) {
-            try {
-                fis.close();
-            } catch (IOException e) {
-            }
-        }
-
-        if ( !ok) {
-            FileUtils.deleteFile( projectPath);
-        }
-        return ok ? 0 : 1;
+        Uri uri = data.getData();
+        importToProjects( uri);
     }
 
     private void scriptsExport() {
@@ -2553,5 +2394,59 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             }
         }
         return ok ? 0 : 1;
+    }
+
+    public void makecodeEditProject(final Project project) {
+        File file = new File( project.filePath);
+        makecodeEditFile( file);
+    }
+
+    private void makecodeEditFile( File file) {
+        String hex = FileUtils.readStringFromHexFile( file);
+        // Look for MakeCode script magic
+        CharSequence s = "41140E2FB82FA2BB";
+        if ( hex.contains( s)) {
+            makecodeEditHex(hex, file.getName());
+        } else {
+            Toast.makeText(this, "Not a MakeCode HEX file", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void makecodeEditHex( String hex, String name) {
+        goToMakeCode( hex, name);
+    }
+
+    protected void importToProjects( Uri uri) {
+        Toast.makeText(this, "Importing micro:bit HEX", Toast.LENGTH_LONG).show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                ProjectsHelper.ProjectsHelperImportResult result = ProjectsHelper.importToProjectsWork(uri, ProjectActivity.this);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ProjectsHelper.importToProjectsToast( result.result, ProjectActivity.this);
+                        if (result.result == ProjectsHelper.enumImportResult.Success) {
+                            importToProjectsSuccess( result.file);
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    protected void importToProjectsSuccess( File file) {
+        if ( minimumPermissionsGranted) {
+            updateProjectsListSortOrder(true);
+        }
+
+        // TODO - expand the project list item?
+
+        String hex = FileUtils.readStringFromHexFile( file);
+        // Look for MakeCode script magic
+        CharSequence s = "41140E2FB82FA2BB";
+        if ( hex.contains( s)) {
+            makecodeEditHex(hex, file.getName());
+        }
     }
 }

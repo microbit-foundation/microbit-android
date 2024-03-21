@@ -5,9 +5,13 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.provider.DocumentsContract;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -17,13 +21,20 @@ import com.samsung.microbit.MBApp;
 import com.samsung.microbit.data.constants.Constants;
 import com.samsung.microbit.data.constants.FileConstants;
 import com.samsung.microbit.data.model.Project;
+import com.samsung.microbit.ui.activity.ProjectActivity;
 
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -242,5 +253,114 @@ public class ProjectsHelper {
             }
         }
         return true;
+    }
+
+    public static boolean writeStringToProjectHex( String hex, String fileName, Context ctx)
+    {
+        boolean ok = true;
+
+        File file = ProjectsHelper.projectFile( ctx, fileName);
+
+        try {
+            byte[] bytes = hex.getBytes();
+
+            if ( file.exists()) {
+                file.delete();
+            }
+            file.createNewFile();
+
+            FileOutputStream os = new FileOutputStream(file);
+            os.write( bytes);
+            os.flush();
+            os.close();
+        } catch ( Exception e) {
+            ok = false;
+        }
+        return ok;
+    }
+
+    public static enum enumImportResult {
+        Success,
+        NotFound,
+        ReadFailed,
+        NotHex,
+        AlreadyExists,
+        WriteFailed
+    }
+
+    public static class ProjectsHelperImportResult {
+
+        public enumImportResult result;
+        public File file;
+
+        public ProjectsHelperImportResult( enumImportResult resultIn) {
+            super();
+            result = resultIn;
+            file = null;
+        }
+
+        public ProjectsHelperImportResult( enumImportResult resultIn, File fileIn) {
+            super();
+            result = resultIn;
+            file = fileIn;
+        }
+    }
+
+    public static ProjectsHelperImportResult importToProjectsWork(Uri uri, Context ctx) {
+        if ( uri == null) {
+            return new ProjectsHelperImportResult( ProjectsHelper.enumImportResult.NotFound);
+        }
+
+        byte [] bytes = FileUtils.readBytesFromUri( uri, ctx);
+        if ( bytes == null) {
+            return new ProjectsHelperImportResult( ProjectsHelper.enumImportResult.ReadFailed);
+        }
+
+        if ( !FileUtils.isHex( bytes)) {
+            return new ProjectsHelperImportResult( ProjectsHelper.enumImportResult.NotHex);
+        }
+
+        String fileName = FileUtils.fileNameFromUri( uri, ctx);
+        if ( fileName == null) {
+            fileName = "import.hex";
+        }
+
+        File file = ProjectsHelper.projectFile( ctx, fileName);
+        if ( file.exists()) {
+            return new ProjectsHelperImportResult( ProjectsHelper.enumImportResult.AlreadyExists);
+        }
+
+        boolean saved = FileUtils.writeBytesToFile( file, bytes);
+        if ( !saved) {
+            if ( file.exists()) {
+                file.delete();
+            }
+            return new ProjectsHelperImportResult( ProjectsHelper.enumImportResult.WriteFailed);
+        }
+
+        return new ProjectsHelperImportResult( ProjectsHelper.enumImportResult.Success, file);
+    }
+
+    public static void importToProjectsToast(ProjectsHelper.enumImportResult result, Context ctx) {
+        switch ( result) {
+            case Success:
+                Toast.makeText( ctx, "micro:bit HEX imported", Toast.LENGTH_LONG).show();
+                break;
+            case NotFound:
+                Toast.makeText( ctx, "File not found", Toast.LENGTH_LONG).show();
+                break;
+            case ReadFailed:
+                Toast.makeText( ctx, "Could not read micro:bit HEX", Toast.LENGTH_LONG).show();
+                break;
+            case NotHex:
+                Toast.makeText( ctx, "Not a micro:bit HEX", Toast.LENGTH_LONG).show();
+                break;
+            case AlreadyExists:
+                Toast.makeText( ctx, "A project with the same name already exists", Toast.LENGTH_LONG).show();
+                break;
+            case WriteFailed:
+                Toast.makeText( ctx, "Could not store micro:bit HEX", Toast.LENGTH_LONG).show();
+                break;
+        }
     }
 }

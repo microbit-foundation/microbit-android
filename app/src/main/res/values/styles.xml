@@ -106,6 +106,14 @@
         <item name="android:textAppearance">?android:textAppearance</item>
     </style>
 
+    <!-- Edit project button -->
+    <style name="edit_project_text">
+        <item name="android:textSize">@dimen/p1_font_size</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textAppearance">?android:textAppearance</item>
+    </style>
+
     <style name="custom_button_image">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>

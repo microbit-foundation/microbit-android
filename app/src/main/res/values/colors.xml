@@ -27,6 +27,9 @@
     <color name="blue_button_up">#3bddff</color>
     <color name="blue_button_flash">#1CC6FD</color>
     <color name="blue_button_down">#37abff</color>
+    <color name="black_button_up">#000000</color>
+    <color name="black_button_flash">#101010</color>
+    <color name="black_button_down">#101010</color>
     <color name="progress_bar_progressed">#16cffd</color>
     <color name="progress_bar_not_progressed">#333333</color>
 

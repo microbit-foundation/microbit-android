@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
@@ -16,9 +18,11 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import com.samsung.microbit.BuildConfig;
 import com.samsung.microbit.R;
+import com.samsung.microbit.utils.FileUtils;
 import com.samsung.microbit.utils.ProjectsHelper;
 
 import java.io.File;
@@ -40,10 +44,11 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     public static String makecodeUrl = "https://makecode.microbit.org/?androidapp=" + BuildConfig.VERSION_CODE;
     public static Activity activityHandle = null;
 
-    Uri hexToFlash;
+    boolean projectDownload = false;
 
     private static final int REQUEST_CODE_SAVEDATA = 1;
     private static final int REQUEST_CODE_CHOOSE_FILE = 2;
+    private static final int REQUEST_CODE_FLASH = 3;
     private byte[] dataToSave = null;
     private ValueCallback<Uri[]> onShowFileChooser_filePathCallback;
 
@@ -81,15 +86,9 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webSettings.setBuiltInZoomControls(true);
         webSettings.setDisplayZoomControls(false);
         webSettings.setDomStorageEnabled(true);
-        webView.setWebContentsDebuggingEnabled(true);
+        WebView.setWebContentsDebuggingEnabled(false);
 
         webView.addJavascriptInterface(new JavaScriptInterface(this), "AndroidFunction");
-        webView.evaluateJavascript("javascript:(function f() { document.getElementsByClassName(\"brand\")[0].addEventListener(\"click\", function(e) { AndroidFunction.returnToHome(); e.preventDefault(); return false; }) })()", new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(String s) {
-                Log.d(TAG, s);
-            }
-        });
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -103,6 +102,13 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             public void onLoadResource(WebView view, String url) {
                 super.onLoadResource(view, url);
                 Log.v(TAG, "onLoadResource(" + url + ");");
+            }
+
+            @Override
+            public void onPageFinished (WebView view, String url) {
+                super.onPageFinished(view, url);
+                Log.v(TAG, "onPageFinished(" + url + ");");
+                onPageFinishedJS( view, url);
             }
         }); //setWebViewClient
 
@@ -194,33 +200,33 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                     else if ( !hexName.isEmpty()) {
                         hexToWrite = getProjectFile(hexName);
 
-                        /*
-                        // Append n to file until it doesn't exist
-                        int i = 0;
+//                        // Replace existing file rather than creating *-n.hex
+//                        // Append n to file until it doesn't exist
+//                        int i = 0;
+//
+//                        while (hexToWrite.exists()) {
+//                            hexName = hexName.replaceAll("-?\\d*\\.","-" + i + ".");
+//                            hexToWrite = getProjectFile( hexName);
+//                            i++;
+//                        }
 
-                        while (hexToWrite.exists()) {
-                            hexName = hexName.replaceAll("-?\\d*\\.","-" + i + ".");
-                            hexToWrite = getProjectFile( hexName);
-                            i++;
+                        if ( !FileUtils.writeBytesToFile( hexToWrite, decode)) {
+                            ProjectsHelper.importToProjectsToast(
+                                    ProjectsHelper.enumImportResult.WriteFailed, MakeCodeWebView.this);
+                            return;
                         }
-                         */
-                        // Replace existing file rather than creating *-n.hex
-                        if (hexToWrite.exists()) {
-                            hexToWrite.delete();
+
+                        boolean download = projectDownload;
+                        projectDownload = false;
+
+                        if ( download) {
+                            openProjectActivity( hexToWrite);
+                        } else {
+                            Toast.makeText( MakeCodeWebView.this,
+                                    "Saved to FLASH page", Toast.LENGTH_LONG).show();
                         }
-
-                        // Create file
-                        hexToWrite.createNewFile();
-                        outputStream = new FileOutputStream(hexToWrite);
-                        outputStream.write(decode);
-                        outputStream.flush();
-
-                        // Get file path
-                        hexToFlash = Uri.fromFile(hexToWrite);
-
-                        openProjectActivity();
                     }
-                } catch (IOException e) {
+                } catch ( Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -228,6 +234,15 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
         //Check parameters Before load
         Intent intent = getIntent();
+
+        boolean importExtra = intent.getBooleanExtra("import", false);
+        if ( importExtra) {
+            importInitialise();
+        } else {
+            importHex = null;
+            importName = null;
+        }
+
         webView.loadUrl(makecodeUrl);
     } // onCreate
 
@@ -244,27 +259,22 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if ( requestCode == REQUEST_CODE_SAVEDATA) {
+        if ( requestCode == REQUEST_CODE_FLASH) {
+            if ( resultCode != RESULT_OK) {
+                return;
+            }
+        } else if ( requestCode == REQUEST_CODE_SAVEDATA) {
             if ( resultCode != RESULT_OK) {
                 dataToSave = null;
                 return;
             }
-            OutputStream os = null;
-            try {
-                os = getContentResolver().openOutputStream( data.getData());
-                if ( dataToSave != null && dataToSave.length > 0) {
-                    os.write(dataToSave, 0, dataToSave.length);
+            if ( dataToSave != null && dataToSave.length > 0) {
+                Uri uri = data.getData();
+                if ( !FileUtils.writeBytesToUri( uri, dataToSave, this)) {
+                    Toast.makeText(this, "Could not save file", Toast.LENGTH_LONG).show();
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                try {
-                    dataToSave = null;
-                    if ( os != null) {
-                        os.close();
-                    }
-                } catch (IOException e) { }
             }
+            dataToSave = null;
         } else if (requestCode == REQUEST_CODE_CHOOSE_FILE) {
             if ( resultCode != RESULT_OK) {
                 onShowFileChooser_filePathCallback.onReceiveValue( null);
@@ -295,25 +305,167 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         }
     }
 
-    void openProjectActivity() {
+    public final static String ACTION_FLASH = "com.samsung.microbit.ACTION_FLASH";
+
+    void openProjectActivity( File hexToWrite) {
         Intent i = new Intent(this, ProjectActivity.class);
-        i.setData(hexToFlash);
-        startActivity(i);
+        i.setAction( ACTION_FLASH);
+        i.putExtra("path", hexToWrite.getAbsolutePath());
+        startActivityForResult( i, REQUEST_CODE_FLASH);
     }
-}
+
+    public static String importHex  = null;
+    public static String importName = null;
+    private boolean importPosting = false;
+    Handler importHandler = null;
+
+    private void importInitialise() {
+        if ( importHex != null) {
+            importHex = importHex.replaceAll("\r\n", "\\\\n");
+            importHex = importHex.replaceAll("\r", "\\\\n");
+            importHex = importHex.replaceAll("\n", "\\\\n");
+
+            //TODO - does MakeCode signal when ready?
+            Looper looper = Looper.getMainLooper();
+            importHandler = new Handler(looper);
+            importHandler.postDelayed(importCallback, 2000);
+        }
+    }
+    private final Runnable importCallback = new Runnable() {
+        @Override
+        public void run() {
+            if ( importHex != null) {
+                importPostMessage();
+                importHandler.postDelayed( importCallback, 1000);
+            } else {
+                importHandler.removeCallbacks( importCallback);
+                importHandler = null;
+            }
+        }
+    };
+
+    public void importPostMessage() {
+        Log.d(TAG, "importPostMessage");
+
+        if ( importHex == null) {
+            return;
+        }
+        if ( importPosting) {
+            return;
+        }
+        if ( webView == null) {
+            return;
+        }
+        if ( importName == null || importName.isEmpty()) {
+            importName = "import.hex";
+        }
+
+        importPosting = true;
+
+        StringBuilder sb = new StringBuilder();
+        String nl = "\n";
+        sb.append( "javascript:(");
+        sb.append(nl).append("function f() {");
+        sb.append(nl).append(   "var ret = 'OK'");
+        sb.append(nl).append(   "try {");
+        sb.append(nl).append(       "var loading = document.getElementById('loading')");
+        sb.append(nl).append(       "if ( loading && loading.parentElement) {");
+        sb.append(nl).append(           "ret = 'loading'");
+        sb.append(nl).append(       "} else {");
+        sb.append(nl).append(           "var name = '").append(importName).append("'");
+        sb.append(nl).append(           "var hex = '").append(importHex).append("'");
+        sb.append(nl).append(           "var msg = {");
+        sb.append(nl).append(               "type: 'importfile',");
+        sb.append(nl).append(               "filename: name,");
+        sb.append(nl).append(               "parts: [ hex ]");
+        sb.append(nl).append(           "}");
+        sb.append(nl).append(           "window.postMessage( msg, '*')");
+        sb.append(nl).append(       "}");
+        sb.append(nl).append(   "} catch( err) {");
+        sb.append(nl).append(       "ret = err.message");
+        sb.append(nl).append(   "}");
+        sb.append(nl).append(   "return ret");
+        sb.append(nl).append("}");
+        sb.append(nl).append(")()");
+
+        webView.evaluateJavascript( sb.toString(), new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String s) {
+                Log.i(TAG, "importPostMessage: " + s);
+                String loading = "\"loading\"";
+                String ok = "\"OK\"";
+                if ( s.equals( ok)) {
+                    importHex = null;
+                } else if ( !s.equals( loading)) {
+                }
+            }
+        });
+        importPosting = false;
+    }
+
+    public void onPageFinishedJS( WebView view, String url) {
+        Log.v(TAG, "addListeners(" + url + ");");
+
+        StringBuilder sb = new StringBuilder();
+        String nl = "\n";
+        sb.append( "javascript:(");
+        sb.append(nl).append("function f() {");
+        sb.append(nl).append(   "var ret = 'OK'");
+        sb.append(nl).append(   "try {");
+        sb.append(nl).append(       "var brands = document.getElementsByClassName(\"brand\")");
+        sb.append(nl).append(       "for (let i = 0; brands != null && i < brands.length; i++) {");
+        sb.append(nl).append(           "brands[i].addEventListener(\"click\",");
+        sb.append(nl).append(               "function(e) {");
+        sb.append(nl).append(                   "AndroidFunction.clickBrand();");
+        sb.append(nl).append(                   "e.preventDefault();");
+        sb.append(nl).append(                   "return false;");
+        sb.append(nl).append(               "})");
+        sb.append(nl).append(       "}");
+        sb.append(nl).append(       "var downs = document.getElementsByClassName(\"download-button\")");
+        sb.append(nl).append(       "for (let i = 0; downs != null && i < downs.length; i++) {");
+        sb.append(nl).append(           "downs[i].addEventListener(\"click\",");
+        sb.append(nl).append(               "function(e) {");
+        sb.append(nl).append(                   "AndroidFunction.clickDownload();");
+        sb.append(nl).append(                   "e.preventDefault();");
+        sb.append(nl).append(                   "return false;");
+        sb.append(nl).append(               "})");
+        sb.append(nl).append(       "}");
+        sb.append(nl).append(   "} catch( err) {");
+        sb.append(nl).append(       "ret = err.message");
+        sb.append(nl).append(   "}");
+        sb.append(nl).append(   "return ret");
+        sb.append(nl).append("}");
+        sb.append(nl).append(")()");
+
+        webView.evaluateJavascript( sb.toString(), new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String s) {
+                Log.d(TAG, s);
+            }
+        });
+    }}
 
 /* Javascript Interface */
 class JavaScriptInterface {
-    Context mContext;
+    MakeCodeWebView mContext;
 
-    JavaScriptInterface(Context c) {
+    JavaScriptInterface( MakeCodeWebView c) {
         mContext = c;
     }
 
     @JavascriptInterface
-    public void returnToHome() {
+    public void clickBrand() {
         try {
             MakeCodeWebView.activityHandle.finish();
+        } catch(Exception e) {
+            Log.v(TAG, e.toString());
+        }
+    }
+
+    @JavascriptInterface
+    public void clickDownload() {
+        try {
+            mContext.projectDownload = true;
         } catch(Exception e) {
             Log.v(TAG, e.toString());
         }
