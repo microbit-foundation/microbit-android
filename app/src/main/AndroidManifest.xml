@@ -14,8 +14,9 @@
   limitations under the License.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    android:versionCode="52"
-    android:versionName="3.0.2">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:versionCode="53"
+    android:versionName="3.0.3">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
@@ -218,4 +219,5 @@
 
     </application>
 
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
 </manifest>
