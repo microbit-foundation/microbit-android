@@ -154,6 +154,7 @@
     <string name="gamepad">Gamepad</string>
     <string name="connectNew">Pair a new micro:bit</string>
     <string name="connect_tip_title">How to pair your micro:bit</string>
+    <string name="connect_tip_title_resetToBLE">Reset to Bluetooth mode</string>
     <string name="step_connect_tip_text_step_three">Step 3</string>
     <string name="step_connect_tip_text_step_four_text">When you see the success message, \npress RESET and you\'re done!</string>
     <string name="connect_tip_text_step">Step 1</string>
