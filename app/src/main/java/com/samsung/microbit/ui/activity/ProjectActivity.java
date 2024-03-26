@@ -166,6 +166,47 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     BLEService bleService;
 
+    private static final int REQUEST_CODE_EXPORT = 1;
+    private static final int REQUEST_CODE_IMPORT = 2;
+    private static final int REQUEST_CODE_RESET_TO_BLE = 3;
+    private static final int REQUEST_CODE_PAIR_BEFORE_FLASH = 4;
+
+    private void goToPairingFromAppBarDeviceName() {
+        Intent intent = new Intent(this, PairingActivity.class);
+        startActivity(intent);
+    }
+
+    private void goToPairingToPairBeforeFlash() {
+        Intent i = new Intent(this, PairingActivity.class);
+        i.setAction( PairingActivity.ACTION_PAIR_BEFORE_FLASH);
+        startActivityForResult( i, REQUEST_CODE_PAIR_BEFORE_FLASH);
+    }
+
+    private void goToPairingResetToBLE() {
+        Intent i = new Intent(this, PairingActivity.class);
+        i.setAction( PairingActivity.ACTION_RESET_TO_BLE);
+        startActivityForResult( i, REQUEST_CODE_RESET_TO_BLE);
+    }
+
+    protected void onActivityResultPairing(int requestCode, int resultCode, Intent data) {
+        switch ( requestCode) {
+            case REQUEST_CODE_RESET_TO_BLE:
+                if (resultCode == RESULT_OK) {
+                    startFlashing();
+                } else {
+                    onFlashComplete();
+                }
+                break;
+            case REQUEST_CODE_PAIR_BEFORE_FLASH:
+                if (resultCode == RESULT_OK) {
+                    flashingChecks();
+                } else {
+                    onFlashComplete();
+                }
+                break;
+        }
+    }
+
     private void goToMakeCode( String hex, String name) {
         if ( inMakeCodeActionFlash) {
             inMakeCodeActionFlash = false;
@@ -842,6 +883,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 onActivityResultScriptsExport( requestCode, resultCode, data);
                 super.onActivityResult(requestCode, resultCode, data);
                 return;
+            case REQUEST_CODE_RESET_TO_BLE:
+            case REQUEST_CODE_PAIR_BEFORE_FLASH:
+                onActivityResultPairing( requestCode, resultCode, data);
+                super.onActivityResult(requestCode, resultCode, data);
+                return;
         }
 
         boolean flash   = mActivityState == FlashActivityState.STATE_ENABLE_BT_INTERNAL_FLASH_REQUEST ||
@@ -914,8 +960,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
      * start the flashing steps.
      */
     private void proceedAfterBlePermissionGrantedAndBleEnabled() {
-        if (launchPairingIfNoCurrentMicrobit())
+        /**
+         * Checks for requisite state of a micro:bit board. If all is good then
+         * initiates flashing.
+         */
+        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
+        if ( currentMicrobit.mPattern == null) {
+            goToPairingToPairBeforeFlash();
             return;
+        }
 
         flashingChecks();
     }
@@ -1074,27 +1127,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 //                }
 //                break;
             case R.id.deviceName:
-                // Toast.makeText(this, "Back to connectMaybeInit screen", Toast.LENGTH_SHORT).show();
-                Intent intent = new Intent(this, PairingActivity.class);
-                startActivity(intent);
+                goToPairingFromAppBarDeviceName();
                 break;
 
         }
-    }
-
-    /**
-     * Checks for requisite state of a micro:bit board. If all is good then
-     * initiates flashing.
-     */
-    private boolean launchPairingIfNoCurrentMicrobit() {
-        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
-
-        if(currentMicrobit.mPattern != null)
-            return false;
-
-        Intent intent = new Intent(this, PairingActivity.class);
-        startActivity(intent);
-        return true;
     }
 
     private void flashingChecks() {
@@ -1169,7 +1205,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         public void onClick(View v) {
                             ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
                             PopUp.hide();
-                            startFlashing();
+                            goToPairingResetToBLE();
                         }
                     },//override click listener for ok button
                     popupClickFlashComplete);
@@ -2283,9 +2319,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private void scriptsCreateCode() {
         goToMakeCode( null, null);
     }
-
-    private static final int REQUEST_CODE_EXPORT = 1;
-    private static final int REQUEST_CODE_IMPORT = 2;
 
 
     private void scriptsImport() {
