@@ -152,6 +152,53 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     
     private BLEPair blePair = null;
 
+    public final static String ACTION_RESET_TO_BLE = "com.samsung.microbit.ACTION_RESET_TO_BLE";
+    public final static String ACTION_PAIR_BEFORE_FLASH = "com.samsung.microbit.ACTION_PAIR_BEFORE_FLASH";
+
+    private String inAction = null;
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if(intent != null) {
+            handleIncomingIntent(intent);
+        }
+    }
+
+    private void handleIncomingIntent(Intent intent) {
+        inAction = intent.getAction();
+        if ( inAction != null) {
+            if ( inAction.equals(ACTION_RESET_TO_BLE)) {
+                resetToBLEStart();
+                return;
+            }
+            if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+                pairBeforeFlashStart();
+                return;
+            }
+        }
+    }
+
+    private void resetToBLEStart() {
+        displayScreen(PAIRING_STATE.PAIRING_STATE_TRIPLE);
+    }
+
+    private void resetToBLEFinish( int resultCode) {
+        inAction = null;
+        setResult( resultCode);
+        finish();
+    }
+
+    private void pairBeforeFlashStart() {
+        displayScreen(PAIRING_STATE.PAIRING_STATE_TRIPLE);
+    }
+
+    private void pairBeforeFlashFinish( int resultCode) {
+        inAction = null;
+        setResult( resultCode);
+        finish();
+    }
+
     private BLEPair getBLEPair() {
         if ( blePair == null) {
             blePair = new BLEPair( this);
@@ -427,6 +474,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         public void onClick(View v) {
             logi("======successfulPairingHandler======");
             PopUp.hide();
+            if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+                pairBeforeFlashFinish( RESULT_OK);
+                return;
+            }
             displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
         }
     };
@@ -440,6 +491,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         public void onClick(View v) {
             logi("======failedPairingHandler======");
             PopUp.hide();
+            if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+                pairBeforeFlashFinish( RESULT_CANCELED);
+                return;
+            }
             displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_2);
         }
     };
@@ -782,8 +837,12 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         currentOrientation = getResources().getConfiguration().orientation;
 
-        // pin view
-        displayScreen(pairingState);
+        if (savedInstanceState == null && getIntent() != null) {
+            handleIncomingIntent(getIntent());
+        } else {
+            // pin view
+            displayScreen(pairingState);
+        }
     }
 
     @Override
@@ -1102,26 +1161,18 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 newDeviceCode = "";
                 break;
 
-            case PAIRING_STATE_TRIPLE: {
-                GifImageView view = (GifImageView) findViewById(R.id.pair_tip_step_1_giff);
-                view.setImageResource(R.drawable.reset_triple);
-                TextView prompt = (TextView) findViewById(R.id.pair_tip_step_1_instructions);
-                prompt.setText(R.string.viewPairTriplePromptText);
-                prompt.setContentDescription(prompt.getText());
-                pairTipView.setVisibility(View.VISIBLE);
-                view.animate();
+            case PAIRING_STATE_TRIPLE:
+                displayScreenTripleOrStep1(
+                        R.drawable.reset_triple,
+                        R.string.viewPairTriplePromptText);
                 break;
-            }
-            case PAIRING_STATE_STEP_1: {
-                GifImageView view = (GifImageView) findViewById(R.id.pair_tip_step_1_giff);
-                view.setImageResource(R.drawable.how_to_pair_microbit);
-                TextView prompt = (TextView) findViewById(R.id.pair_tip_step_1_instructions);
-                prompt.setText(R.string.connect_tip_text);
-                prompt.setContentDescription(prompt.getText());
-                pairTipView.setVisibility(View.VISIBLE);
-                view.animate();
+
+            case PAIRING_STATE_STEP_1:
+                displayScreenTripleOrStep1(
+                        R.drawable.how_to_pair_microbit,
+                        R.string.connect_tip_text);
                 break;
-            }
+
             case PAIRING_STATE_STEP_2:
                 newDeviceView.setVisibility(View.VISIBLE);
                 findViewById(R.id.cancel_enter_pattern_step_2_btn).setVisibility(View.VISIBLE);
@@ -1157,6 +1208,27 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 break;
         }
         logi("displayScreen End");
+    }
+
+    private void displayScreenTripleOrStep1( int resIdGif, int resIdPrompt)
+    {
+        if ( inAction.equals(ACTION_RESET_TO_BLE)) {
+            TextView title = (TextView) findViewById(R.id.pairTipTitle);
+            title.setText(R.string.connect_tip_title_resetToBLE);
+            TextView step = (TextView) findViewById(R.id.pair_tip_step_1_step);
+            step.setText("");
+            step.setContentDescription("");
+        }
+
+        GifImageView gif = (GifImageView) findViewById(R.id.pair_tip_step_1_giff);
+        gif.setImageResource( resIdGif);
+
+        TextView prompt = (TextView) findViewById(R.id.pair_tip_step_1_instructions);
+        prompt.setText( resIdPrompt);
+        prompt.setContentDescription(prompt.getText());
+
+        pairTipView.setVisibility(View.VISIBLE);
+        gif.animate();
     }
 
     /**
@@ -1342,6 +1414,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             // Proceed to Enter Pattern
             case R.id.ok_tip_step_1_btn:
                 logi("onClick() :: ok_tip_screen_one_button");
+                if ( inAction.equals(ACTION_RESET_TO_BLE)) {
+                    resetToBLEFinish(Activity.RESULT_OK);
+                    return;
+                }
                 displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_2);
                 break;
 
@@ -1358,18 +1434,34 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
             case R.id.cancel_tip_step_1_btn:
                 logi("onClick() :: cancel_tip_button");
+                if ( inAction.equals(ACTION_RESET_TO_BLE)) {
+                    resetToBLEFinish(Activity.RESULT_CANCELED);
+                    return;
+                }
+                if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+                    pairBeforeFlashFinish( RESULT_CANCELED);
+                    return;
+                }
                 displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
                 break;
 
             case R.id.cancel_enter_pattern_step_2_btn:
                 logi("onClick() :: cancel_name_button");
                 stopScanning();
+                if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+                    pairBeforeFlashFinish( RESULT_CANCELED);
+                    return;
+                }
                 displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
                 break;
 
             case R.id.cancel_search_microbit_step_3_btn:
                 logi("onClick() :: cancel_search_button");
                 stopScanning();
+                if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+                    pairBeforeFlashFinish( RESULT_CANCELED);
+                    return;
+                }
                 displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
                 break;
 
@@ -1457,7 +1549,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     private void handleResetAll() {
         Arrays.fill(DEVICE_CODE_ARRAY, 0);
         stopScanning();
-
+        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+            pairBeforeFlashFinish( RESULT_CANCELED);
+            return;
+        }
         if(pairingState == PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON) {
             finish();
         } else {
@@ -1516,6 +1611,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     @Override
                     public void onClick(View v) {
                         PopUp.hide();
+                        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+                            pairBeforeFlashFinish( RESULT_CANCELED);
+                            return;
+                        }
                         displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
                     }
                 });
@@ -1556,9 +1655,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             MBApp.getApp().setJustPaired(false);
         }
     }
-
-
-
 
     @Override
     protected void onDestroy() {
