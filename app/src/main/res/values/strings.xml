@@ -190,6 +190,9 @@
     <string name="desc_connectSearchingTitle">Connecting&#8230;</string>
     <string name="searchingTitle">Searching for micro:bit</string>
     <string name="pairing_msg_1">Found micro:bit</string>
+    <string name="viewPairTriplePromptText">Press RESET three times</string>
+    <string name="viewPairTriplePromptTextDesc">Press RESET three times</string>
+    <string name="viewPathAntherWay">Show another way</string>
 
     <!--Connect Popup messages -->
     <string name="pairingErrorTitle">Error</string>
