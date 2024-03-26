@@ -112,6 +112,10 @@
     <dimen name="pairing_step_two_tip_layout_margin_top">16dp</dimen>
     <dimen name="pairing_step_tip_instruction_text_size">18sp</dimen>
     <integer name="pairing_searching_step_button_layout_weight_sum">2</integer>
+    <dimen name="another_way_button_height">41dp</dimen>
+    <dimen name="another_way_button_text_size">18sp</dimen>
+    <dimen name="another_way_button_layout_weightSum">3</dimen>
+    <dimen name="another_way_button_layout_weight">2</dimen>
 
     <!-- Connect screen -->
     <dimen name="connections_container_layout_padding">16dp</dimen>

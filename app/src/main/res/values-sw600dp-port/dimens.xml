@@ -138,6 +138,10 @@
     <dimen name="pairing_step_button_layout_padding">18dp</dimen>
     <dimen name="pairing_step_gif_image_margin">0dp</dimen>
     <dimen name="pairing_step_tip_instruction_text_size">22sp</dimen>
+    <dimen name="another_way_button_height">54dp</dimen>
+    <dimen name="another_way_button_text_size">22sp</dimen>
+    <dimen name="another_way_button_layout_weightSum">3</dimen>
+    <dimen name="another_way_button_layout_weight">2</dimen>
 
     <!-- Popup screens -->
     <dimen name="popup_gif_size">200dp</dimen>
