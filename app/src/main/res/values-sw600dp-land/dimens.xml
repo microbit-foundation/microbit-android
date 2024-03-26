@@ -106,6 +106,10 @@
     <dimen name="pairing_step_cycle_progress_bar_size">120dp</dimen>
     <dimen name="pairing_step_buttons_space_margin">8dp</dimen>
     <dimen name="connect_button_height">72dp</dimen>
+    <dimen name="another_way_button_height">56dp</dimen>
+    <dimen name="another_way_button_text_size">22sp</dimen>
+    <dimen name="another_way_button_layout_weightSum">3</dimen>
+    <dimen name="another_way_button_layout_weight">2</dimen>
 
     <!-- Pattern grid -->
     <dimen name="led_gap">15dp</dimen>
