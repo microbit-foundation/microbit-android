@@ -35,7 +35,7 @@
     <!-- Project screen -->
     <dimen name="custom_button_padding">16dp</dimen>
     <dimen name="custom_button_start_margin">8dp</dimen>
-    <dimen name="custom_button_end_margin">16dp</dimen>
+    <dimen name="custom_button_end_margin">8dp</dimen>
     <dimen name="custom_button_image_margin">0dp</dimen>
     <dimen name="custom_button_margin">16dp</dimen>
     <dimen name="custom_button_height">52dp</dimen>

@@ -6,7 +6,6 @@
     android:layout_width="0dp"
     android:layout_height="@dimen/project_item_buttons_size"
     android:layout_marginEnd="@dimen/custom_button_end_margin"
-    android:layout_marginStart="@dimen/custom_button_start_margin"
     android:layout_weight="1"
     android:background="@drawable/black_btn"
 
