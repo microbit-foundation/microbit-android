@@ -155,7 +155,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     public final static String ACTION_RESET_TO_BLE = "com.samsung.microbit.ACTION_RESET_TO_BLE";
     public final static String ACTION_PAIR_BEFORE_FLASH = "com.samsung.microbit.ACTION_PAIR_BEFORE_FLASH";
 
-    private String inAction = null;
+    private String inAction = "";
 
     @Override
     protected void onNewIntent(Intent intent) {
@@ -167,15 +167,16 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     private void handleIncomingIntent(Intent intent) {
         inAction = intent.getAction();
-        if ( inAction != null) {
-            if ( inAction.equals(ACTION_RESET_TO_BLE)) {
-                resetToBLEStart();
-                return;
-            }
-            if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
-                pairBeforeFlashStart();
-                return;
-            }
+        if ( inAction == null) {
+            inAction = "";
+        }
+        if ( inAction.equals(ACTION_RESET_TO_BLE)) {
+            resetToBLEStart();
+            return;
+        }
+        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+            pairBeforeFlashStart();
+            return;
         }
     }
 
@@ -184,7 +185,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     private void resetToBLEFinish( int resultCode) {
-        inAction = null;
+        inAction = "";
         setResult( resultCode);
         finish();
     }
@@ -194,7 +195,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     private void pairBeforeFlashFinish( int resultCode) {
-        inAction = null;
+        inAction = "";
         setResult( resultCode);
         finish();
     }
