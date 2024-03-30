@@ -192,12 +192,22 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     private void pairBeforeFlashStart() {
         displayScreen(PAIRING_STATE.PAIRING_STATE_TRIPLE);
+        checkBluetoothPermissions();
     }
 
     private void pairBeforeFlashFinish( int resultCode) {
         inAction = "";
         setResult( resultCode);
         finish();
+    }
+
+    public void onFinish( int resultCode) {
+        logi("onFinish " + resultCode);
+        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+            pairBeforeFlashFinish( resultCode);
+            return;
+        }
+        displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
     }
 
     private BLEPair getBLEPair() {
@@ -428,7 +438,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 R.drawable.error_face, R.drawable.red_btn,
                 PopUp.GIFF_ANIMATION_ERROR,
                 PopUp.TYPE_ALERT,
-                null, null);
+                failedPermissionHandler, failedPermissionHandler);
     }
 
     private void popupPermissionBluetoothError() {
@@ -437,7 +447,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 R.drawable.error_face, R.drawable.red_btn,
                 PopUp.GIFF_ANIMATION_ERROR,
                 PopUp.TYPE_ALERT,
-                null, null);
+                failedPermissionHandler, failedPermissionHandler);
     }
 
     private void popupPermissionError() {
@@ -475,11 +485,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         public void onClick(View v) {
             logi("======successfulPairingHandler======");
             PopUp.hide();
-            if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
-                pairBeforeFlashFinish( RESULT_OK);
-                return;
-            }
-            displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
+            onFinish( RESULT_OK);
         }
     };
 
@@ -497,6 +503,15 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 return;
             }
             displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_2);
+        }
+    };
+
+    private View.OnClickListener failedPermissionHandler = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            logi("======failedPermissionHandler======");
+            PopUp.hide();
+            onFinish( RESULT_CANCELED);
         }
     };
 
@@ -875,7 +890,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                                 R.drawable.error_face, R.drawable.red_btn,
                                 PopUp.GIFF_ANIMATION_ERROR,
                                 PopUp.TYPE_ALERT,
-                                null, null);
+                                failedPermissionHandler, failedPermissionHandler);
                         break;
                 }
                 break;
@@ -1270,7 +1285,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 R.drawable.error_face, R.drawable.red_btn,
                 PopUp.GIFF_ANIMATION_ERROR,
                 PopUp.TYPE_ALERT,
-                null, null);
+                failedPermissionHandler, failedPermissionHandler);
     }
 
     /**
@@ -1439,31 +1454,19 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     resetToBLEFinish(Activity.RESULT_CANCELED);
                     return;
                 }
-                if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
-                    pairBeforeFlashFinish( RESULT_CANCELED);
-                    return;
-                }
-                displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
+                onFinish( RESULT_CANCELED);
                 break;
 
             case R.id.cancel_enter_pattern_step_2_btn:
                 logi("onClick() :: cancel_name_button");
                 stopScanning();
-                if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
-                    pairBeforeFlashFinish( RESULT_CANCELED);
-                    return;
-                }
-                displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
+                onFinish( RESULT_CANCELED);
                 break;
 
             case R.id.cancel_search_microbit_step_3_btn:
                 logi("onClick() :: cancel_search_button");
                 stopScanning();
-                if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
-                    pairBeforeFlashFinish( RESULT_CANCELED);
-                    return;
-                }
-                displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
+                onFinish( RESULT_CANCELED);
                 break;
 
             case R.id.connected_device_status_button:
@@ -1612,11 +1615,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     @Override
                     public void onClick(View v) {
                         PopUp.hide();
-                        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
-                            pairBeforeFlashFinish( RESULT_CANCELED);
-                            return;
-                        }
-                        displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
+                        onFinish( RESULT_CANCELED);
                     }
                 });
     }

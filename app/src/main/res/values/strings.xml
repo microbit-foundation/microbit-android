@@ -364,6 +364,9 @@
     <string name="ble_permission">We need nearby devices permission to connect to your micro:bit.\n Proceed?</string>
     <string name="ble_permission_error">Cannot connect to micro:bit without nearby devices permission.</string>
 
+    <string name="ble_permission_connect">We need permission to use Bluetooth to connect to your micro:bit.\n Proceed?</string>
+    <string name="ble_permission_connect_error">Cannot connect to micro:bit without permission.</string>
+
     <string name="camera_permission">micro:bit is trying to launch Camera. We need Camera permissions to complete this action. \n Proceed?</string>
     <string name="camera_permission_error">We cannot complete the request from micro:bit without having Camera permission</string>
     <string name="title_activity_camera_activity_permission_checker">Camera permission checker</string>

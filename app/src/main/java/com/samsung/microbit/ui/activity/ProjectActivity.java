@@ -622,6 +622,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             logi("okMorePermissionNeededHandler");
             PopUp.hide();
             mEmptyText.setVisibility(View.VISIBLE);
+            onFlashComplete();
         }
     };
 
@@ -874,19 +875,18 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
         switch ( requestCode) {
             case REQUEST_CODE_IMPORT:
                 onActivityResultScriptsImport( requestCode, resultCode, data);
-                super.onActivityResult(requestCode, resultCode, data);
                 return;
             case REQUEST_CODE_EXPORT:
                 onActivityResultScriptsExport( requestCode, resultCode, data);
-                super.onActivityResult(requestCode, resultCode, data);
                 return;
             case REQUEST_CODE_RESET_TO_BLE:
             case REQUEST_CODE_PAIR_BEFORE_FLASH:
                 onActivityResultPairing( requestCode, resultCode, data);
-                super.onActivityResult(requestCode, resultCode, data);
                 return;
         }
 
@@ -911,13 +911,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         R.drawable.error_face, R.drawable.red_btn,
                         PopUp.GIFF_ANIMATION_ERROR,
                         TYPE_ALERT,
-                        null, null);
-                if (flash) {
-                    onFlashComplete();
-                }
+                        popupClickFlashComplete, popupClickFlashComplete);
             }
         }
-        super.onActivityResult(requestCode, resultCode, data);
     }
 
     /**
@@ -1015,23 +1011,22 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         switch(requestCode) {
             case PermissionCodes.BLUETOOTH_PERMISSIONS_REQUESTED_FLASHING_API31: {
                 popupPermissionFlashingError();
-                onFlashComplete();
                 break;
             }
         }
     }
 
     private void popupPermissionFlashingError() {
-        PopUp.show(getString(R.string.ble_permission_error),
+        PopUp.show(getString(R.string.ble_permission_connect_error),
                 getString(R.string.permissions_needed_title),
                 R.drawable.error_face, R.drawable.red_btn,
                 PopUp.GIFF_ANIMATION_ERROR,
                 PopUp.TYPE_ALERT,
-                null, null);
+                popupClickFlashComplete, popupClickFlashComplete);
     }
 
     private void popupPermissionFlashing() {
-        PopUp.show(getString(R.string.ble_permission),
+        PopUp.show(getString(R.string.ble_permission_connect),
                     getString(R.string.permissions_needed_title),
                     R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
                     PopUp.TYPE_CHOICE,
@@ -1049,7 +1044,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             logi("bluetoothPermissionCancelHandler");
                             PopUp.hide();
                             popupPermissionFlashingError();
-                            onFlashComplete();
                         }
                     });
     }
@@ -1160,7 +1154,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                           }
                       }
               );
-              onFlashComplete();
               return;
           }
 //
@@ -1187,8 +1180,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     R.drawable.flash_face, R.drawable.blue_btn,
                     PopUp.GIFF_ANIMATION_FLASH,
                     TYPE_ALERT,
-                    null, null);
-            onFlashComplete();
+                    popupClickFlashComplete, popupClickFlashComplete);
             return;
         }
 
@@ -1207,7 +1199,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             PopUp.hide();
                             goToPairingResetToBLE();
                         }
-                    },//override click listener for ok button
+                    },
                     popupClickFlashComplete);
         } else {
             startFlashing();
@@ -1894,7 +1886,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 int currentProgess = intent.getIntExtra(PartialFlashingService.EXTRA_PROGRESS, 0);
                 PopUp.updateProgressBar(currentProgess);
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_COMPLETE)) {
-                // Success Message
+                // Modify to "Flash Complete" the progress popup created in BROADCAST_START (below)
                 Intent flashSuccess = new Intent();
                 flashSuccess.setAction(INTENT_ACTION_UPDATE_LAYOUT);
                 flashSuccess.putExtra(INTENT_EXTRA_TITLE, "Flash Complete");
@@ -1902,23 +1894,16 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 flashSuccess.putExtra(INTENT_GIFF_ANIMATION_CODE, 1);
                 flashSuccess.putExtra(INTENT_EXTRA_TYPE, TYPE_ALERT);
                 localBroadcastManager.sendBroadcast( flashSuccess );
-                onFlashComplete();
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_START)) {
                 // Display progress
+                // Add click handler because BROADCAST_COMPLETE (above) makes this "Flash Complete"
                 PopUp.show("",
                         getString(R.string.send_project),
                         R.drawable.flash_face,
                         R.drawable.blue_btn,
                         PopUp.GIFF_ANIMATION_FLASH,
                         TYPE_PROGRESS_NOT_CANCELABLE,
-                        new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                //Do nothing. As this is non-cancellable pop-up
-
-                            }
-                        },//override click listener for ok button
-                        null);//pass null to use default listener
+                        popupClickFlashComplete, popupClickFlashComplete);
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_ATTEMPT_DFU)) {
                 Log.v(TAG, "Use Nordic DFU");
                 startDFUFlash();
@@ -1932,9 +1917,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         R.drawable.error_face, R.drawable.red_btn,
                         PopUp.GIFF_ANIMATION_PAIRING,
                         TYPE_ALERT, //type of popup.
-                        popupOkHandler,//override click listener for ok button
-                        popupOkHandler);//pass null to use default listener
-                onFlashComplete();
+                        popupClickFlashComplete, popupClickFlashComplete);
             }
 
         }
@@ -1964,6 +1947,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             public void onClick(View v) {
                 logi("okFinishFlashingHandler");
                 PopUp.hide();
+                onFlashComplete();
             }
         };
 
@@ -2016,7 +2000,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                         TYPE_ALERT, //type of popup.
                                         okFinishFlashingHandler,//override click listener for ok button
                                         okFinishFlashingHandler);//pass null to use default listener
-                                onFlashComplete();
                             }
 
                             isCompleted = true;
@@ -2122,6 +2105,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
                             MBApp application = MBApp.getApp();
 
+                            dfuUnregister();
+//                            removeReconnectionRunnable(); // REMOVE tryToConnectAgain
+
                             //Update Stats
                             /*
                             GoogleAnalyticsManager.getInstance().sendFlashStats(
@@ -2135,12 +2121,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     R.drawable.error_face, R.drawable.red_btn,
                                     PopUp.GIFF_ANIMATION_ERROR,
                                     TYPE_ALERT, //type of popup.
-                                    popupOkHandler,//override click listener for ok button
-                                    popupOkHandler);//pass null to use default listener
-
-                            dfuUnregister();
-//                            removeReconnectionRunnable(); // REMOVE tryToConnectAgain
-                            onFlashComplete();
+                                    popupClickFlashComplete, popupClickFlashComplete);
                             break;
                         /*
                         case DfuService.PROGRESS_SERVICE_NOT_FOUND:
@@ -2237,23 +2218,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                                     PopUp.hide();
                                     flashingChecks();
                                 }
-                            },
-                            new View.OnClickListener() {
-                                @Override
-                                public void onClick(View v) {
-                                    PopUp.hide();
-                                    onFlashComplete();
-                                }
-                            });
+                            }, popupClickFlashComplete);
                 } else {
                     PopUp.show(error_message + "\n\n" + getString(R.string.connect_tip_text), //message
                             getString(R.string.flashing_failed_title), //title
                             R.drawable.error_face, R.drawable.red_btn,
                             PopUp.GIFF_ANIMATION_ERROR,
                             TYPE_ALERT, //type of popup.
-                            popupOkHandler,//override click listener for ok button
-                            popupOkHandler);//pass null to use default listener
-                    onFlashComplete();
+                            popupClickFlashComplete, popupClickFlashComplete);
                 }
             } else if(intent.getAction().equals(DfuService.BROADCAST_LOG)) {
                 //Only used for Stats at the moment
