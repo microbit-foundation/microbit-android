@@ -630,8 +630,6 @@ public class BLEService extends Service {
             writeCharacteristic(GattServiceUUIDs.EVENT_SERVICE.toString(), CharacteristicUUIDs.ES_CLIENT_REQUIREMENTS.toString(),
                     EventCategories.SAMSUNG_REMOTE_CONTROL_ID, GattFormats.FORMAT_UINT32);
             writeCharacteristic(GattServiceUUIDs.EVENT_SERVICE.toString(), CharacteristicUUIDs.ES_CLIENT_REQUIREMENTS.toString(),
-                    EventCategories.SAMSUNG_CAMERA_ID, GattFormats.FORMAT_UINT32);
-            writeCharacteristic(GattServiceUUIDs.EVENT_SERVICE.toString(), CharacteristicUUIDs.ES_CLIENT_REQUIREMENTS.toString(),
                     EventCategories.SAMSUNG_ALERTS_ID, GattFormats.FORMAT_UINT32);
             writeCharacteristic(GattServiceUUIDs.EVENT_SERVICE.toString(), CharacteristicUUIDs.ES_CLIENT_REQUIREMENTS.toString(),
                     EventCategories.SAMSUNG_SIGNAL_STRENGTH_ID, GattFormats.FORMAT_UINT32);
@@ -887,7 +885,6 @@ public class BLEService extends Service {
             case EventCategories.SAMSUNG_REMOTE_CONTROL_ID:
             case EventCategories.SAMSUNG_ALERTS_ID:
             case EventCategories.SAMSUNG_AUDIO_RECORDER_ID:
-            case EventCategories.SAMSUNG_CAMERA_ID:
                 msgService = eventSrc;
                 cmd = new CmdArg(event, "1000");
                 break;

@@ -94,5 +94,4 @@ public class EventCategories {
      * @see EventSubCodes
      * @see com.samsung.microbit.utils.Utils#makeMicroBitValue(int, int) Utils.makeBicrobitValue(int, int)
      */
-    public static final int SAMSUNG_CAMERA_ID = 1002;//0x03EA
 }

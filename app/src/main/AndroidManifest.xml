@@ -148,12 +148,6 @@
             android:launchMode="singleTask"
             android:screenOrientation="portrait"/>
         <activity
-            android:name=".ui.activity.CameraActivity_OldAPI"
-            android:label="Camera Microbit"
-            android:launchMode="singleTask"
-            android:screenOrientation="portrait"
-            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"/>
-        <activity
             android:name=".ui.activity.HelpWebView"
             android:configChanges="orientation|screenSize"
             android:label="Help Webview"
@@ -165,13 +159,6 @@
             android:label="MakeCode Webview"
             android:launchMode="singleTask"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"/>
-
-        <activity
-            android:name=".ui.activity.CameraActivityPermissionChecker"
-            android:label="@string/title_activity_camera_activity_permission_checker"
-            android:screenOrientation="portrait"
-            android:theme="@style/AppTheme.NoActionBar"/>
-
         <service
             android:name=".service.DfuService"
             android:enabled="true"/>
