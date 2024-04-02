@@ -52,10 +52,6 @@ public class PluginsCreator {
                 abstractPlugin = new AudioRecordPlugin();
                 break;
 
-            case EventCategories.SAMSUNG_CAMERA_ID:
-                abstractPlugin = new CameraPlugin();
-                break;
-
             case EventCategories.SAMSUNG_SIGNAL_STRENGTH_ID:
                 abstractPlugin = new InformationPlugin();
                 break;

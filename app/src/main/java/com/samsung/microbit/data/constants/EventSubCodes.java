@@ -24,20 +24,6 @@ public class EventSubCodes {
     public static final int SAMSUNG_REMOTE_CONTROL_EVT_VOLUMEDOWN = 9;
 
     /**
-     * Samsung remote control sub codes. Related to event Category {@link EventCategories#SAMSUNG_CAMERA_ID}
-     *
-     * @see com.samsung.microbit.utils.Utils#makeMicroBitValue(int, int) Utils.makeBicrobitValue(int, int)
-     */
-    public static final int SAMSUNG_CAMERA_EVT_LAUNCH_PHOTO_MODE = 1;
-    public static final int SAMSUNG_CAMERA_EVT_LAUNCH_VIDEO_MODE = 2;
-    public static final int SAMSUNG_CAMERA_EVT_TAKE_PHOTO = 3;
-    public static final int SAMSUNG_CAMERA_EVT_START_VIDEO_CAPTURE = 4;
-    public static final int SAMSUNG_CAMERA_EVT_STOP_VIDEO_CAPTURE = 5;
-    public static final int SAMSUNG_CAMERA_EVT_STOP_PHOTO_MODE = 6;
-    public static final int SAMSUNG_CAMERA_EVT_STOP_VIDEO_MODE = 7;
-    public static final int SAMSUNG_CAMERA_EVT_TOGGLE_FRONT_REAR = 8;
-
-    /**
      * Samsung remote control sub codes. Related to event Category {@link EventCategories#SAMSUNG_AUDIO_RECORDER_ID}
      *
      * @see com.samsung.microbit.utils.Utils#makeMicroBitValue(int, int) Utils.makeBicrobitValue(int, int)
