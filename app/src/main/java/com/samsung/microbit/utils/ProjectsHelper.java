@@ -205,13 +205,17 @@ public class ProjectsHelper {
             while((ze = zin.getNextEntry()) != null) {
                 Log.v("MicroBit", "Unzipping " + ze.getName());
 
+                File f = projectFile(context, ze.getName());
+                if (!f.getCanonicalPath().startsWith(projectRoot(context).getCanonicalPath())) {
+                    throw new SecurityException();
+                }
+
                 if (ze.isDirectory()) {
-                    File f = projectFile( context, ze.getName());
                     if ( !f.isDirectory()) {
                         f.mkdirs();
                     }
                 } else {
-                    FileOutputStream fout = new FileOutputStream( projectFile( context, ze.getName()));
+                    FileOutputStream fout = new FileOutputStream(f);
                     BufferedOutputStream bufout = new BufferedOutputStream(fout);
                     byte[] buffer = new byte[1024];
                     int read = 0;
