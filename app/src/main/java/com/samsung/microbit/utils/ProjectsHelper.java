@@ -207,7 +207,7 @@ public class ProjectsHelper {
 
                 File f = projectFile(context, ze.getName());
                 if (!f.getCanonicalPath().startsWith(projectRoot(context).getCanonicalPath())) {
-                    throw new SecurityException();
+                    continue;
                 }
 
                 if (ze.isDirectory()) {
