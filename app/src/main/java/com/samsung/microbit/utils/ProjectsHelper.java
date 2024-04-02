@@ -207,6 +207,7 @@ public class ProjectsHelper {
 
                 File f = projectFile(context, ze.getName());
                 if (!f.getCanonicalPath().startsWith(projectRoot(context).getCanonicalPath())) {
+                    // Skip file with unexpected directory
                     continue;
                 }
 
