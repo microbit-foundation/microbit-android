@@ -29,6 +29,7 @@ local.properties
 .idea/vcs.xml
 .idea/caches/
 .idea/codeStyles/
+.idea/deploymentTargetDropDown.xml
 *.iml
 
 # OS-specific files
