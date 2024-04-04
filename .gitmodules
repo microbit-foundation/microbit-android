@@ -1,3 +1,7 @@
 [submodule "Android-DFU-Library"]
 	path = dfuLibrary
 	url = https://github.com/NordicSemiconductor/Android-DFU-Library
+[submodule "pfLibrary"]
+	path = pfLibrary
+	url = git@github.com:microbit-foundation/android-partial-flashing-lib.git
+	branch = master
