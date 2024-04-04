@@ -1,6 +1,6 @@
 package com.samsung.microbit.plugin;
 
-import android.support.annotation.IntDef;
+import androidx.annotation.IntDef;
 import android.util.Log;
 
 import com.samsung.microbit.data.constants.RegistrationIds;

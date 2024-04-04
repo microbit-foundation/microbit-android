@@ -16,15 +16,15 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.Chronometer;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.core.app.NotificationCompat;
+
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.plugin.AudioRecordPlugin;
 import com.samsung.microbit.ui.PopUp;
 
@@ -110,8 +110,6 @@ public class AudioRecorderActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        GoogleAnalyticsManager.getInstance().sendViewEventStats(AudioRecorderActivity.class.getSimpleName());
-
         mLaunchActivity = false;
 
         if(!showPopup(getIntent().getAction())) {//pass null to use default listener
@@ -122,13 +120,11 @@ public class AudioRecorderActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
-        GoogleAnalyticsManager.getInstance().activityStart(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        GoogleAnalyticsManager.getInstance().activityStop(this);
 
         //do not create notification if back pressed (or it is not recording?)
         //or if activity was not launched

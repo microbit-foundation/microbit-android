@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?><!-- Pairing Confirmation buttons -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/viewPairStep1Other"
+    style="@style/another_way_button_layout_style"
+    tools:showIn="@layout/view_pairing_step_1">
+
+    <Button
+        android:id="@+id/viewPairStep1AnotherWay"
+        style="@style/another_way_button_style"
+        android:background="@drawable/white_btn"
+        android:drawableEnd="@drawable/next_step_pairing_btn"
+        android:text="@string/viewPathAntherWay" />
+</LinearLayout>

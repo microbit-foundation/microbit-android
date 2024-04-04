@@ -8,5 +8,6 @@ public class RequestCodes {
     }
 
     public static final int REQUEST_ENABLE_BT = 12345;
+    public static final int REQUEST_ENABLE_LOCATION = 12346;
     public static final int REQUEST_RESTART_SERVICES = 110;
 }

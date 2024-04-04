@@ -2,7 +2,6 @@ package com.samsung.microbit.ui.adapter;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
-import android.support.v4.content.ContextCompat;
 import android.text.InputFilter;
 import android.text.Spanned;
 import android.util.Log;
@@ -19,9 +18,10 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
 import com.samsung.microbit.data.model.Project;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.ui.activity.ProjectActivity;
@@ -293,6 +293,19 @@ public class ProjectAdapter extends BaseAdapter {
     };
 
     /**
+     * Occurs when a user clicks on the Flash button on some project item.
+     * Sends clicked project to flash to a micro:bit board.
+     */
+    private View.OnClickListener editBtnClickListener = new View.OnClickListener() {
+
+        @Override
+        public void onClick(View v) {
+            logi("editBtnClickListener() :: ");
+            mProjectActivity.editProject((Project) ProjectAdapter.this.getItem((Integer) v.getTag()));
+        }
+    };
+
+    /**
      * Occurs when a user clicks on the Delete button on some project item.
      * Shows a dialog window to confirm deletion.
      */
@@ -302,9 +315,6 @@ public class ProjectAdapter extends BaseAdapter {
             logi("deleteBtnClickListener() :: ");
             final int pos = (int) v.getTag();
             //Update Stats
-
-            GoogleAnalyticsManager.getInstance()
-                    .sendNavigationStats(ProjectActivity.class.getSimpleName(), "DeleteProject");
 
             PopUp.show(mProjectActivity.getString(R.string.delete_project_message),
                     mProjectActivity.getString(R.string.delete_project_title),
@@ -406,6 +416,12 @@ public class ProjectAdapter extends BaseAdapter {
         LinearLayout sendBtnLayout = (LinearLayout) convertView.findViewById(R.id.sendBtn);
         sendBtnLayout.setTag(position);
         sendBtnLayout.setOnClickListener(sendBtnClickListener);
+
+        TextView editBtnText = (TextView) convertView.findViewById(R.id.project_edit_text);
+        editBtnText.setTypeface(MBApp.getApp().getRobotoTypeface());
+        LinearLayout editBtnLayout = (LinearLayout) convertView.findViewById(R.id.editBtn);
+        editBtnLayout.setTag(position);
+        editBtnLayout.setOnClickListener(editBtnClickListener);
 
         ImageButton deleteBtn = (ImageButton) convertView.findViewById(R.id.deleteBtn);
         deleteBtn.setTag(position);

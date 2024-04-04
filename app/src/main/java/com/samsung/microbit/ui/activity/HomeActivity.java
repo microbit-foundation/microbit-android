@@ -1,6 +1,8 @@
 package com.samsung.microbit.ui.activity;
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -9,33 +11,39 @@ import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.PermissionChecker;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.text.Html;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.View.OnLongClickListener;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.google.android.gms.analytics.GoogleAnalytics;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.PermissionChecker;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
-import com.samsung.microbit.core.GoogleAnalyticsManager;
+import com.samsung.microbit.core.bluetooth.BluetoothUtils;
 import com.samsung.microbit.data.constants.PermissionCodes;
+import com.samsung.microbit.data.model.ConnectedDevice;
 import com.samsung.microbit.service.IPCService;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.utils.FileUtils;
+import com.samsung.microbit.utils.ProjectsHelper;
 import com.samsung.microbit.utils.Utils;
 
 import pl.droidsonroids.gif.GifImageView;
@@ -46,10 +54,12 @@ import static com.samsung.microbit.BuildConfig.DEBUG;
  * Represents a home screen. Allows to navigate to all functionality
  * that the app provides.
  */
-public class HomeActivity extends AppCompatActivity implements View.OnClickListener {
+public class HomeActivity extends AppCompatActivity implements View.OnClickListener, OnLongClickListener {
     private static final String TAG = HomeActivity.class.getSimpleName();
 
     public static final String FIRST_RUN = "firstrun";
+    public static final String FIRST_RUN_300 = "firstrun300";
+    public static final String FIRST_RUN_301 = "firstrun301";
 
     // share stats checkbox
     private CheckBox mShareStatsCheckBox;
@@ -102,13 +112,11 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onStart() {
         super.onStart();
-        GoogleAnalyticsManager.getInstance().activityStart(this);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        GoogleAnalyticsManager.getInstance().activityStop(this);
     }
 
     @Override
@@ -126,8 +134,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         setupButtonsFontStyle();
 
         checkMinimumPermissionsForThisScreen();
-
-        GoogleAnalyticsManager.getInstance().sendViewEventStats(HomeActivity.class.getSimpleName());
 
         /* Debug code*/
         MenuItem item = (MenuItem) findViewById(R.id.live);
@@ -174,14 +180,14 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             mDrawer.openDrawer(GravityCompat.START);
         }
 
+
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, mDrawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                (Activity) this, (DrawerLayout) mDrawer, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
 
         boolean shareStats = false;
         mPrefs = getSharedPreferences("com.samsung.microbit", MODE_PRIVATE);
         if(mPrefs != null) {
             shareStats = mPrefs.getBoolean(getString(R.string.prefs_share_stats_status), true);
-            GoogleAnalyticsManager.getInstance().setShareStatistic(shareStats);
         }
         //TODO focusable view
         mDrawer.setDrawerListener(toggle);
@@ -191,6 +197,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         /* Todo [Hack]:
         * NavigationView items for selection by user using
         * onClick listener instead of overriding onNavigationItemSelected*/
+        findViewById(R.id.homeHelloAnimationGifView).setOnLongClickListener(this);
+
         Button menuNavBtn = (Button) findViewById(R.id.btn_nav_menu);
         menuNavBtn.setTypeface(MBApp.getApp().getTypeface());
         findViewById(R.id.btn_nav_menu).setOnClickListener(this);
@@ -222,7 +230,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         shareStatsDescription.setTypeface(MBApp.getApp().getRobotoTypeface());
         mShareStatsCheckBox = (CheckBox) findViewById(R.id.share_statistics_status);
         mShareStatsCheckBox.setOnClickListener(this);
-        mShareStatsCheckBox.setChecked(shareStats);
+        // mShareStatsCheckBox.setChecked(shareStats);
     }
 
     /**
@@ -329,6 +337,39 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
+    public boolean onLongClick(final View v) {
+        switch(v.getId()) {
+            case R.id.homeHelloAnimationGifView: {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this, R.style.AlertDialogDarkButtons);
+                builder.setTitle("Edit Editor URL");
+
+                final EditText editorURL = new EditText(this);
+                editorURL.setText(MakeCodeWebView.makecodeUrl);
+                editorURL.setInputType(InputType.TYPE_CLASS_TEXT);
+                builder.setView(editorURL);
+
+                builder.setPositiveButton("Set", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        MakeCodeWebView.setMakecodeUrl(editorURL.getText().toString());
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+                builder.show();
+
+                break;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public void onClick(final View v) {
         if(DEBUG) logi("onBtnClicked() :: ");
 
@@ -343,28 +384,15 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.create_code_btn: {
-                //Update Stats
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName(), "create-code");
-                if(urlToOpen == null) {
-                    urlToOpen = getString(R.string.create_code_url);
-                }
-
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse(urlToOpen));
-
-                startActivity(intent);
+                Intent launchMakeCodeIntent = new Intent(this, MakeCodeWebView.class);
+                startActivity(launchMakeCodeIntent);
             }
             break;
             case R.id.flash_microbit_btn:
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName(), "flash");
                 Intent i = new Intent(this, ProjectActivity.class);
                 startActivity(i);
                 break;
             case R.id.discover_btn:
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName(), "discover");
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setData(Uri.parse(getString(R.string.discover_url)));
                 startActivity(intent);
@@ -386,8 +414,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.btn_help: {
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName() + ", overflow-menu", "help");
                 Intent launchHelpIntent = new Intent(this, HelpWebView.class);
                 launchHelpIntent.putExtra("url", "file:///android_asset/help.html");
                 startActivity(launchHelpIntent);
@@ -396,8 +422,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.btn_privacy_cookies: {
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName() + ", overflow-menu", "privacy-policy");
 
                 Intent privacyIntent = new Intent(Intent.ACTION_VIEW);
                 privacyIntent.setData(Uri.parse(getString(R.string.privacy_policy_url)));
@@ -407,8 +431,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.btn_terms_conditions: {
-                GoogleAnalyticsManager.getInstance()
-                        .sendNavigationStats(HomeActivity.class.getSimpleName() + ", overflow-menu", "ts-and-cs");
 
                 Intent termsIntent = new Intent(Intent.ACTION_VIEW);
                 termsIntent.setData(Uri.parse(getString(R.string.terms_of_use_url)));
@@ -454,40 +476,70 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         }
         boolean shareStatistics = mShareStatsCheckBox.isChecked();
 
-        if(shareStatistics) {
-            GoogleAnalytics.getInstance(this).reportActivityStart(this);
-        } else {
-            GoogleAnalytics.getInstance(this).reportActivityStop(this);
-        }
-
         mPrefs.edit().putBoolean(getString(R.string.prefs_share_stats_status), shareStatistics).apply();
         logi("shareStatistics = " + shareStatistics);
-        GoogleAnalyticsManager.getInstance().setShareStatistic(shareStatistics);
-        GoogleAnalyticsManager.getInstance().
-                sendStatSharing(HomeActivity.class.getSimpleName(), shareStatistics);
+    }
+
+    private boolean isFirstRun() {
+        return mPrefs == null || mPrefs.getBoolean(FIRST_RUN, true);
+    }
+
+    private void setFirstRun( boolean yes) {
+        if (mPrefs != null)
+            mPrefs.edit().putBoolean(FIRST_RUN, yes).apply();
+    }
+
+    private boolean isFirstRun300() {
+        return mPrefs.getBoolean(FIRST_RUN_300, true);
+    }
+
+    private void setFirstRun300( boolean yes) {
+        mPrefs.edit().putBoolean(FIRST_RUN_300, yes).apply();
+    }
+
+    private boolean isFirstRun301() {
+        return mPrefs.getBoolean(FIRST_RUN_301, true);
+    }
+
+    private void setFirstRun301( boolean yes) {
+        mPrefs.edit().putBoolean(FIRST_RUN_301, yes).apply();
     }
 
     /**
      * Loads standard samples provided by Samsung. The samples can be used to
      * flash on a micro:bit board.
      */
-    private void installSamples() {
-        if(mPrefs.getBoolean(FIRST_RUN, true)) {
-            mPrefs.edit().putBoolean(FIRST_RUN, false).apply();
-            //First Run. Install the Sample applications
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    PopUp.show(getString(R.string.samples_are_about_to_be_copied),
-                            "Thank you",
-                            R.drawable.message_face, R.drawable.blue_btn,
-                            PopUp.GIFF_ANIMATION_NONE,
-                            PopUp.TYPE_ALERT,
-                            null, null);
-                    FileUtils.installSamples();
+    private void installSamples( boolean withThanks) {
+        boolean firstRun    = isFirstRun();
+        boolean firstRun300 = isFirstRun300();
+        boolean firstRun301 = isFirstRun301();
+        if ( firstRun) setFirstRun(false);
+        if ( firstRun300) setFirstRun300(false);
+        if ( firstRun301) setFirstRun301(false);
 
-                }
-            }).start();
+        if( firstRun || firstRun301 || firstRun300 && !ProjectsHelper.legacyStorage()) {
+            //First Run. Install the Sample applications
+            if ( withThanks) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        PopUp.show(getString(R.string.samples_are_about_to_be_copied),
+                                "Thank you",
+                                R.drawable.message_face, R.drawable.blue_btn,
+                                PopUp.GIFF_ANIMATION_NONE,
+                                PopUp.TYPE_ALERT,
+                                null, null);
+                        ProjectsHelper.installSamples(MBApp.getApp().getBaseContext());
+                    }
+                }).start();
+            } else {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ProjectsHelper.installSamples( MBApp.getApp().getBaseContext());
+                    }
+                }).start();
+            }
         }
     }
 
@@ -496,11 +548,12 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                                            @NonNull int[] grantResults) {
         switch(requestCode) {
             case PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED: {
-                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                        && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
-                    installSamples();
+                if ( ProjectsHelper.havePermissions(this)) {
+                    installSamples( true);
                 } else {
-                    if(mPrefs != null) mPrefs.edit().putBoolean(FIRST_RUN, false).apply();
+                    setFirstRun(false);
+                    setFirstRun300(false);
+                    setFirstRun301(false);
                     PopUp.show(getString(R.string.storage_permission_for_samples_error),
                             "",
                             R.drawable.error_face, R.drawable.red_btn,
@@ -514,8 +567,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void requestPermission(String[] permissions, final int requestCode) {
-        ActivityCompat.requestPermissions(this, permissions, requestCode);
+    private void storageRequestPermission() {
+        ProjectsHelper.requestPermissions(this, PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED);
     }
 
     /**
@@ -526,11 +579,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         public void onClick(View v) {
             logi("diskStoragePermissionOKHandler");
             PopUp.hide();
-            String[] permissionsNeeded = {
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-            };
-            requestPermission(permissionsNeeded, PermissionCodes.APP_STORAGE_PERMISSIONS_REQUESTED);
+            storageRequestPermission();
         }
     };
 
@@ -548,7 +597,9 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     PopUp.GIFF_ANIMATION_ERROR,
                     PopUp.TYPE_ALERT,
                     null, null);
-            if(mPrefs != null) mPrefs.edit().putBoolean(FIRST_RUN, false).apply();
+            setFirstRun(false);
+            setFirstRun300(false);
+            setFirstRun301(false);
         }
     };
 
@@ -558,11 +609,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
      */
     private void checkMinimumPermissionsForThisScreen() {
         //Check reading permissions & writing permission to populate the HEX files & show program list
-        if(mPrefs.getBoolean(FIRST_RUN, true)) {
-            if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PermissionChecker.PERMISSION_GRANTED ||
-                    (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                            != PermissionChecker.PERMISSION_GRANTED)) {
+        if( isFirstRun() || isFirstRun301() || isFirstRun300() && !ProjectsHelper.legacyStorage()) {
+            if( !ProjectsHelper.havePermissions(this)) {
                 PopUp.show(getString(R.string.storage_permission_for_samples),
                         getString(R.string.permissions_needed_title),
                         R.drawable.message_face, R.drawable.blue_btn, PopUp.GIFF_ANIMATION_NONE,
@@ -570,16 +618,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                         diskStoragePermissionOKHandler,
                         diskStoragePermissionCancelHandler);
             } else {
-                if(mPrefs.getBoolean(FIRST_RUN, true)) {
-                    mPrefs.edit().putBoolean(FIRST_RUN, false).apply();
-                    //First Run. Install the Sample applications
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            FileUtils.installSamples();
-                        }
-                    }).start();
-                }
+                installSamples( false);
             }
         }
     }
@@ -592,4 +631,5 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             gifAnimationHelloEmoji.animate();
         }
     }
+
 }

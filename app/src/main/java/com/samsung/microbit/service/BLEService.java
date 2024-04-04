@@ -19,9 +19,10 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
-import android.support.annotation.Nullable;
 import android.util.Log;
 import android.widget.Toast;
+
+import androidx.annotation.Nullable;
 
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
@@ -377,6 +378,8 @@ public class BLEService extends Service {
      * @return True, if successful.
      */
     private boolean registerMicrobitRequirements(BluetoothGattService eventService, boolean enable) {
+        return true;
+        /*
         BluetoothGattCharacteristic microbit_requirements = eventService.getCharacteristic(CharacteristicUUIDs
                 .ES_MICROBIT_REQUIREMENTS);
         if(microbit_requirements == null) {
@@ -412,6 +415,7 @@ public class BLEService extends Service {
         logi("registerMicrobitRequirements() :: found Constants.ES_MICROBIT_REQUIREMENTS ");
         enableCharacteristicNotification(microbit_requirements, microbit_requirementsDescriptor, enable);
         return true;
+         */
     }
 
     private void sendMicroBitNeedsCallNotification() {
@@ -626,8 +630,6 @@ public class BLEService extends Service {
             writeCharacteristic(GattServiceUUIDs.EVENT_SERVICE.toString(), CharacteristicUUIDs.ES_CLIENT_REQUIREMENTS.toString(),
                     EventCategories.SAMSUNG_REMOTE_CONTROL_ID, GattFormats.FORMAT_UINT32);
             writeCharacteristic(GattServiceUUIDs.EVENT_SERVICE.toString(), CharacteristicUUIDs.ES_CLIENT_REQUIREMENTS.toString(),
-                    EventCategories.SAMSUNG_CAMERA_ID, GattFormats.FORMAT_UINT32);
-            writeCharacteristic(GattServiceUUIDs.EVENT_SERVICE.toString(), CharacteristicUUIDs.ES_CLIENT_REQUIREMENTS.toString(),
                     EventCategories.SAMSUNG_ALERTS_ID, GattFormats.FORMAT_UINT32);
             writeCharacteristic(GattServiceUUIDs.EVENT_SERVICE.toString(), CharacteristicUUIDs.ES_CLIENT_REQUIREMENTS.toString(),
                     EventCategories.SAMSUNG_SIGNAL_STRENGTH_ID, GattFormats.FORMAT_UINT32);
@@ -812,6 +814,7 @@ public class BLEService extends Service {
                     //bluetoothAdapter.disable();
                 }
             }
+            logi("Disconnected. Send IPC Message.");
             notificationString = getString(R.string.tray_notification_failure);
             onGoingNotification = false;
 
@@ -827,6 +830,7 @@ public class BLEService extends Service {
                 }
             }
         } else {
+            logi("Connected. Send IPC Message.");
             notificationString = getString(R.string.tray_notification_sucsess);
             onGoingNotification = true;
 
@@ -881,7 +885,6 @@ public class BLEService extends Service {
             case EventCategories.SAMSUNG_REMOTE_CONTROL_ID:
             case EventCategories.SAMSUNG_ALERTS_ID:
             case EventCategories.SAMSUNG_AUDIO_RECORDER_ID:
-            case EventCategories.SAMSUNG_CAMERA_ID:
                 msgService = eventSrc;
                 cmd = new CmdArg(event, "1000");
                 break;
@@ -1069,6 +1072,7 @@ public class BLEService extends Service {
         if(bleManager != null) {
             rc = bleManager.connect(AUTO_RECONNECT);
             rc = interpretCode(rc, BLEManager.BLE_CONNECTED);
+
         }
 
         return rc;

@@ -44,6 +44,8 @@
             <!-- Step description -->
             <include layout="@layout/pair_microbit_step" />
 
+            <include layout="@layout/view_pairing_step_1_other" />
+
             <!-- Confirmation buttons -->
             <include layout="@layout/pairing_tip_action_buttons"/>
         </LinearLayout>

@@ -1,6 +1,7 @@
 package com.samsung.microbit.core;
 
 import android.util.Log;
+import android.webkit.DownloadListener;
 
 import com.samsung.microbit.utils.IOUtils;
 
@@ -12,8 +13,7 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
-//TODO: consider to use somewhere or remove
-public class DownloadManager {
+public class DownloadManager implements DownloadListener {
 
     volatile boolean cancelled = false;
 
@@ -43,5 +43,10 @@ public class DownloadManager {
         }
 
         return objectSize;
+    }
+
+    @Override
+    public void onDownloadStart(String s, String s1, String s2, String s3, long l) {
+        Log.v(TAG, s + " " + s1 + " " + s2 + " " + s3 + " " + l);
     }
 }

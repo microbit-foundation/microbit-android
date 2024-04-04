@@ -81,12 +81,15 @@
     <string name="flashing_failed_io_error">Flashing Failed! Cannot find the file. Please reset micro:bit and try again.</string>
     <string name="flashing_failed_message">Flashing Failed! No Programs Found</string>
     <string name="flashing_aborted">Flashing aborted! Required service not found on device. Please reset micro:bit and try again.</string>
+    <string name="could_not_connect">Could not connect to micro:bit. \n\n Please reset your micro:bit into pairing mode and try again.\n\nHOLD the A and B buttons and PRESS and RELEASE RESET to enter pairing mode</string>
+
 
     <string name="flashing_verifcation_failed">Flashing Failed</string>
     <string name="flashing_verifcation_failed_title">Cannot verify the flashing code. Please reset micro:bit and try again.</string>
 
 
     <string name="flashing_aborted_title">Aborted</string>
+    <string name="could_not_connect_title">Unable to connect</string>
     <string name="flashing_failed_title">Flashing unsuccessful</string>
     <string name="flashing_progress_message">Please do not interact with micro:bit before flashing process is complete</string>
     <string name="flashing_success_message">You have successfully downloaded program to micro:bit</string>
@@ -141,7 +144,7 @@
     <string name="alert">Alert&#8230;</string>
 
     <!-- Connect Activity -->
-    <string name="previous_devices">Connect previously paired micro:bit</string>
+    <string name="previous_devices">Currently paired with micro:bit</string>
     <string name="desc_previous_devices">No previously paired micro:bits</string>
     <string name="new_devices_pattern_null">Enter the pattern</string>
     <string name="new_devices">Connect to a new device</string>
@@ -151,6 +154,7 @@
     <string name="gamepad">Gamepad</string>
     <string name="connectNew">Pair a new micro:bit</string>
     <string name="connect_tip_title">How to pair your micro:bit</string>
+    <string name="connect_tip_title_resetToBLE">Reset to Bluetooth mode</string>
     <string name="step_connect_tip_text_step_three">Step 3</string>
     <string name="step_connect_tip_text_step_four_text">When you see the success message, \npress RESET and you\'re done!</string>
     <string name="connect_tip_text_step">Step 1</string>
@@ -178,7 +182,7 @@
     <string name="desc_enter_pattern_tip_text">Copy the pattern from your micro:bit onto this grid</string>
     <string name="searching_tip_text_instructions">(you only have 30 seconds)</string>
     <string name="desc_searching_tip_text">You only have 30 seconds</string>
-    <string name="desc_searching_tip_step_three">When asked for a PIN, press button A</string>
+    <string name="desc_searching_tip_step_three">If asked for a PIN, press button A</string>
     <string name="enter_pin_to_pair_text">Press button A, and\nenter the 6 digit PIN</string>
     <string name="step_enter_pin_to_pair_text">Step 4</string>
     <string name="desc_enterPinToPairText">Press button A, and enter the 6 digit PIN</string>
@@ -187,6 +191,9 @@
     <string name="desc_connectSearchingTitle">Connecting&#8230;</string>
     <string name="searchingTitle">Searching for micro:bit</string>
     <string name="pairing_msg_1">Found micro:bit</string>
+    <string name="viewPairTriplePromptText">Press RESET three times</string>
+    <string name="viewPairTriplePromptTextDesc">Press RESET three times</string>
+    <string name="viewPathAntherWay">Show another way</string>
 
     <!--Connect Popup messages -->
     <string name="pairingErrorTitle">Error</string>
@@ -226,9 +233,9 @@
     <string name="flash">Flash</string>
     <string name="view">View</string>
     <string name="no_projects">No projects found!</string>
-    <string name="connected_to">Connected to</string>
-    <string name="not_connected">Not Connected</string>
-    <string name="micro_bit_reset_msg">Please reset your micro:bit and try again.</string>
+    <string name="connected_to">Paired With</string>
+    <string name="not_connected">Paired With</string>
+    <string name="micro_bit_reset_msg">Please reset your micro:bit into pairing mode and try again.\n\nHOLD the A and B buttons and PRESS and RELEASE RESET to enter pairing mode</string>
     <string name="flashing_title">Flashing</string>
     <string name="pairing_title">Pairing</string>
     <string name="flashing_error_msg">micro:bit not in correct state</string>
@@ -245,6 +252,7 @@
     <string name="init_connection">Connecting to micro:bit</string>
     <string name="disconnecting">Disconnecting from micro:bit</string>
     <string name="dfu_status_starting_msg">Initializing flashing process&#8230;</string>
+    <string name="v1_hex_v2_hardware">This hex file is not compatible with V2 hardware\nPlease re-download it from MakeCode</string>
     <string name="multple_flashing_session_msg">A project is currently being flashed. Wait for it to complete!</string>
     <string name="internal_error_msg">Internal error. Please try again</string>
     <string name="no_device_paired">Cannot connect.  No micro:bit paired</string>
@@ -269,7 +277,7 @@
     <string name="navigation_drawer_close">Close Menu</string>
     <string name="create_code">Create Code</string>
     <string name="flash_microbit">Flash</string>
-    <string name="connect_device">Connect</string>
+    <string name="connect_device">Pair</string>
     <string name="discover">Discover</string>
 
     <string name="email_body" formatted="false">
@@ -299,7 +307,7 @@
     <string name="desc_subtitle_manage_and_remove_microbits_label">Follow the on-screen instructions to</string>
     <string name="manage_and_remove_microbit">How do I remove a paired micro:bit?</string>
     <string name="desc_homescreen_logo_img">Hello</string>
-    <string name="desc_connect_btn">Connect</string>
+    <string name="desc_connect_btn">Pair</string>
     <string name="desc_flash_btn">Flash</string>
     <string name="desc_create_code">Create Code</string>
     <string name="desc_discover">Discover</string>
@@ -324,8 +332,8 @@
     <string name="desc_connection_status_flash_text">Micro:Bit connection status</string>
     <string name="desc_send_project_btn">Flash code to your Micro:bit</string>
     <string name="desc_delete_project_btn">Delete code</string>
-    <string name="searching_tip_step_text">When asked for a PIN,\npress button A</string>
-    <string name="searching_tip_step_text_one_line">When asked for a PIN, press button A</string>
+    <string name="searching_tip_step_text">If asked for a PIN,\npress button A</string>
+    <string name="searching_tip_step_text_one_line">If asked for a PIN, press button A</string>
     <string name="desc_connect_pair_micro_bit">Pair a new micro:bit</string>
     <string name="most_recent_device_status">Most recently used micro:bit</string>
     <string name="device_connected_device_status">Currently connected micro:bit</string>
@@ -350,8 +358,14 @@
     <string name="storage_permission_for_programs">We need storage permission to list all the program files saved on your device.\n Proceed?</string>
     <string name="storage_permission_for_programs_error">Cannot display any program files.</string>
 
-    <string name="location_permission_pairing">We need location permission to search for and find your micro:bit.\n Proceed?</string>
+    <string name="location_permission_pairing">We need permission to use your location to enable BLE. This allows the app to search for and find your micro:bit.\n Proceed?</string>
     <string name="location_permission_error">Cannot pair new micro:bit without having location permission.</string>
+
+    <string name="ble_permission">We need nearby devices permission to connect to your micro:bit.\n Proceed?</string>
+    <string name="ble_permission_error">Cannot connect to micro:bit without nearby devices permission.</string>
+
+    <string name="ble_permission_connect">We need permission to use Bluetooth to connect to your micro:bit.\n Proceed?</string>
+    <string name="ble_permission_connect_error">Cannot connect to micro:bit without permission.</string>
 
     <string name="camera_permission">micro:bit is trying to launch Camera. We need Camera permissions to complete this action. \n Proceed?</string>
     <string name="camera_permission_error">We cannot complete the request from micro:bit without having Camera permission</string>
@@ -371,5 +385,15 @@
     <string name="reconnect_text">You\'ve been disconnected from the micro:bit board. Do you want to reconnect?</string>
     <string name="reconnect_ok_button">Reconnect</string>
     <string name="reset_microbit_because_of_hex_file_wrong">. Please press RESET button!</string>
+
+    <string name="dfu_what_hardware_title">Unable to determine your micro:bit type</string>
+    <string name="dfu_what_hardware">Please select the board variant below</string>
+    <string name="v1_button_label">V1</string>
+    <string name="v2_button_label">V2</string>
+
+    <string name="no_longer_required_to_connect">It is no longer necessary to connect to your micro:bit before flashing</string>
+    <string name="desc_edit_project_btn">Edit project</string>
+    <string name="edit">Edit</string>
+
 </resources>
 

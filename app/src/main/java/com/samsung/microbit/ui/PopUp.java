@@ -5,9 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncTask;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.ui.activity.PopUpActivity;
@@ -36,7 +37,7 @@ public class PopUp {
     public static final int TYPE_SPINNER_NOT_CANCELABLE = 7;//0 button type spinner not cancelable (backpress disabled)
     public static final int TYPE_ALERT_LIGHT = 8;//Shows only once and do not leaves any history and cannot be recreated
     public static final int TYPE_NONE = 9;
-
+    public static final int TYPE_HARDWARE_CHOICE = 10;
 
     // Constants for giff animation options
     public static final int GIFF_ANIMATION_NONE = 0;
@@ -293,6 +294,7 @@ public class PopUp {
         while(!pendingQueue.isEmpty() && !done) {
             PendingRequest request = pendingQueue.peek();
 
+            if(request == null) return;
             switch(request.type) {
                 case REQUEST_TYPE_SHOW: {
                     Log.d(TAG, "processNextPendingRequest REQUEST_TYPE_SHOW");

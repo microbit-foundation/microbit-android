@@ -2,12 +2,15 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
+    android:padding="0dp"
     tools:context="com.samsung.microbit.ui.activity.HelpWebView">
 
     <WebView
         android:id="@+id/generalView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginBottom="0dp"
         android:hardwareAccelerated="true"
         android:windowSoftInputMode="adjustResize" />
+
 </LinearLayout>

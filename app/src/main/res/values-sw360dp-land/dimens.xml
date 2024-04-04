@@ -100,6 +100,10 @@
     <dimen name="pairing_step_1_gif_image_height">230dp</dimen>
     <dimen name="pairing_step_button_text_size">16sp</dimen>
     <dimen name="pairing_step_cycle_progress_bar_size">80dp</dimen>
+    <dimen name="another_way_button_height">48dp</dimen>
+    <dimen name="another_way_button_text_size">14sp</dimen>
+    <dimen name="another_way_button_layout_weightSum">3</dimen>
+    <dimen name="another_way_button_layout_weight">2</dimen>
 
 
     <!-- Popup screen -->
