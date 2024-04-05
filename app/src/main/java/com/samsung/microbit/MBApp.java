@@ -11,6 +11,8 @@ import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
+import com.samsung.microbit.MBAppState;
+
 /**
  * Represents a custom class of the app.
  * Provides some resources that use along app modules,
@@ -33,13 +35,15 @@ public class MBApp extends Application implements DefaultLifecycleObserver {
 
     private boolean justPaired;
 
+    private MBAppState appState = new MBAppState();
+
     @Override
     public void onCreate() {
         super.onCreate();
         app = this;
         ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
         initTypefaces();
-
+        appState.prefsLoad();
         Log.d("MBApp", "App Created");
     }
 
@@ -76,33 +80,43 @@ public class MBApp extends Application implements DefaultLifecycleObserver {
         return app;
     }
 
+    public static MBAppState getAppState() {
+        return app.appState;
+    }
+
     @Override
     public void onCreate(@NonNull LifecycleOwner owner) {
         logi("onCreate");
+        MBApp.getAppState().eventPairForeground();
     }
 
     @Override
     public void onStart(@NonNull LifecycleOwner owner) {
         logi("onStart");
+        MBApp.getAppState().eventPairForeground();
     }
 
     @Override
     public void onResume(@NonNull LifecycleOwner owner) {
         logi("onResume");
+        MBApp.getAppState().eventPairForeground();
     }
 
     @Override
     public void onPause(@NonNull LifecycleOwner owner) {
         logi("onPause");
+        MBApp.getAppState().eventPairBackground();
     }
 
     @Override
     public void onStop(@NonNull LifecycleOwner owner) {
         logi("onStop");
+        MBApp.getAppState().eventPairBackground();
     }
 
     @Override
     public void onDestroy(@NonNull LifecycleOwner owner) {
         logi("onDestroy");
+        MBApp.getAppState().eventPairBackground();
     }
 }

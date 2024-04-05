@@ -1598,6 +1598,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void popupPairingFailed() {
         logi("popupPairingFailed() :: Start");
+        MBApp.getAppState().eventPairError();
         PopUp.show(getString(R.string.pairing_failed_message), //message
                 getString(R.string.pairing_failed_title), //title
                 R.drawable.error_face, //image icon res id
@@ -1636,6 +1637,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 System.currentTimeMillis(),
                 getBLEPair().resultHardwareVersion);
         BluetoothUtils.setPairedMicroBit(MBApp.getApp(), newDev);
+        MBApp.getAppState().eventPairSuccess();
         updatePairedDeviceCard();
         // Pop up to show pairing successful
         PopUp.show(getString(R.string.pairing_successful_tip_message), // message

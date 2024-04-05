@@ -1908,8 +1908,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 Log.v(TAG, "Use Nordic DFU");
                 startDFUFlash();
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_PF_FAILED)) {
-
                 Log.v(TAG, "Partial flashing failed");
+                MBApp.getAppState().eventPairSendError();
                 // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU automatically
                 // Set flag to avoid partial flash next time
                 PopUp.show(getString(R.string.could_not_connect), //message
@@ -2101,6 +2101,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             break;
                         */
                         case DfuService.PROGRESS_ABORTED:
+                            MBApp.getAppState().eventPairSendError();
                             setActivityState(FlashActivityState.STATE_IDLE);
 
                             MBApp application = MBApp.getApp();
@@ -2175,6 +2176,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     }
                 }
             } else if(intent.getAction().equals(DfuService.BROADCAST_ERROR)) {
+                MBApp.getAppState().eventPairSendError();
                 int errorCode = intent.getIntExtra(DfuService.EXTRA_DATA, 0);
 
 //                // REMOVE tryToConnectAgain
