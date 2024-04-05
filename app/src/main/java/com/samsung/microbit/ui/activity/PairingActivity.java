@@ -154,6 +154,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     public final static String ACTION_RESET_TO_BLE = "com.samsung.microbit.ACTION_RESET_TO_BLE";
     public final static String ACTION_PAIR_BEFORE_FLASH = "com.samsung.microbit.ACTION_PAIR_BEFORE_FLASH";
+    public final static String ACTION_PAIR_BEFORE_FLASH_ALREADY_RESET = "com.samsung.microbit.ACTION_PAIR_BEFORE_FLASH_ALREADY_RESET";
 
     private String inAction = "";
 
@@ -176,6 +177,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         }
         if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
             pairBeforeFlashStart();
+            return;
+        }
+        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH_ALREADY_RESET)) {
+            pairBeforeFlashAlreadyResetStart();
             return;
         }
     }
@@ -201,10 +206,25 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         finish();
     }
 
+    private void pairBeforeFlashAlreadyResetStart() {
+        displayScreen(PAIRING_STATE.PAIRING_STATE_TRIPLE);
+        checkBluetoothPermissions();
+    }
+
+    private void pairBeforeFlashAlreadyResetFinish( int resultCode) {
+        inAction = "";
+        setResult( resultCode);
+        finish();
+    }
+
     public void onFinish( int resultCode) {
         logi("onFinish " + resultCode);
         if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
             pairBeforeFlashFinish( resultCode);
+            return;
+        }
+        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH_ALREADY_RESET)) {
+            pairBeforeFlashAlreadyResetFinish( resultCode);
             return;
         }
         displayScreen(PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON);
@@ -305,6 +325,18 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             return;
         }
 
+        startPairingUI();
+    }
+
+    /**
+     * Starts the pairing user interface
+     * assuming permissions granted, and Bluetooth is on, and Location on if required
+     */
+    private void startPairingUI() {
+        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH_ALREADY_RESET)) {
+            displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_2);
+            return;
+        }
         displayScreen(PAIRING_STATE.PAIRING_STATE_TRIPLE);
     }
 
@@ -500,6 +532,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             PopUp.hide();
             if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
                 pairBeforeFlashFinish( RESULT_CANCELED);
+                return;
+            }
+            if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH_ALREADY_RESET)) {
+                pairBeforeFlashAlreadyResetFinish( RESULT_CANCELED);
                 return;
             }
             displayScreen(PAIRING_STATE.PAIRING_STATE_STEP_2);
@@ -1557,6 +1593,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             pairBeforeFlashFinish( RESULT_CANCELED);
             return;
         }
+        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH_ALREADY_RESET)) {
+            pairBeforeFlashAlreadyResetFinish( RESULT_CANCELED);
+            return;
+        }
         if(pairingState == PAIRING_STATE.PAIRING_STATE_CONNECT_BUTTON) {
             finish();
         } else {
@@ -1609,7 +1649,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     @Override
                     public void onClick(View v) {
                         PopUp.hide();
-                        displayScreen(PAIRING_STATE.PAIRING_STATE_TRIPLE);
+                        startPairingUI();
                     }
                 },//override click listener for ok button
                 new View.OnClickListener() {
@@ -1639,6 +1679,25 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         BluetoothUtils.setPairedMicroBit(MBApp.getApp(), newDev);
         MBApp.getAppState().eventPairSuccess();
         updatePairedDeviceCard();
+
+        Log.e(TAG, "Set just paired to true");
+        if(justPaired) {
+            justPaired = false;
+            MBApp.getApp().setJustPaired(true);
+        } else {
+            MBApp.getApp().setJustPaired(false);
+        }
+
+        // If flashing, leave micro:bit in Bluetooth mode
+        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH)) {
+            onFinish( RESULT_OK);
+            return;
+        }
+        if ( inAction.equals(ACTION_PAIR_BEFORE_FLASH_ALREADY_RESET)) {
+            onFinish( RESULT_OK);
+            return;
+        }
+
         // Pop up to show pairing successful
         PopUp.show(getString(R.string.pairing_successful_tip_message), // message
                 getString(R.string.pairing_success_message_1), //title
@@ -1648,14 +1707,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 PopUp.TYPE_ALERT, //type of popup.
                 successfulPairingHandler,
                 successfulPairingHandler);
-
-        Log.e(TAG, "Set just paired to true");
-        if(justPaired) {
-            justPaired = false;
-            MBApp.getApp().setJustPaired(true);
-        } else {
-            MBApp.getApp().setJustPaired(false);
-        }
     }
 
     @Override
