@@ -6,15 +6,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothManager;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanFilter;
-import android.bluetooth.le.ScanRecord;
-import android.bluetooth.le.ScanResult;
-import android.bluetooth.le.ScanSettings;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -27,9 +19,6 @@ import android.graphics.drawable.Drawable;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Parcelable;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -64,7 +53,6 @@ import com.samsung.microbit.ui.BluetoothChecker;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.ui.adapter.LEDAdapter;
 import com.samsung.microbit.utils.BLEConnectionHandler;
-import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 import com.samsung.microbit.utils.BLEPair;
 
@@ -74,14 +62,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import pl.droidsonroids.gif.GifImageView;
 
-import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
-import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTED;
-import static android.bluetooth.BluetoothAdapter.STATE_CONNECTING;
-import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTING;
 import static com.samsung.microbit.BuildConfig.DEBUG;
 
 /**
@@ -1323,41 +1306,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 PopUp.TYPE_ALERT,
                 failedPermissionHandler, failedPermissionHandler);
     }
-
-    /**
-     * Enables or disables connection with a currently paired micro:bit board.
-     */
-//    private void toggleConnection() {
-//        ConnectedDevice currentDevice = BluetoothUtils.getPairedMicrobit(this);
-//        Log.v(TAG, "currentDevice.toString()");
-//
-//        if(currentDevice.mAddress != null) {
-//            boolean currentState = currentDevice.mStatus;
-//
-//            if(!currentState) {
-//                setActivityState(PairingActivityState.STATE_CONNECTING);
-//                requestPermissions.clear();
-//                PopUp.show(getString(R.string.init_connection),
-//                        "",
-//                        R.drawable.message_face, R.drawable.blue_btn,
-//                        PopUp.GIFF_ANIMATION_NONE,
-//                        PopUp.TYPE_SPINNER,
-//                        null, null);
-//
-//                ServiceUtils.sendConnectDisconnectMessage(true);
-//            } else {
-//                setActivityState(PairingActivityState.STATE_DISCONNECTING);
-//                PopUp.show(getString(R.string.disconnecting),
-//                        "",
-//                        R.drawable.message_face, R.drawable.blue_btn,
-//                        PopUp.GIFF_ANIMATION_NONE,
-//                        PopUp.TYPE_SPINNER,
-//                        null, null);
-//
-//                ServiceUtils.sendConnectDisconnectMessage(false);
-//            }
-//        }
-//    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],
