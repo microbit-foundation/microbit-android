@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/viewProjectsPattern"
+    android:layout_height="match_parent"
+    android:layout_width="match_parent"
+    android:background="@color/black_color"
+    android:layout_gravity="center"
+    android:gravity="center"
+    android:padding="16dp"
+    android:orientation="horizontal"
+    android:weightSum="100">
+
+    <LinearLayout
+        android:id="@+id/viewProjectsPatternLeft"
+        android:layout_weight="47"
+        android:orientation="vertical"
+        android:weightSum="100"
+        android:layout_height="match_parent"
+        android:layout_width="0dp">
+
+        <!-- Title -->
+        <TextView
+            android:layout_weight="40"
+            android:id="@+id/viewProjectsPatternHeader"
+            android:textSize="@dimen/popup_title_text_size"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:gravity="center|center_vertical"
+            android:textColor="@color/white_color"
+            android:text="@string/compare_your_pattern_with_NAME"  />
+
+        <!-- Pattern -->
+        <ImageView
+            android:id="@+id/viewProjectsPatternGrid"
+            android:layout_weight="50"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:contentDescription="@string/pattern"
+            android:src="@drawable/red_white_led_btn" />
+
+        <View
+            android:layout_weight="10"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp" />
+    </LinearLayout>
+
+    <View
+        android:layout_weight="6"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:layout_weight="47"
+        android:orientation="vertical"
+        android:weightSum="100"
+        android:layout_height="match_parent"
+        android:layout_width="0dp">
+
+        <View
+            android:layout_weight="5"
+            android:layout_width="match_parent"
+            android:layout_height="0dp" />
+
+        <!-- Emoji -->
+        <ImageView
+            android:layout_weight="30"
+            android:id="@+id/viewProjectsPatternEmo"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_where_are_you"/>
+
+        <View
+            android:layout_weight="5"
+            android:layout_width="match_parent"
+            android:layout_height="0dp" />
+
+        <LinearLayout
+            android:id="@+id/viewProjectsPatternDifferentLayout"
+            android:layout_weight="25"
+            android:layout_height="0dp"
+            android:layout_width="match_parent"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:weightSum="100"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/viewProjectsPatternDifferent"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/pairing_step_button_height"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:textSize="@dimen/pairing_step_button_text_size"
+                android:textColor="@android:color/black"
+                android:textAllCaps="true"
+                android:background="@drawable/white_btn"
+                android:drawableEnd="@drawable/next_step_pairing_btn"
+                android:drawablePadding="8dp"
+                android:layout_margin="8dp"
+                android:text="@string/my_pattern_is_different" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_weight="5"
+            android:layout_width="match_parent"
+            android:layout_height="0dp" />
+
+        <!-- Confirmation buttons -->
+        <LinearLayout
+            android:id="@+id/viewProjectsPatternButtons"
+            android:layout_weight="25"
+            android:layout_height="0dp"
+            android:layout_width="match_parent"
+            android:gravity="center"
+            android:layout_gravity="bottom"
+            android:weightSum="100"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/viewProjectsPatternCancel"
+                android:layout_weight="47"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/pairing_step_button_height"
+                android:layout_gravity="bottom"
+                android:gravity="center_vertical"
+                android:textSize="@dimen/pairing_step_button_text_size"
+                android:textColor="@android:color/black"
+                android:textAllCaps="true"
+                android:background="@drawable/cancel_btn"
+                android:drawableEnd="@drawable/cancel_step_pairing_btn"
+                android:text="@string/txt_cancel_btn" />
+            <View
+                android:layout_weight="6"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content" />
+            <Button
+                android:id="@+id/viewProjectsPatternOK"
+                android:layout_weight="47"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/pairing_step_button_height"
+                android:layout_gravity="bottom"
+                android:gravity="center_vertical"
+                android:textSize="@dimen/pairing_step_button_text_size"
+                android:textColor="@android:color/black"
+                android:textAllCaps="true"
+                android:background="@drawable/green_btn"
+                android:drawableEnd="@drawable/ic_done_black"
+                android:text="@string/txt_how_to_pair_next_btn" />
+        </LinearLayout>
+
+        <View
+            android:layout_weight="5"
+            android:layout_width="match_parent"
+            android:layout_height="0dp" />
+    </LinearLayout>
+</LinearLayout>
