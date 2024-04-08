@@ -19,7 +19,6 @@
     <string name="app_name">micro:bit</string>
     <string name="app_name_without_colon">microbit</string>
     <string name="home_activity_name"></string>
-    <string name="poweredBy">Powered by\r\n SAMSUNG</string>
     <string name="copyright">Copyright © 1995&#8211;2015 SAMSUNG</string>
     <string name="developed_by">Developed by</string>
 
@@ -210,7 +209,7 @@
     <string name="loading_page_msg">Please wait. Page is loading&#8230;</string>
 
     <!-- Popup message -->
-    <string name="delete_project_message">Are you sure you want to remove this file?\r\nThe file will be permanently removed from this application.</string>
+    <string name="delete_project_message">Are you sure you want to remove this file?\nThe file will be permanently removed from this application.</string>
     <string name="delete_project_title">Delete project?</string>
     <string name="record_audio">Record Audio?</string>
     <string name="audio_recorder_notification">micro:bit Audio Recorder</string>
