@@ -26,8 +26,8 @@ jobs:
       - uses: microbit-foundation/upload-release-action@2.9.0
         with:
           file: app/build/outputs/bundle/release/app-release.aab
-          asset_name: microbit-release-${{ env.TAG }}.aab
+          asset_name: microbit-release-${{ env.GITHUB_REF_NAME }}.aab
       - uses: microbit-foundation/upload-release-action@2.9.0
         with:
           file: app/build/outputs/apk/release/app-release.apk
-          asset_name: microbit-release-${{ env.TAG }}.apk
+          asset_name: microbit-release-${{ env.GITHUB_REF_NAME }}.apk
