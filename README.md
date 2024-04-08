@@ -1,19 +1,18 @@
-micro:bit Android application
-=============================
+# micro:bit Android application
 
 **Build instructions**
 
-* Install needed tools to build the project:
-    
-    * [Android SDK](http://developer.android.com/sdk/index.html)
-    
-    * [Gradle](https://gradle.org/gradle-download/) (Minimum version [8.2+](https://developer.android.com/studio/releases/gradle-plugin.html#updating-gradle))
+- Install needed tools to build the project:
 
-* Fetch submodules `git submodule update --init --recursive`
+  - [Android SDK](http://developer.android.com/sdk/index.html)
 
-* Go to root directory and run `./gradlew :app:assembleDebug`. After the build is finished the apk file can be found at `app/build/outputs/apk/debug/app-debug.apk`
+  - [Gradle](https://gradle.org/gradle-download/) (Minimum version [8.2+](https://developer.android.com/studio/releases/gradle-plugin.html#updating-gradle))
 
-* Or run `./gradlew :app:installDebug` to build and install app on plugged android device
+- Fetch submodules `git submodule update --init --recursive`
+
+- Go to root directory and run `./gradlew :app:assembleDebug`. After the build is finished the apk file can be found at `app/build/outputs/apk/debug/app-debug.apk`
+
+- Or run `./gradlew :app:installDebug` to build and install app on plugged android device
 
 ## Release process
 
@@ -22,13 +21,13 @@ micro:bit Android application
 3. Increment the version and version name in `AndroidMainfest.xml`. The version must be incremented since the last Play Console upload.
 4. Create a GitHub release with a new tag via the web UI (e.g. v3.0.8).
 5. GitHub actions will run for the new tag. Download the signed bundle (.aab file) it produces.
-6. [Upload to Google Play Console](https://developer.android.com/studio/publish/upload-bundle). Options for next steps include an [internal release](https://support.google.com/googleplay/android-developer/answer/9845334?hl=en-GB) or [staged roll out](https://support.google.com/googleplay/android-developer/answer/6346149?hl=en-GB#zippy=%2Crelease-a-staged-roll-out-to-specific-countries).
+6. On Google Play Console, [prepare and rollout a release](https://support.google.com/googleplay/android-developer/answer/9859348?sjid=11332869603726103611-EU).
 
 ## Library documentation
 
- * [Android-DFU-Library](https://github.com/NordicSemiconductor/Android-DFU-Library)
- * [android-partial-flashing-lib](https://github.com/microbit-foundation/android-partial-flashing-lib)
- * [android-gif-drawable](https://github.com/koral--/android-gif-drawable)
+- [Android-DFU-Library](https://github.com/NordicSemiconductor/Android-DFU-Library)
+- [android-partial-flashing-lib](https://github.com/microbit-foundation/android-partial-flashing-lib)
+- [android-gif-drawable](https://github.com/koral--/android-gif-drawable)
 
 ## Potential pitfalls
 
