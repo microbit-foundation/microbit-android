@@ -11,7 +11,7 @@ micro:bit Android application
 
 * Fetch submodules `git submodule update --init --recursive`
 
-* Go to root directory and run `./gradlew :app:assembleDebug`. After the build is finished the apk file can be found at `app/build/outputs/apk/app-debug.apk`
+* Go to root directory and run `./gradlew :app:assembleDebug`. After the build is finished the apk file can be found at `app/build/outputs/apk/debug/app-debug.apk`
 
 * Or run `./gradlew :app:installDebug` to build and install app on plugged android device
 
