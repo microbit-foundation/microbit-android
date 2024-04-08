@@ -1,0 +1,33 @@
+name: build
+on:
+  release:
+    types: [created]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - run: echo "JAVA_HOME=$JAVA_HOME_17_X64" >> $GITHUB_ENV
+      - run: echo "SIGNING_STORE_FILE=$RUNNER_TEMP/keystore.jks" >> $GITHUB_ENV
+      - run: printenv SIGNING_STORE_FILE_BASE64 | base64 -d > "$SIGNING_STORE_FILE"
+        env:
+          SIGNING_STORE_FILE_BASE64: ${{ secrets.ANDROID_SIGNING_STORE_FILE_BASE64 }}
+      - run: ./gradlew --no-daemon :app:assembleRelease :app:bundleRelease
+        env:
+          SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_PASSWORD }}
+          SIGNING_KEY_ALIAS: upload
+      - run: rm "$SIGNING_STORE_FILE"
+      - uses: microbit-foundation/upload-release-action@2.9.0
+        with:
+          file: app/build/outputs/apk/bundle/app-bundle.aab
+          asset_name: microbit-bundle-${{ env.TAG }}.aab
+      - uses: microbit-foundation/upload-release-action@2.9.0
+        with:
+          file: app/build/outputs/apk/release/app-release.apk
+          asset_name: microbit-release-${{ env.TAG }}.apk

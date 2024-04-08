@@ -1,31 +1,40 @@
-micro:bit Android application
-=============================
+# micro:bit Android application
 
 **Build instructions**
 
-* Install needed tools to build the project:
-    
-    * [Android SDK](http://developer.android.com/sdk/index.html)
-    
-    * [Gradle](https://gradle.org/gradle-download/) (Minimum version [4.6+](https://developer.android.com/studio/releases/gradle-plugin.html#updating-gradle))
+- Install needed tools to build the project:
 
-* Fetch submodules `git submodule update --init --recursive`
+  - [Android SDK](http://developer.android.com/sdk/index.html)
 
-* Go to root directory and run `gradle assembleDebug`. After build is finished, apk file can be found under `~/app/build/outputs/apk/app-debug.apk`
+  - [Gradle](https://gradle.org/gradle-download/) (Minimum version [8.2+](https://developer.android.com/studio/releases/gradle-plugin.html#updating-gradle))
 
-* Or run `gradle installDebug` to build and install app on plugged android device
+- Fetch submodules `git submodule update --init --recursive`
 
+- Go to root directory and run `./gradlew :app:assembleDebug`. After the build is finished the apk file can be found at `app/build/outputs/apk/debug/app-debug.apk`
 
-## Libraries
+- Or run `./gradlew :app:installDebug` to build and install app on plugged android device
 
- * [Android-DFU-Library](https://github.com/NordicSemiconductor/Android-DFU-Library)
- * [android-partial-flashing-lib](https://github.com/microbit-foundation/android-partial-flashing-lib)
- * [android-gif-drawable](https://github.com/koral--/android-gif-drawable)
+## Release process
 
-## Potential Pitfalls
+1. Release https://github.com/microbit-foundation/android-partial-flashing-lib if it has changed since the last release. We tag that library with the version number of the android app.
+2. Ensure the pfLibrary submodule is using the commit corresponding to the new android-partial-flashing-lib tag.
+3. Increment the version and version name in `AndroidMainfest.xml`. The version must be incremented since the last Play Console upload.
+4. Create a GitHub release with a new tag via the web UI (e.g. v3.0.8).
+5. GitHub actions will run for the new tag. Download the signed bundle (.aab file) it produces.
+6. On Google Play Console, [prepare and rollout a release](https://support.google.com/googleplay/android-developer/answer/9859348?sjid=11332869603726103611-EU).
+
+## Library documentation
+
+- [Android-DFU-Library](https://github.com/NordicSemiconductor/Android-DFU-Library)
+- [android-partial-flashing-lib](https://github.com/microbit-foundation/android-partial-flashing-lib)
+- [android-gif-drawable](https://github.com/koral--/android-gif-drawable)
+
+## Potential pitfalls
 
 If Gradle is unable to find the correct Android SDK, check the SDK install location is correctly set on the path.
 You should have a ENV variable `ANDROID_SDK_ROOT` pointing to the SDKs location.
+
+You may need to set JAVA_HOME to a v17 JDK.
 
 ## Code of Conduct
 
