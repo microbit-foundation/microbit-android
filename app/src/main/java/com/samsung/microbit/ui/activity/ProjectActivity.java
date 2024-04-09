@@ -2093,29 +2093,34 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 MBApp.getAppState().eventPairSendError();
                 // If Partial Flashing Fails - DON'T ATTEMPT FULL DFU automatically
                 // Set flag to avoid partial flash next time
-                PopUp.show(getString(R.string.could_not_connect), //message
-                        getString(R.string.could_not_connect_title),
+                PopUp.show(getString(R.string.connection_lost) + "\n\n" + getString(R.string.retry), //message
+                        getString(R.string.flashing_failed_title),
                         R.drawable.error_face, R.drawable.red_btn,
                         PopUp.GIFF_ANIMATION_ERROR,
-                        TYPE_ALERT, //type of popup.
-                        popupClickFlashComplete, popupClickFlashComplete);
+                        PopUp.TYPE_CHOICE,
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                PopUp.hide();
+                                restartPurpose();
+                            }
+                        }, popupClickFlashComplete);
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_ERROR)) {
                 MBApp.getAppState().eventPairSendError();
                 final int errorCode = intent.getIntExtra(PartialFlashingService.EXTRA_DATA, 0);
-                String error_message = "";
+                String error_message = getString(R.string.connection_failed);
 
                 switch (errorCode) {
                     case PartialFlashingService.ERROR_CONNECT:
-                        error_message = getString(R.string.not_found);
+                        error_message = getString(R.string.connection_failed);
                         break;
                     case PartialFlashingService.ERROR_RECONNECT:
-                        error_message = getString(R.string.reconnection);
+                        error_message = getString(R.string.reconnection_failed);
                         break;
                     case PartialFlashingService.ERROR_DFU_MODE:
-                        error_message = getString(R.string.dfu_mode);
+                        error_message = getString(R.string.reset_to_dfu_mode_failed);
                         break;
                 }
-                error_message = getString(R.string.initialisation_error_CODE, error_message);
 
                 logi("PFResultReceiver.onReceive() :: " + error_message + " code " + errorCode);
 

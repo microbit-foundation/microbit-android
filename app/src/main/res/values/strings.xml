@@ -81,7 +81,7 @@
     <string name="flashing_failed_io_error">Flashing Failed! Cannot find the file. Please reset micro:bit and try again.</string>
     <string name="flashing_failed_message">Flashing Failed! No Programs Found</string>
     <string name="flashing_aborted">Flashing aborted! Required service not found on device. Please reset micro:bit and try again.</string>
-    <string name="could_not_connect">Could not connect to micro:bit. \n\n Please reset your micro:bit into pairing mode and try again.\n\nHOLD the A and B buttons and PRESS and RELEASE RESET to enter pairing mode</string>
+    <string name="connection_lost">The connection was lost while flashing. Try to send the same file again.</string>
 
 
     <string name="flashing_verifcation_failed">Flashing Failed</string>
@@ -404,9 +404,9 @@
     <string name="connection_error_CODE">Connection error: %s</string>
     <string name="dfu_error_CODE">DFU error: %s</string>
     <string name="communication_error_CODE">Communication error: %s</string>
-    <string name="reconnection">RECONNECTION</string>
-    <string name="dfu_mode">DFU MODE</string>
-    <string name="initialisation_error_CODE">Initialisation error: %s</string>
+    <string name="connection_failed">Unable to connect</string>
+    <string name="reconnection_failed">Unable to reconnect</string>
+    <string name="reset_to_dfu_mode_failed">Unable to reset to DFU mode</string>
     <string name="retry">Retry?</string>
     <string name="menu_import">Import</string>
     <string name="menu_export">Export</string>
