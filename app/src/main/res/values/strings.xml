@@ -275,9 +275,9 @@
     <string name="navigation_drawer_open">Open Menu</string>
     <string name="navigation_drawer_close">Close Menu</string>
     <string name="create_code">Create Code</string>
-    <string name="flash_microbit">Flash</string>
-    <string name="connect_device">Pair</string>
-    <string name="discover">Discover</string>
+    <string name="my_programs">My Programs</string>
+    <string name="manage_connections">Manage Connections</string>
+    <string name="project_ideas">Project Ideas</string>
 
     <string name="email_body" formatted="false">
         <![CDATA[
@@ -306,10 +306,10 @@
     <string name="desc_subtitle_manage_and_remove_microbits_label">Follow the on-screen instructions to</string>
     <string name="manage_and_remove_microbit">How do I remove a paired micro:bit?</string>
     <string name="desc_homescreen_logo_img">Hello</string>
-    <string name="desc_connect_btn">Pair</string>
-    <string name="desc_flash_btn">Flash</string>
+    <string name="desc_manage_connections">Manage Connections</string>
+    <string name="desc_my_programs">My Programs</string>
     <string name="desc_create_code">Create Code</string>
-    <string name="desc_discover">Discover</string>
+    <string name="desc_project_ideas">Project Ideas</string>
     <string name="desc_back_to_home_from_flash_btn">Back to Menu</string>
     <string name="desc_flash_toolbar_header">Flash</string>
     <string name="desc_go_to_bluetooth_settings">Go to bluetooth settings</string>

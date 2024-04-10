@@ -31,10 +31,10 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:layout_marginStart="16dp"
-        android:contentDescription="@string/desc_connect_btn"
+        android:contentDescription="@string/desc_manage_connections"
         android:nextFocusDown="@id/backBtn"
         android:nextFocusRight="@id/backBtn"
-        android:text="@string/connect_device"
+        android:text="@string/manage_connections"
         android:textSize="@dimen/app_bar_title_text_size"
         android:textColor="@color/white_color" />
 
