@@ -164,9 +164,8 @@
     <string name="step_connect_tip_text_step_three_text_one_line">When asked, press button A and enter your PIN</string>
     <string name="desc_step_connect_tip_text_step_three_text">When asked, press button A and enter your PIN</string>
     <string name="desc_step_connect_tip_text_step_four">Step 4</string>
-    <string name="searching_microbit_found_message">Open your notification drawer \nand enter your Pin</string>
-    <string name="searching_microbit_found_message_one_line">Open your notification drawer and enter your Pin</string>
-    <string name="desc_searching_microbit_found_message">Open your notification drawer and enter your Pin</string>
+    <string name="searching_microbit_found_message">Check notification and choose pair.\nEnter pin if requested</string>
+    <string name="searching_microbit_found_message_one_line">Check notification and choose pair. Enter pin if requested</string>
     <string name="step_connect_tip_text_step_two">Step 2</string>
     <string name="connect_tip_text">Hold the A and B buttons then press and release RESET. Keep holding A and B until the screen fills up</string>
     <string name="desc_connect_tip_text">Hold the A and B buttons then press and release RESET. Keep holding A and B until the screen fills up</string>
