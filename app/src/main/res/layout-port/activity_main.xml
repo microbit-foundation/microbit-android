@@ -52,10 +52,10 @@
     <Button
         android:id="@+id/connect_device_btn"
         style="@style/main_activity_button_style"
-        android:contentDescription="@string/desc_manage_connections"
+        android:contentDescription="@string/desc_connect_btn"
         android:drawableEnd="@drawable/device_status_disconnected"
         android:nextFocusDown="@+id/discover_btn"
-        android:text="@string/manage_connections" />
+        android:text="@string/connect_device" />
 
     <!-- Project Ideas -->
     <Button
