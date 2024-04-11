@@ -178,8 +178,6 @@
     <string name="enter_pattern_tip_text_one_line">Copy the pattern from your micro:bit onto this grid</string>
     <string name="desc_enter_pattern_tip_step_two">Step two</string>
     <string name="desc_enter_pattern_tip_text">Copy the pattern from your micro:bit onto this grid</string>
-    <string name="searching_tip_text_instructions">(you only have 30 seconds)</string>
-    <string name="desc_searching_tip_text">You only have 30 seconds</string>
     <string name="desc_searching_tip_step_three">If asked for a PIN, press button A</string>
     <string name="enter_pin_to_pair_text">Press button A, and\nenter the 6 digit PIN</string>
     <string name="step_enter_pin_to_pair_text">Step 4</string>

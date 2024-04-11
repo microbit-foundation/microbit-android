@@ -731,9 +731,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         TextView stepThreeTitle = (TextView) findViewById(R.id.searching_microbit_step);
         stepThreeTitle.setTypeface(boldTypeface);
 
-        TextView stepThreeInstructions = (TextView) findViewById(R.id.searching_microbit_step_instructions);
-        stepThreeInstructions.setTypeface(robotoTypeface);
-
         Button cancelSearchMicroBit = (Button) findViewById(R.id.cancel_search_microbit_step_3_btn);
         cancelSearchMicroBit.setTypeface(robotoTypeface);
 
@@ -1107,7 +1104,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         logi("updateOnScanFound");
         TextView textView = (TextView) findViewById(R.id.search_microbit_step_3_title);
         TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
-        TextView tvSearchingInstructions = (TextView) findViewById(R.id.searching_microbit_step_instructions);
         if (textView != null) {
             textView.setText(getString(R.string.searchingTitle));
             //findViewById(R.id.searching_progress_spinner).setVisibility(View.GONE);
@@ -1118,7 +1114,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 //            } else {
 //                tvSearchingStep.setText(R.string.searching_microbit_found_message);
 //            }
-//            tvSearchingInstructions.setText(R.string.searching_tip_text_instructions);
         }
     }
 
@@ -1126,7 +1121,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         logi("updateOnConnected");
         TextView textView = (TextView) findViewById(R.id.search_microbit_step_3_title);
         TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
-        TextView tvSearchingInstructions = (TextView) findViewById(R.id.searching_microbit_step_instructions);
         if (textView != null) {
             textView.setText(getString(R.string.searchingTitle));
             findViewById(R.id.searching_progress_spinner).setVisibility(View.GONE);
@@ -1137,7 +1131,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             } else {
                 tvSearchingStep.setText(R.string.searching_microbit_found_message);
             }
-            tvSearchingInstructions.setText(R.string.searching_tip_text_instructions);
         }
     }
 
@@ -1204,7 +1197,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     TextView tvTitle = (TextView) findViewById(R.id.search_microbit_step_3_title);
                     TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
                     tvSearchingStep.setContentDescription(tvSearchingStep.getText());
-                    TextView tvSearchingInstructions = (TextView) findViewById(R.id.searching_microbit_step_instructions);
                     if(tvTitle != null) {
                         tvTitle.setText(R.string.searchingTitle);
                         findViewById(R.id.searching_progress_spinner).setVisibility(View.VISIBLE);
@@ -1215,7 +1207,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         } else {
                             tvSearchingStep.setText(R.string.searching_tip_step_text);
                         }
-                        tvSearchingInstructions.setText(R.string.searching_tip_text_instructions);
                     }
                     justPaired = true;
                 } else {
@@ -1694,7 +1685,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         Utils.unbindDrawables(findViewById(R.id.ok_enter_pattern_step_2_btn));
         Utils.unbindDrawables(findViewById(R.id.search_microbit_step_3_title));
         Utils.unbindDrawables(findViewById(R.id.searching_microbit_step));
-        Utils.unbindDrawables(findViewById(R.id.searching_microbit_step_instructions));
         Utils.unbindDrawables(findViewById(R.id.cancel_search_microbit_step_3_btn));
         Utils.unbindDrawables(findViewById(R.id.searching_progress_spinner));
 
