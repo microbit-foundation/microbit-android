@@ -643,7 +643,7 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
                 final int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR);
                 final int prevState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR);
                 logi("pairReceiver -" + " name = " + name + " addr = " + addr + " state = " + state + " prevState = " + prevState);
-                if (name.isEmpty() || addr.isEmpty()) {
+                if (name == null || name.isEmpty() || addr.isEmpty()) {
                     return;
                 }
                 // Check the changed device is the one we are trying to pair
