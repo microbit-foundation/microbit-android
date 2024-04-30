@@ -80,7 +80,7 @@
     <string name="flashing_failed_io_error">Flashing Failed! Cannot find the file. Please reset micro:bit and try again.</string>
     <string name="flashing_failed_message">Flashing Failed! No Programs Found</string>
     <string name="flashing_aborted">Flashing aborted! Required service not found on device. Please reset micro:bit and try again.</string>
-    <string name="could_not_connect">Could not connect to micro:bit. \n\n Please reset your micro:bit into pairing mode and try again.\n\nHOLD the A and B buttons and PRESS and RELEASE RESET to enter pairing mode</string>
+    <string name="connection_lost">The connection was lost while flashing. Try to send the same file again.</string>
 
 
     <string name="flashing_verifcation_failed">Flashing Failed</string>
@@ -98,6 +98,7 @@
     <string name="flashing_tip_title">Put the micro:bit in Flashing mode</string>
     <string name="pairing_tip">Hold buttons A and B down and then press RESET.\n Wait for "BLUEZONE" to appear on micro:bit before releasing buttons </string>
     <string name="flash_start_message">Do you want to flash the program to %s ?</string>
+    <string name="flash_start_message_pair">Do you want to pair, then flash the program?</string>
 
     <!-- Menu items -->
     <string name="menu_connect">Connect</string>
@@ -275,9 +276,9 @@
     <string name="navigation_drawer_open">Open Menu</string>
     <string name="navigation_drawer_close">Close Menu</string>
     <string name="create_code">Create Code</string>
-    <string name="flash_microbit">Flash</string>
+    <string name="flash_microbit">My Programs</string>
     <string name="connect_device">Pair</string>
-    <string name="discover">Discover</string>
+    <string name="discover">Project Ideas</string>
 
     <string name="email_body" formatted="false">
         <![CDATA[
@@ -307,11 +308,12 @@
     <string name="manage_and_remove_microbit">How do I remove a paired micro:bit?</string>
     <string name="desc_homescreen_logo_img">Hello</string>
     <string name="desc_connect_btn">Pair</string>
-    <string name="desc_flash_btn">Flash</string>
+    <string name="desc_flash_btn">My Programs</string>
     <string name="desc_create_code">Create Code</string>
-    <string name="desc_discover">Discover</string>
+    <string name="desc_discover">Project Ideas</string>
     <string name="desc_back_to_home_from_flash_btn">Back to Menu</string>
-    <string name="desc_flash_toolbar_header">Flash</string>
+    <string name="desc_flash_toolbar_header">My Programs</string>
+    <string name="flash_toolbar_header">My Programs</string>
     <string name="desc_go_to_bluetooth_settings">Go to bluetooth settings</string>
     <string name="tv_go_to_bluetooth_Settings">Go to bluetooth settings</string>
     <string name="desc_connect_back_to_home_btn">Back to Menu</string>
@@ -393,6 +395,19 @@
     <string name="no_longer_required_to_connect">It is no longer necessary to connect to your micro:bit before flashing</string>
     <string name="desc_edit_project_btn">Edit project</string>
     <string name="edit">Edit</string>
-
+    <string name="my_pattern_is_different">My pattern is different</string>
+    <string name="pattern">Pattern</string>
+    <string name="compare_your_pattern_with_NAME">Compare your pattern with %s</string>
+    <string name="searching_for_microbit_NAME">Searching for micro:bit %s</string>
+    <string name="not_found">NOT FOUND</string>
+    <string name="connection_error_CODE">Connection error: %s</string>
+    <string name="dfu_error_CODE">DFU error: %s</string>
+    <string name="communication_error_CODE">Communication error: %s</string>
+    <string name="connection_failed">Unable to connect</string>
+    <string name="reconnection_failed">Unable to reconnect</string>
+    <string name="reset_to_dfu_mode_failed">Unable to reset to DFU mode</string>
+    <string name="retry">Retry?</string>
+    <string name="menu_import">Import</string>
+    <string name="menu_export">Export</string>
 </resources>
 

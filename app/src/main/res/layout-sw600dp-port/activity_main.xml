@@ -27,7 +27,7 @@
             android:layout_margin="@dimen/main_activity_gif_image_margin"
             android:contentDescription="@string/desc_homescreen_logo_img"
             android:foregroundGravity="center"
-            android:nextFocusDown="@+id/connect_device_btn"
+            android:nextFocusDown="@+id/create_code_btn"
             android:scrollbars="none" />
 
     </LinearLayout>
@@ -47,14 +47,14 @@
             android:layout_height="0dp"
             android:layout_weight="1">
 
-            <!-- Connections -->
+            <!-- create code -->
             <Button
-                android:id="@+id/connect_device_btn"
+                android:id="@+id/create_code_btn"
                 style="@style/button_style"
-                android:contentDescription="@string/desc_connect_btn"
-                android:drawableTop="@drawable/ic_connect"
+                android:contentDescription="@string/desc_create_code"
+                android:drawableTop="@drawable/ic_create_code"
                 android:nextFocusDown="@+id/flash_microbit_btn"
-                android:text="@string/connect_device" />
+                android:text="@string/create_code" />
 
             <!-- Flash -->
             <Button
@@ -62,7 +62,7 @@
                 style="@style/button_style"
                 android:contentDescription="@string/desc_flash_btn"
                 android:drawableTop="@drawable/ic_flash"
-                android:nextFocusDown="@+id/create_code_btn"
+                android:nextFocusDown="@+id/connect_device_btn"
                 android:text="@string/flash_microbit" />
 
         </LinearLayout>
@@ -72,14 +72,14 @@
             android:layout_height="0dp"
             android:layout_weight="1">
 
-            <!-- create code -->
+            <!-- Connections -->
             <Button
-                android:id="@+id/create_code_btn"
+                android:id="@+id/connect_device_btn"
                 style="@style/button_style"
-                android:contentDescription="@string/desc_create_code"
-                android:drawableTop="@drawable/ic_create_code"
+                android:contentDescription="@string/desc_connect_btn"
+                android:drawableTop="@drawable/ic_connect"
                 android:nextFocusDown="@+id/discover_btn"
-                android:text="@string/create_code" />
+                android:text="@string/connect_device" />
 
             <!-- Discover -->
             <Button

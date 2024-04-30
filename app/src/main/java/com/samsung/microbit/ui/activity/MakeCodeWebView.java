@@ -21,6 +21,7 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.samsung.microbit.BuildConfig;
+import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
 import com.samsung.microbit.utils.FileUtils;
 import com.samsung.microbit.utils.ProjectsHelper;
@@ -94,7 +95,10 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 Log.v(TAG, "url: " + url);
-                if (url.contains("https://microbit.org/")) activityHandle.finish();
+                if (url.contains("https://microbit.org/")) {
+                    MBApp.getAppState().eventPairMakeCodeEnd();
+                    activityHandle.finish();
+                }
                 return false;
             }
 
@@ -244,6 +248,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         }
 
         webView.loadUrl(makecodeUrl);
+        MBApp.getAppState().eventPairMakeCodeBegin();
     } // onCreate
 
     private void saveData( String name, String mimetype, byte[] data) {
@@ -301,6 +306,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     public void onClick(final View v) {
         if(v.getId() == R.id.backBtn) {
+            MBApp.getAppState().eventPairMakeCodeEnd();
             finish();
         }
     }
@@ -456,6 +462,7 @@ class JavaScriptInterface {
     @JavascriptInterface
     public void clickBrand() {
         try {
+            MBApp.getAppState().eventPairMakeCodeEnd();
             MakeCodeWebView.activityHandle.finish();
         } catch(Exception e) {
             Log.v(TAG, e.toString());
