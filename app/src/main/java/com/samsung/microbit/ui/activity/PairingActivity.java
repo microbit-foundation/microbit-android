@@ -123,7 +123,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     LinearLayout bottomPairButton;
 
     // Connected Device Status
-    TextView deviceConnectionStatusView;
+    TextView deviceConnectionStatusTextView;
 
     private int currentOrientation;
 
@@ -659,7 +659,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         Typeface defaultTypeface = application.getTypeface();
         Typeface robotoTypeface = application.getRobotoTypeface();
 
-        deviceConnectionStatusView.setTypeface(defaultTypeface);
+        deviceConnectionStatusTextView.setTypeface(defaultTypeface);
 
         // Connect Screen
         TextView appBarTitle = (TextView) findViewById(R.id.flash_projects_title_txt);
@@ -733,7 +733,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void initViews() {
         logi("initViews");
-        deviceConnectionStatusView = findViewById(R.id.connected_device_status);
+        deviceConnectionStatusTextView = findViewById(R.id.connected_device_status);
         bottomPairButton = (LinearLayout) findViewById(R.id.ll_pairing_activity_screen);
         pairButtonView = (LinearLayout) findViewById(R.id.pairButtonView);
         pairTipView = (LinearLayout) findViewById(R.id.pairTipView);
@@ -758,7 +758,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     private void releaseViews() {
-        deviceConnectionStatusView = null;
+        deviceConnectionStatusTextView = null;
         bottomPairButton = null;
         pairButtonView = null;
         pairTipView = null;
@@ -1035,15 +1035,15 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         if(!connectedDevice.mStatus) {
             // Device is not connected
-            deviceConnectionStatusView.setBackgroundResource(R.drawable.grey_text_view);
-            deviceConnectionStatusView.setTextColor(Color.WHITE);
-            deviceConnectionStatusView.setContentDescription("Micro:bit not connected " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
+            deviceConnectionStatusTextView.setBackgroundResource(R.drawable.grey_text_view);
+            deviceConnectionStatusTextView.setTextColor(Color.WHITE);
+            deviceConnectionStatusTextView.setContentDescription("Micro:bit not connected " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
 
         } else {
             // Device is connected
-            deviceConnectionStatusView.setBackgroundResource(R.drawable.white_btn_devices_status_connected);
-            deviceConnectionStatusView.setTextColor(Color.BLACK);
-            deviceConnectionStatusView.setContentDescription("Currently connected Micro:bit " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
+            deviceConnectionStatusTextView.setBackgroundResource(R.drawable.white_btn_devices_status_connected);
+            deviceConnectionStatusTextView.setTextColor(Color.BLACK);
+            deviceConnectionStatusTextView.setContentDescription("Currently connected Micro:bit " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
         }
     }
 
@@ -1066,10 +1066,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
         if(connectedDevice.mName == null) {
             // No device is Paired
-            deviceConnectionStatusView.setBackgroundResource(R.drawable.grey_text_view);
-            deviceConnectionStatusView.setText("-");
+            deviceConnectionStatusTextView.setBackgroundResource(R.drawable.grey_text_view);
+            deviceConnectionStatusTextView.setText("-");
         } else {
-            deviceConnectionStatusView.setText(connectedDevice.mName);
+            deviceConnectionStatusTextView.setText(connectedDevice.mName);
             updateConnectionStatus();
         }
         logi("updatePairedDeviceCard End");

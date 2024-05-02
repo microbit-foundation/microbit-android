@@ -135,7 +135,7 @@
         <item name="android:paddingBottom">@dimen/pairing_connection_header_padding</item>
     </style>
 
-    <style name="connected_device_status_text_view_style" parent="match_width_parent_wrap_height_content">
+    <style name="pairing_device_state_text_view_style" parent="match_width_parent_wrap_height_content">
         <item name="android:background">@drawable/grey_text_view</item>
         <item name="android:gravity">start|center_vertical</item>
         <item name="android:importantForAccessibility">yes</item>

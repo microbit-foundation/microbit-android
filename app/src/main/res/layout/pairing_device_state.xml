@@ -12,7 +12,7 @@
 
     <TextView
         android:id="@+id/connected_device_status"
-        style="@style/connected_device_status_text_view_style"
+        style="@style/pairing_device_state_text_view_style"
         android:background="@drawable/grey_text_view"
         android:contentDescription="@null" />
 </LinearLayout>
