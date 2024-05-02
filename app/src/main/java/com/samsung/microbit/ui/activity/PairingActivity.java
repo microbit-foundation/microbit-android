@@ -759,7 +759,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         pairSearchView = (LinearLayout) findViewById(R.id.pairSearchView);
 
         //Setup on click listeners.
-        deviceConnectionStatusBtn.setOnClickListener(this);
         findViewById(R.id.pairButton).setOnClickListener(this);
 
         findViewById(R.id.viewPairStep1AnotherWay).setOnClickListener(this);
@@ -1050,24 +1049,17 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void updateConnectionStatus() {
         ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
-        Drawable mDeviceDisconnectedImg;
-        Drawable mDeviceConnectedImg;
-
-        mDeviceDisconnectedImg = getDrawableResource(R.drawable.device_status_disconnected);
-        mDeviceConnectedImg = getDrawableResource(R.drawable.device_status_connected);
 
         if(!connectedDevice.mStatus) {
             // Device is not connected
             deviceConnectionStatusBtn.setBackgroundResource(R.drawable.grey_btn);
             deviceConnectionStatusBtn.setTextColor(Color.WHITE);
-            deviceConnectionStatusBtn.setCompoundDrawablesWithIntrinsicBounds(null, null, mDeviceDisconnectedImg, null);
             deviceConnectionStatusBtn.setContentDescription("Micro:bit not connected " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
 
         } else {
             // Device is connected
             deviceConnectionStatusBtn.setBackgroundResource(R.drawable.white_btn_devices_status_connected);
             deviceConnectionStatusBtn.setTextColor(Color.BLACK);
-            deviceConnectionStatusBtn.setCompoundDrawablesWithIntrinsicBounds(null, null, mDeviceConnectedImg, null);
             deviceConnectionStatusBtn.setContentDescription("Currently connected Micro:bit " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
         }
     }
@@ -1093,12 +1085,9 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             // No device is Paired
             deviceConnectionStatusBtn.setBackgroundResource(R.drawable.grey_btn);
             deviceConnectionStatusBtn.setText("-");
-            deviceConnectionStatusBtn.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
-            deviceConnectionStatusBtn.setOnClickListener(null);
         } else {
             deviceConnectionStatusBtn.setText(connectedDevice.mName);
             updateConnectionStatus();
-            deviceConnectionStatusBtn.setOnClickListener(this);
         }
         logi("updatePairedDeviceCard End");
     }
@@ -1467,18 +1456,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 logi("onClick() :: cancel_search_button");
                 stopScanning();
                 onFinish( RESULT_CANCELED);
-                break;
-
-            case R.id.connected_device_status_button:
-                logi("onClick() :: connectBtn");
-                Toast.makeText(MBApp.getApp(), getString(R.string.no_longer_required_to_connect), Toast.LENGTH_LONG).show();
-
-//                if(!BluetoothChecker.getInstance().isBluetoothON()) {
-//                    setActivityState(PairingActivityState.STATE_ENABLE_BT_FOR_CONNECT);
-//                    enableBluetooth();
-//                    return;
-//                }
-//                toggleConnection();
                 break;
 
             //TODO: there is no ability to delete paired device on Connect screen, so add or remove the case.
