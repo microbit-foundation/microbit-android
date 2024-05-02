@@ -140,7 +140,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     LinearLayout bottomPairButton;
 
     // Connected Device Status
-    Button deviceConnectionStatusBtn;
+    TextView deviceConnectionStatusBtn;
 
     private int currentOrientation;
 
@@ -750,7 +750,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void initViews() {
         logi("initViews");
-        deviceConnectionStatusBtn = (Button) findViewById(R.id.connected_device_status_button);
+        deviceConnectionStatusBtn = findViewById(R.id.connected_device_status_button);
         bottomPairButton = (LinearLayout) findViewById(R.id.ll_pairing_activity_screen);
         pairButtonView = (LinearLayout) findViewById(R.id.pairButtonView);
         pairTipView = (LinearLayout) findViewById(R.id.pairTipView);
