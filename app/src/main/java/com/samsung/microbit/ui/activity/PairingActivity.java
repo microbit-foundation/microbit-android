@@ -6,15 +6,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothManager;
-import android.bluetooth.le.BluetoothLeScanner;
-import android.bluetooth.le.ScanCallback;
-import android.bluetooth.le.ScanFilter;
-import android.bluetooth.le.ScanRecord;
-import android.bluetooth.le.ScanResult;
-import android.bluetooth.le.ScanSettings;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -27,9 +19,6 @@ import android.graphics.drawable.Drawable;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Parcelable;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -64,7 +53,6 @@ import com.samsung.microbit.ui.BluetoothChecker;
 import com.samsung.microbit.ui.PopUp;
 import com.samsung.microbit.ui.adapter.LEDAdapter;
 import com.samsung.microbit.utils.BLEConnectionHandler;
-import com.samsung.microbit.utils.ServiceUtils;
 import com.samsung.microbit.utils.Utils;
 import com.samsung.microbit.utils.BLEPair;
 
@@ -74,14 +62,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 import pl.droidsonroids.gif.GifImageView;
 
-import static android.bluetooth.BluetoothAdapter.STATE_CONNECTED;
-import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTED;
-import static android.bluetooth.BluetoothAdapter.STATE_CONNECTING;
-import static android.bluetooth.BluetoothAdapter.STATE_DISCONNECTING;
 import static com.samsung.microbit.BuildConfig.DEBUG;
 
 /**
@@ -140,7 +123,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     LinearLayout bottomPairButton;
 
     // Connected Device Status
-    TextView deviceConnectionStatusBtn;
+    TextView deviceConnectionStatusView;
 
     private int currentOrientation;
 
@@ -676,7 +659,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         Typeface defaultTypeface = application.getTypeface();
         Typeface robotoTypeface = application.getRobotoTypeface();
 
-        deviceConnectionStatusBtn.setTypeface(defaultTypeface);
+        deviceConnectionStatusView.setTypeface(defaultTypeface);
 
         // Connect Screen
         TextView appBarTitle = (TextView) findViewById(R.id.flash_projects_title_txt);
@@ -750,7 +733,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void initViews() {
         logi("initViews");
-        deviceConnectionStatusBtn = findViewById(R.id.connected_device_status_button);
+        deviceConnectionStatusView = findViewById(R.id.connected_device_status);
         bottomPairButton = (LinearLayout) findViewById(R.id.ll_pairing_activity_screen);
         pairButtonView = (LinearLayout) findViewById(R.id.pairButtonView);
         pairTipView = (LinearLayout) findViewById(R.id.pairTipView);
@@ -775,7 +758,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     private void releaseViews() {
-        deviceConnectionStatusBtn = null;
+        deviceConnectionStatusView = null;
         bottomPairButton = null;
         pairButtonView = null;
         pairTipView = null;
@@ -1052,15 +1035,15 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         if(!connectedDevice.mStatus) {
             // Device is not connected
-            deviceConnectionStatusBtn.setBackgroundResource(R.drawable.grey_btn);
-            deviceConnectionStatusBtn.setTextColor(Color.WHITE);
-            deviceConnectionStatusBtn.setContentDescription("Micro:bit not connected " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
+            deviceConnectionStatusView.setBackgroundResource(R.drawable.grey_text_view);
+            deviceConnectionStatusView.setTextColor(Color.WHITE);
+            deviceConnectionStatusView.setContentDescription("Micro:bit not connected " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
 
         } else {
             // Device is connected
-            deviceConnectionStatusBtn.setBackgroundResource(R.drawable.white_btn_devices_status_connected);
-            deviceConnectionStatusBtn.setTextColor(Color.BLACK);
-            deviceConnectionStatusBtn.setContentDescription("Currently connected Micro:bit " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
+            deviceConnectionStatusView.setBackgroundResource(R.drawable.white_btn_devices_status_connected);
+            deviceConnectionStatusView.setTextColor(Color.BLACK);
+            deviceConnectionStatusView.setContentDescription("Currently connected Micro:bit " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
         }
     }
 
@@ -1083,10 +1066,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
         if(connectedDevice.mName == null) {
             // No device is Paired
-            deviceConnectionStatusBtn.setBackgroundResource(R.drawable.grey_btn);
-            deviceConnectionStatusBtn.setText("-");
+            deviceConnectionStatusView.setBackgroundResource(R.drawable.grey_text_view);
+            deviceConnectionStatusView.setText("-");
         } else {
-            deviceConnectionStatusBtn.setText(connectedDevice.mName);
+            deviceConnectionStatusView.setText(connectedDevice.mName);
             updateConnectionStatus();
         }
         logi("updatePairedDeviceCard End");
@@ -1646,7 +1629,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         releaseViews();
 
-        Utils.unbindDrawables(findViewById(R.id.connected_device_status_button));
+        Utils.unbindDrawables(findViewById(R.id.connected_device_status));
         Utils.unbindDrawables(findViewById(R.id.pairButtonView));
 
         Utils.unbindDrawables(findViewById(R.id.pairTipView));

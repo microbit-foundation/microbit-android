@@ -11,8 +11,8 @@
     <include layout="@layout/pairing_activity_connection_status" />
 
     <TextView
-        android:id="@+id/connected_device_status_button"
-        style="@style/pairing_device_state_button_style"
-        android:background="@drawable/grey_btn"
+        android:id="@+id/connected_device_status"
+        style="@style/connected_device_status_text_view_style"
+        android:background="@drawable/grey_text_view"
         android:contentDescription="@null" />
 </LinearLayout>
