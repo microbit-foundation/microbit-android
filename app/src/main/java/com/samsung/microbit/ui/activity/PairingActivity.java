@@ -1028,26 +1028,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     /**
-     * Updates connection status UI according to current connection status.
-     */
-    private void updateConnectionStatus() {
-        ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
-
-        if(!connectedDevice.mStatus) {
-            // Device is not connected
-            deviceConnectionStatusTextView.setBackgroundResource(R.drawable.grey_text_view);
-            deviceConnectionStatusTextView.setTextColor(Color.WHITE);
-            deviceConnectionStatusTextView.setContentDescription("Micro:bit not connected " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
-
-        } else {
-            // Device is connected
-            deviceConnectionStatusTextView.setBackgroundResource(R.drawable.white_btn_devices_status_connected);
-            deviceConnectionStatusTextView.setTextColor(Color.BLACK);
-            deviceConnectionStatusTextView.setContentDescription("Currently connected Micro:bit " + connectedDevice.mName + "is " + getStatusString(connectedDevice.mStatus));
-        }
-    }
-
-    /**
      * Converts status state from boolean to its String representation.
      *
      * @param status Status to convert.
@@ -1066,11 +1046,9 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
         if(connectedDevice.mName == null) {
             // No device is Paired
-            deviceConnectionStatusTextView.setBackgroundResource(R.drawable.grey_text_view);
             deviceConnectionStatusTextView.setText("-");
         } else {
             deviceConnectionStatusTextView.setText(connectedDevice.mName);
-            updateConnectionStatus();
         }
         logi("updatePairedDeviceCard End");
     }
