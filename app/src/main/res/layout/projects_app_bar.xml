@@ -35,7 +35,6 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:gravity="center"
-        android:nextFocusDown="@+id/connectedIndicatorIcon"
         android:text="@string/flash"
         android:textSize="@dimen/app_bar_title_text_size"
         android:textColor="@android:color/white" />

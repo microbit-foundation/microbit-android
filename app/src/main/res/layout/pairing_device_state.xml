@@ -10,10 +10,10 @@
     <!-- Connection status-->
     <include layout="@layout/pairing_activity_connection_status" />
 
-    <Button
-        android:id="@+id/connected_device_status_button"
-        style="@style/pairing_device_state_button_style"
-        android:background="@drawable/grey_btn"
-        android:contentDescription="@null"
-        android:drawableRight="@drawable/device_status_disconnected" />
+    <TextView
+        android:id="@+id/connected_device_status"
+        style="@style/pairing_device_state_text_view_style"
+        android:background="@drawable/grey_text_view"
+        android:textColor="@color/white_color"
+        android:contentDescription="@null" />
 </LinearLayout>
