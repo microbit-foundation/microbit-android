@@ -178,7 +178,7 @@
     <string name="enter_pattern_tip_text_one_line">Copy the pattern from your micro:bit onto this grid</string>
     <string name="desc_enter_pattern_tip_step_two">Step two</string>
     <string name="desc_enter_pattern_tip_text">Copy the pattern from your micro:bit onto this grid</string>
-    <string name="desc_searching_tip_step_three">If asked for a PIN, press button A and copy PIN from micro:bit</string>
+    <string name="desc_searching_tip_step_three">If asked for a PIN, press button A on the micro:bit</string>
     <string name="enter_pin_to_pair_text">Press button A, and\nenter the 6 digit PIN</string>
     <string name="step_enter_pin_to_pair_text">Step 4</string>
     <string name="desc_enterPinToPairText">Press button A, and enter the 6 digit PIN</string>
@@ -328,8 +328,8 @@
     <string name="desc_connection_status_flash_text">Micro:Bit connection status</string>
     <string name="desc_send_project_btn">Flash code to your Micro:bit</string>
     <string name="desc_delete_project_btn">Delete code</string>
-    <string name="searching_tip_step_text">If asked for a PIN, press button A \nand copy PIN from micro:bit</string>
-    <string name="searching_tip_step_text_one_line">If asked for a PIN, press button A and copy PIN from micro:bit</string>
+    <string name="searching_tip_step_text">If asked for a PIN, press button A \non the micro:bit</string>
+    <string name="searching_tip_step_text_one_line">If asked for a PIN, press button A on the micro:bit</string>
     <string name="desc_connect_pair_micro_bit">Pair a new micro:bit</string>
     <string name="most_recent_device_status">Most recently used micro:bit</string>
     <string name="device_connected_device_status">Currently connected micro:bit</string>
