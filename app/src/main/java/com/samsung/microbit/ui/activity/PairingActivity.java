@@ -13,7 +13,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.location.LocationManager;
@@ -103,6 +102,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         PAIRING_STATE_TRIPLE,
         PAIRING_STATE_STEP_1,
         PAIRING_STATE_STEP_2,
+        PAIRING_STATE_ENTER_PIN_IF_NEEDED,
         PAIRING_STATE_SEARCHING,
         PAIRING_STATE_ERROR
     }
@@ -119,6 +119,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     LinearLayout pairTipView;
     View connectDeviceView;
     LinearLayout newDeviceView;
+    LinearLayout enterPinIfNeededView;
     LinearLayout pairSearchView;
     LinearLayout bottomPairButton;
 
@@ -690,7 +691,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         nextPairButton.setTypeface(robotoTypeface);
 
 
-        // Step 2 - Enter Pattern
+        // Enter Pattern
         TextView enterPatternTitle = (TextView) findViewById(R.id.enter_pattern_step_2_title);
         enterPatternTitle.setTypeface(boldTypeface);
 
@@ -706,8 +707,14 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         Button okEnterPatternButton = (Button) findViewById(R.id.ok_enter_pattern_step_2_btn);
         okEnterPatternButton.setTypeface(robotoTypeface);
 
+        // Enter pin if needed
+        Button cancelEnterPinIfNeededButton = (Button) findViewById(R.id.cancel_enter_pin_if_needed_btn);
+        cancelEnterPinIfNeededButton.setTypeface(robotoTypeface);
 
-        // Step 3 - Searching for micro:bit
+        Button nextEnterPinIfNeededButton = (Button) findViewById(R.id.next_enter_pin_if_needed_btn);
+        nextEnterPinIfNeededButton.setTypeface(robotoTypeface);
+
+        // Searching for micro:bit
         TextView searchMicrobitTitle = (TextView) findViewById(R.id.search_microbit_step_3_title);
         searchMicrobitTitle.setTypeface(boldTypeface);
 
@@ -736,6 +743,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         pairTipView = (LinearLayout) findViewById(R.id.pairTipView);
         connectDeviceView = findViewById(R.id.connectDeviceView);
         newDeviceView = (LinearLayout) findViewById(R.id.newDeviceView);
+        enterPinIfNeededView = (LinearLayout) findViewById(R.id.enterPinIfNeededView);
         pairSearchView = (LinearLayout) findViewById(R.id.pairSearchView);
 
         //Setup on click listeners.
@@ -747,6 +755,9 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         findViewById(R.id.ok_enter_pattern_step_2_btn).setOnClickListener(this);
         findViewById(R.id.cancel_enter_pattern_step_2_btn).setOnClickListener(this);
+
+        findViewById(R.id.next_enter_pin_if_needed_btn).setOnClickListener(this);
+        findViewById(R.id.cancel_enter_pin_if_needed_btn).setOnClickListener(this);
 
         findViewById(R.id.cancel_search_microbit_step_3_btn).setOnClickListener(this);
 
@@ -761,6 +772,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         pairTipView = null;
         connectDeviceView = null;
         newDeviceView = null;
+        enterPinIfNeededView = null;
         pairSearchView = null;
     }
 
@@ -1095,6 +1107,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         //Reset all screens first
         pairTipView.setVisibility(View.GONE);
         newDeviceView.setVisibility(View.GONE);
+        enterPinIfNeededView.setVisibility(View.GONE);
         pairSearchView.setVisibility(View.GONE);
         connectDeviceView.setVisibility(View.GONE);
 
@@ -1139,6 +1152,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 findViewById(R.id.oh_pretty_emoji).setVisibility(View.VISIBLE);
 
                 displayLedGrid();
+                break;
+
+            case PAIRING_STATE_ENTER_PIN_IF_NEEDED:
+                enterPinIfNeededView.setVisibility(View.VISIBLE);
                 break;
 
             case PAIRING_STATE_SEARCHING:
@@ -1385,6 +1402,11 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 if(!BluetoothChecker.getInstance().checkBluetoothAndStart()) {
                     return;
                 }
+                displayScreen(PAIRING_STATE.PAIRING_STATE_ENTER_PIN_IF_NEEDED);
+                break;
+
+            case R.id.next_enter_pin_if_needed_btn:
+                logi("onClick() :: next_enter_pin_if_needed_btn");
                 startScanning();
                 displayScreen(PAIRING_STATE.PAIRING_STATE_SEARCHING);
                 break;
@@ -1400,6 +1422,12 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
             case R.id.cancel_enter_pattern_step_2_btn:
                 logi("onClick() :: cancel_name_button");
+                stopScanning();
+                onFinish( RESULT_CANCELED);
+                break;
+
+            case R.id.cancel_enter_pin_if_needed_btn:
+                logi("onClick() :: cancel_enter_pin_if_needed_btn");
                 stopScanning();
                 onFinish( RESULT_CANCELED);
                 break;
@@ -1593,6 +1621,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         pairTipView.setVisibility(View.GONE);
         newDeviceView.setVisibility(View.GONE);
+        enterPinIfNeededView.setVisibility(View.GONE);
         pairSearchView.setVisibility(View.GONE);
         connectDeviceView.setVisibility(View.GONE);
 
@@ -1621,6 +1650,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         Utils.unbindDrawables(findViewById(R.id.oh_pretty_emoji));
         Utils.unbindDrawables(findViewById(R.id.cancel_enter_pattern_step_2_btn));
         Utils.unbindDrawables(findViewById(R.id.ok_enter_pattern_step_2_btn));
+
+        Utils.unbindDrawables(findViewById(R.id.cancel_enter_pin_if_needed_btn));
+        Utils.unbindDrawables(findViewById(R.id.enterPinIfNeededView));
+
         Utils.unbindDrawables(findViewById(R.id.search_microbit_step_3_title));
         Utils.unbindDrawables(findViewById(R.id.searching_microbit_step));
         Utils.unbindDrawables(findViewById(R.id.cancel_search_microbit_step_3_btn));
