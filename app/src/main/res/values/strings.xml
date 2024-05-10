@@ -161,8 +161,7 @@
     <string name="desc_step_connect_tip_text_step_four_text">When you see the success message, press RESET and you\'re done!</string>
     <string name="desc_step_connect_tip_text_step_three">Step 3</string>
     <string name="desc_step_connect_tip_text_step_four">Step 4</string>
-    <string name="searching_microbit_found_message">Choose Pair (or Pair &amp; connect)\n in the notification you will receive.</string>
-    <string name="searching_microbit_found_message_one_line">Choose Pair (or Pair &amp; connect) in the notification you will receive.</string>
+    <string name="searching_microbit_found_message">Choose Pair (or Pair &amp; connect) in the notification you will receive.</string>
     <string name="step_connect_tip_text_step_two">Step 2</string>
     <string name="connect_tip_text">Hold the A and B buttons then press and release RESET. Keep holding A and B until the screen fills up</string>
     <string name="desc_connect_tip_text">Hold the A and B buttons then press and release RESET. Keep holding A and B until the screen fills up</string>

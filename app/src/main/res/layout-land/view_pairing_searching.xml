@@ -33,7 +33,7 @@
                 android:layout_width="@dimen/pairing_step_1_gif_image_width"
                 android:layout_height="@dimen/pairing_step_1_gif_image_height"
                 android:layout_below="@id/search_microbit_step_3_title"
-                android:src="@drawable/pairing_pin_screen_two" />
+                android:src="@drawable/emoji_searching_microbit" />
         </RelativeLayout>
 
         <RelativeLayout

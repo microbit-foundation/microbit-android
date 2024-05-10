@@ -222,7 +222,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 logi("BLEPairResult " + result);
                 switch ( result) {
                     case Found:
-                        updateOnScanFound();
 //                        We need to connect even if bonded, to get resultHardwareVersion
 //                        if ( getBLEPair().resultDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
 //                            logi("scan found device already paired");
@@ -235,9 +234,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         if ( !getBLEPair().startPair()) {
                             popupPairingFailed();
                         }
-                        break;
-                    case Connected:
-                        updateOnConnected();
                         break;
                     case Paired:
                         handlePairingSuccessful();
@@ -252,6 +248,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         popupPairingFailed();
                         break;
                     default:
+                        // Connected and None case are not specifically handled
                         break;
                 }
             }
@@ -1060,40 +1057,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             deviceConnectionStatusTextView.setText(connectedDevice.mName);
         }
         logi("updatePairedDeviceCard End");
-    }
-
-    private void updateOnScanFound() {
-        logi("updateOnScanFound");
-        TextView textView = (TextView) findViewById(R.id.search_microbit_step_3_title);
-        TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
-        if (textView != null) {
-            textView.setText(getString(R.string.searchingTitle));
-            //findViewById(R.id.searching_progress_spinner).setVisibility(View.GONE);
-            ((GifImageView) findViewById(R.id.searching_microbit_found_giffview))
-                    .setImageResource(R.drawable.emoji_microbit_found);
-//            if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-//                tvSearchingStep.setText(R.string.searching_microbit_found_message_one_line);
-//            } else {
-//                tvSearchingStep.setText(R.string.searching_microbit_found_message);
-//            }
-        }
-    }
-
-    private void updateOnConnected() {
-        logi("updateOnConnected");
-        TextView textView = (TextView) findViewById(R.id.search_microbit_step_3_title);
-        TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
-        if (textView != null) {
-            textView.setText(getString(R.string.searchingTitle));
-            findViewById(R.id.searching_progress_spinner).setVisibility(View.GONE);
-            ((GifImageView) findViewById(R.id.searching_microbit_found_giffview))
-                    .setImageResource(R.drawable.emoji_microbit_found);
-            if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-                tvSearchingStep.setText(R.string.searching_microbit_found_message_one_line);
-            } else {
-                tvSearchingStep.setText(R.string.searching_microbit_found_message);
-            }
-        }
     }
 
     /**

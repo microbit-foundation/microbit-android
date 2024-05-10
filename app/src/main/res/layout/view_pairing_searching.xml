@@ -37,7 +37,7 @@
             android:layout_height="wrap_content"
             android:layout_below="@id/searching_progress_spinner"
             android:layout_centerHorizontal="true"
-            android:src="@drawable/pairing_pin_screen_two" />
+            android:src="@drawable/emoji_searching_microbit" />
     </RelativeLayout>
 
     <include layout="@layout/view_pairing_searching_step" />
