@@ -29,7 +29,6 @@
 
             <!--pairing animation-->
             <pl.droidsonroids.gif.GifImageView
-                android:id="@+id/searching_microbit_found_giffview"
                 android:layout_width="@dimen/pairing_step_1_gif_image_width"
                 android:layout_height="@dimen/pairing_step_1_gif_image_height"
                 android:layout_below="@id/search_microbit_step_3_title"
