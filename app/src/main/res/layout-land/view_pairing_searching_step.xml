@@ -13,6 +13,6 @@
         style="@style/pairing_step_tip_text_style"
         android:layout_marginBottom="@dimen/pairing_step_tip_title_margin_bottom"
         android:textSize="@dimen/pairing_step_title_text_size"
-        android:text="@string/searching_microbit_found_message" />
+        android:text="@string/searching_microbit_one_line" />
 
 </LinearLayout>

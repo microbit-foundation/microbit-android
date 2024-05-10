@@ -262,10 +262,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
     private void startScanning() {
         logi("###>>>>>>>>>>>>>>>>>>>>> startScanning");
-
-        ((TextView) findViewById(R.id.search_microbit_step_3_title))
-                .setText(getString(R.string.searchingTitle));
-
         getBLEPair().startScan();
     }
 
@@ -705,6 +701,12 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         okEnterPatternButton.setTypeface(robotoTypeface);
 
         // Enter pin if needed
+        TextView enterPinIfNeededTitle = (TextView) findViewById(R.id.enter_pin_if_needed_title);
+        enterPinIfNeededTitle.setTypeface(boldTypeface);
+
+        TextView enterPinIfNeededText = (TextView) findViewById(R.id.enter_pin_if_needed_text);
+        enterPinIfNeededText.setTypeface(boldTypeface);
+
         Button cancelEnterPinIfNeededButton = (Button) findViewById(R.id.cancel_enter_pin_if_needed_btn);
         cancelEnterPinIfNeededButton.setTypeface(robotoTypeface);
 
@@ -1124,20 +1126,6 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
             case PAIRING_STATE_SEARCHING:
                 if(pairSearchView != null) {
                     pairSearchView.setVisibility(View.VISIBLE);
-                    TextView tvTitle = (TextView) findViewById(R.id.search_microbit_step_3_title);
-                    TextView tvSearchingStep = (TextView) findViewById(R.id.searching_microbit_step);
-                    tvSearchingStep.setContentDescription(tvSearchingStep.getText());
-                    if(tvTitle != null) {
-                        tvTitle.setText(R.string.searchingTitle);
-                        findViewById(R.id.searching_progress_spinner).setVisibility(View.VISIBLE);
-                        ((GifImageView) findViewById(R.id.searching_microbit_found_giffview))
-                                .setImageResource(R.drawable.pairing_pin_screen_two);
-                        if(currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-                            tvSearchingStep.setText(R.string.searching_tip_step_text_one_line);
-                        } else {
-                            tvSearchingStep.setText(R.string.searching_tip_step_text);
-                        }
-                    }
                     justPaired = true;
                 } else {
                     justPaired = false;
@@ -1614,6 +1602,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         Utils.unbindDrawables(findViewById(R.id.cancel_enter_pattern_step_2_btn));
         Utils.unbindDrawables(findViewById(R.id.ok_enter_pattern_step_2_btn));
 
+        Utils.unbindDrawables(findViewById(R.id.enter_pin_if_needed_title));
+        Utils.unbindDrawables(findViewById(R.id.enter_pin_if_needed_text));
         Utils.unbindDrawables(findViewById(R.id.cancel_enter_pin_if_needed_btn));
         Utils.unbindDrawables(findViewById(R.id.enterPinIfNeededView));
 
