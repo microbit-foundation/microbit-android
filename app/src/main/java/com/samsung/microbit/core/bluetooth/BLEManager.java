@@ -776,15 +776,13 @@ public class BLEManager {
                     }
 
                     if(status == BluetoothGatt.GATT_SUCCESS) {
-                        ConnectedDevice cD = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
                         if(gatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb")) != null ) {
                             Log.v(TAG, "Hardware Type: V2");
-                            cD.mhardwareVersion = 2;
+                            BluetoothUtils.setCurrentMicrobitHardwareVersion(MBApp.getApp(), 2);
                         } else {
                             Log.v(TAG, "Hardware Type: V1");
-                            cD.mhardwareVersion = 1;
+                            BluetoothUtils.setCurrentMicrobitHardwareVersion(MBApp.getApp(), 1);
                         }
-                        BluetoothUtils.setPairedMicroBit(MBApp.getApp(), cD);
                         bleState |= state;
                     } else {
                         bleState &= (~state);

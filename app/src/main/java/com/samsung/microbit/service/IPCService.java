@@ -158,10 +158,8 @@ public class IPCService extends Service {
 
                 if (message.arg1 == EventCategories.IPC_BLE_NOTIFICATION_GATT_CONNECTED ||
                         message.arg1 == EventCategories.IPC_BLE_NOTIFICATION_GATT_DISCONNECTED) {
-
-                    ConnectedDevice cd = BluetoothUtils.getPairedMicrobit(appContext);
-                    cd.mStatus = (message.arg1 == EventCategories.IPC_BLE_NOTIFICATION_GATT_CONNECTED);
-                    BluetoothUtils.setPairedMicroBit(appContext, cd);
+                    BluetoothUtils.setCurrentMicrobitStatus( appContext,
+                            message.arg1 == EventCategories.IPC_BLE_NOTIFICATION_GATT_CONNECTED);
                 }
 
                 Bundle messageData = message.getData();

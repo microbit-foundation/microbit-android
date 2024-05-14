@@ -148,7 +148,7 @@
                 android:textAllCaps="true"
                 android:background="@drawable/green_btn"
                 android:drawableEnd="@drawable/ic_done_black"
-                android:text="@string/txt_how_to_pair_next_btn" />
+                android:text="@string/btn_continue" />
         </LinearLayout>
 
         <View

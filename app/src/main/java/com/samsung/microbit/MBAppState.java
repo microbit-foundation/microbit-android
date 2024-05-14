@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.samsung.microbit.MBApp;
+import com.samsung.microbit.core.bluetooth.BluetoothUtils;
 import com.samsung.microbit.data.constants.Constants;
 import com.samsung.microbit.data.model.ConnectedDevice;
 
@@ -41,10 +42,10 @@ public class MBAppState {
         pairStateResetTriple = true;
     }
 
-    public PairState pairState( ConnectedDevice device) {
+    public PairState pairState() {
         PairState ps = PairState.PairStateChecked;
 
-        if ( device == null || device.mPattern == null)
+        if ( !BluetoothUtils.getCurrentMicrobitIsValid( MBApp.getApp()))
             ps = PairState.PairStateNone;
         else if ( pairStateError)
             ps = PairState.PairStateError;

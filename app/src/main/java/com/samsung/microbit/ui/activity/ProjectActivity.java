@@ -155,8 +155,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private int MICROBIT_V1 = 1;
     private int MICROBIT_V2 = 2;
 
-    BLEService bleService;
-
     private static final int REQUEST_CODE_EXPORT = 1;
     private static final int REQUEST_CODE_IMPORT = 2;
     private static final int REQUEST_CODE_RESET_TO_BLE = 3;
@@ -218,8 +216,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         switch ( requestCode) {
             case REQUEST_CODE_RESET_TO_BLE:
                 if (resultCode == RESULT_OK) {
-                    ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
-                    switch ( MBApp.getAppState().pairState( currentMicrobit))
+                    switch ( MBApp.getAppState().pairState())
                     {
                         case PairStateNone:
                         case PairStateError:
@@ -597,9 +594,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 patternGrid.setImageDrawable( patternDrawable);
                 String deviceName = "     ";
                 if (havePermissionsFlashing()) {
-                    ConnectedDevice device = BluetoothUtils.getPairedMicrobit(this);
-                    if (device.mPattern != null) {
-                        deviceName = device.mPattern;
+                    String pattern = BluetoothUtils.getCurrentMicrobit(this).mPattern;
+                    if ( pattern != null) {
+                        deviceName = pattern;
                     }
                 }
                 String header = getResources().getString(R.string.compare_your_pattern_with_NAME, deviceName);
@@ -617,9 +614,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 searchGrid.setImageDrawable( searchDrawable);
                 String deviceName = "     ";
                 if (havePermissionsFlashing()) {
-                    ConnectedDevice device = BluetoothUtils.getPairedMicrobit(this);
-                    if (device.mPattern != null) {
-                        deviceName = device.mPattern;
+                    String pattern = BluetoothUtils.getCurrentMicrobit(this).mPattern;
+                    if ( pattern != null) {
+                        deviceName = pattern;
                     }
                 }
                 String header = getResources().getString(R.string.searching_for_microbit_NAME, deviceName);
@@ -919,23 +916,20 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             connectedIndicatorText.setText(getString(R.string.connected_to));
             return;
         }
-        ConnectedDevice device = BluetoothUtils.getPairedMicrobit(this);
-        if(!device.mStatus) {
+
+        boolean status = BluetoothUtils.getCurrentMicrobit(this).mStatus;
+        String name = BluetoothUtils.getCurrentMicrobit(this).mName;
+        if ( name == null) {
+            name = "";
+        }
+        if(!status) {
             // connectedIndicatorIcon.setImageResource(R.drawable.device_status_disconnected);
             connectedIndicatorText.setText(getString(R.string.not_connected));
-            if(device.mName != null) {
-                deviceName.setText(device.mName);
-            } else {
-                deviceName.setText("");
-            }
+            deviceName.setText(name);
         } else {
             //  connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
             connectedIndicatorText.setText(getString(R.string.connected_to));
-            if(device.mName != null) {
-                deviceName.setText(device.mName);
-            } else {
-                deviceName.setText("");
-            }
+            deviceName.setText(name);
         }
     }
 
@@ -1123,8 +1117,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
          * Checks for requisite state of a micro:bit board. If all is good then
          * initiates flashing.
          */
-        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
-        switch ( MBApp.getAppState().pairState( currentMicrobit))
+        switch ( MBApp.getAppState().pairState())
         {
             case PairStateNone:
             case PairStateError:
@@ -1291,9 +1284,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     private void flashingChecks( boolean assumeAlreadyInBluetoothMode) {
-          ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
-
-          if(currentMicrobit.mhardwareVersion != MICROBIT_V1 && currentMicrobit.mhardwareVersion != MICROBIT_V2 ) {
+          int hardwareVersion = BluetoothUtils.getCurrentMicrobit(MBApp.getApp()).mhardwareVersion;
+          if( hardwareVersion != MICROBIT_V1 && hardwareVersion != MICROBIT_V2 ) {
               PopUp.show(getString(R.string.dfu_what_hardware_title),
                     getString(R.string.dfu_what_hardware),
                     R.drawable.error_face, R.drawable.red_btn,
@@ -1302,17 +1294,13 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                       new View.OnClickListener() {
                           @Override
                           public void onClick(View v) {
-                              ConnectedDevice temp = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
-                              temp.mhardwareVersion = MICROBIT_V2;
-                              BluetoothUtils.setPairedMicroBit(MBApp.getApp(), temp);
+                              BluetoothUtils.setCurrentMicrobitHardwareVersion(MBApp.getApp(), MICROBIT_V2);
                               PopUp.hide();
                           }
                       },new View.OnClickListener() {
                           @Override
                           public void onClick(View v) {
-                              ConnectedDevice temp = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
-                              temp.mhardwareVersion = MICROBIT_V1;
-                              BluetoothUtils.setPairedMicroBit(MBApp.getApp(), temp);
+                              BluetoothUtils.setCurrentMicrobitHardwareVersion(MBApp.getApp(), MICROBIT_V1);
                               PopUp.hide();
                           }
                       }
@@ -1344,10 +1332,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     private void showPopupQuestionFlashToDevice( boolean goToPairing) {
-        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
+        String name = BluetoothUtils.getCurrentMicrobit(MBApp.getApp()).mName;
         String message = getString(R.string.flash_start_message_pair);
-        if ( currentMicrobit.mName != null) {
-            message = getString(R.string.flash_start_message, currentMicrobit.mName);
+        if ( name != null) {
+            message = getString(R.string.flash_start_message, name);
         }
         PopUp.show( message,
                 getString(R.string.flashing_title), //title
@@ -1357,7 +1345,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(MBApp.getApp());
                         PopUp.hide();
                         if ( goToPairing) {
                             goToPairingToPairBeforeFlash();
@@ -1462,10 +1449,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         m_MicroBitFirmware = "0.0";
         m_HexFileSizeStats = getFileSize(mProgramToSend.filePath);
 
-        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
-
-        MBApp application = MBApp.getApp();
-        int hardwareType = currentMicrobit.mhardwareVersion;
+        int hardwareType = BluetoothUtils.getCurrentMicrobit(this).mhardwareVersion;
 
         // Create tmp hex for V1 or V2
 //        String[] oldret = universalHexToDFUOld(mProgramToSend.filePath, hardwareType);
@@ -1504,9 +1488,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         return 0;
     }
 
-    public void startDFUFlash() {
+    private void startDFUFlash() {
         logi("startDFUFlash");
         PopUp.hide();
+
+        if ( !BluetoothUtils.getCurrentMicrobitIsValid(this)) {
+            return; // Invalid address causes crash
+        }
+
         PopUp.show(getString(R.string.dfu_status_starting_msg),
                 "",
                 R.drawable.flash_face, R.drawable.blue_btn,
@@ -1514,14 +1503,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 TYPE_SPINNER_NOT_CANCELABLE,
                 null, null);
 
-        MBApp application = MBApp.getApp();
-        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
-        int hardwareType = currentMicrobit.mhardwareVersion;
+        ConnectedDevice currentMicrobit = BluetoothUtils.getCurrentMicrobit(this);
 
         // Start DFU Service
         Log.v(TAG, "Start Full DFU");
         Log.v(TAG, "DFU bin: " + getCachePathAppBin());
-        if(hardwareType == MICROBIT_V2) {
+        if( currentMicrobit.mhardwareVersion == MICROBIT_V2) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 DfuServiceInitiator.createDfuNotificationChannel(this);
             }
@@ -1554,11 +1541,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     protected void startPartialFlash() {
         logi("startPartialFlash");
 
-        MBApp application = MBApp.getApp();
-        ConnectedDevice currentMicrobit = BluetoothUtils.getPairedMicrobit(this);
-        int hardwareType = currentMicrobit.mhardwareVersion;
-
-        switch ( MBApp.getAppState().pairState( currentMicrobit))
+        switch ( MBApp.getAppState().pairState())
         {
             case PairStateNone:
             case PairStateError:
@@ -1571,15 +1554,20 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 break;
         }
 
+        MBApp application = MBApp.getApp();
+
         // Attempt a partial flash
         Log.v(TAG, "Send Partial Flashing Intent");
         if(service != null) {
             application.stopService(service);
         }
+
+        ConnectedDevice currentMicrobit = BluetoothUtils.getCurrentMicrobit(this);
+
         service = new Intent(application, PartialFlashingService.class);
         service.putExtra("deviceAddress", currentMicrobit.mAddress);
         service.putExtra("filepath", getCachePathAppHex()); // a path or URI must be provided.
-        service.putExtra("hardwareType", hardwareType); // a path or URI must be provided.
+        service.putExtra("hardwareType", currentMicrobit.mhardwareVersion);
         service.putExtra("pf", true); // Enable partial flashing
         application.startService(service);
         logi("startPartialFlash End");

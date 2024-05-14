@@ -92,9 +92,7 @@ public class ServiceConnector {
             mServiceMessengers.put(className.getClassName(), mServiceMessenger);
 
             if(++countBoundServices == COUNT_SERVICES_FOR_BINDING) {
-                ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(mCtx);
-
-                if(connectedDevice.mStatus) {
+                if( BluetoothUtils.getCurrentMicrobit(mCtx).mStatus) {
                     Intent intent = new Intent(mCtx, IPCService.class);
                     intent.putExtra(IPCConstants.INTENT_TYPE, EventCategories.IPC_BLE_CONNECT);
                     mCtx.startService(intent);

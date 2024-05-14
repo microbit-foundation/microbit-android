@@ -1068,7 +1068,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      * Updates connection status UI according to current connection status.
      */
     private void updateConnectionStatus() {
-        ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
+        ConnectedDevice connectedDevice = BluetoothUtils.getCurrentMicrobit(this);
         Drawable mDeviceDisconnectedImg;
         Drawable mDeviceConnectedImg;
 
@@ -1107,15 +1107,25 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     private void updatePairedDeviceCard() {
         logi("updatePairedDeviceCard");
 
-        ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
-        if(connectedDevice.mName == null) {
-            // No device is Paired
+        String  name        = BluetoothUtils.getCurrentMicrobit(this).mName;
+        boolean paired      = BluetoothUtils.getCurrentMicrobitIsDefinitelyInPairedList( this);
+        boolean notPaired   = BluetoothUtils.getCurrentMicrobitIsDefinitelyNotInPairedList( this);
+        if( name == null) { // TODO: consider "no pairing required"
+            // Not valid
             deviceConnectionStatusBtn.setBackgroundResource(R.drawable.grey_btn);
             deviceConnectionStatusBtn.setText("-");
             deviceConnectionStatusBtn.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
             deviceConnectionStatusBtn.setOnClickListener(null);
+        } else if ( paired) {
+            deviceConnectionStatusBtn.setText( name + " - " + getString(R.string.paired));
+            updateConnectionStatus();
+            deviceConnectionStatusBtn.setOnClickListener(this);
+        } else if ( notPaired) {
+            deviceConnectionStatusBtn.setText( name + " - " + getString(R.string.not_paired));
+            updateConnectionStatus();
+            deviceConnectionStatusBtn.setOnClickListener(this);
         } else {
-            deviceConnectionStatusBtn.setText(connectedDevice.mName);
+            deviceConnectionStatusBtn.setText( name);
             updateConnectionStatus();
             deviceConnectionStatusBtn.setOnClickListener(this);
         }
@@ -1500,7 +1510,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                         PopUp.hide();
                         //Unpair the device for secure BLE
                         unPairDevice();
-                        BluetoothUtils.setPairedMicroBit(MBApp.getApp(), null);
+                        BluetoothUtils.setCurrentMicroBit(MBApp.getApp(), null);
                         updatePairedDeviceCard();
                     }
                 },//override click listener for ok button
@@ -1511,8 +1521,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      * Finds all bonded devices and tries to unbond it.
      */
     private void unPairDevice() {
-        ConnectedDevice connectedDevice = BluetoothUtils.getPairedMicrobit(this);
-        String addressToDelete = connectedDevice.mAddress;
+        String addressToDelete = BluetoothUtils.getCurrentMicrobit(this).mAddress;
         // Get the paired devices and put them in a Set
         BluetoothAdapter mBluetoothAdapter = ((BluetoothManager) getSystemService(BLUETOOTH_SERVICE)).getAdapter();
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
@@ -1624,7 +1633,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 null,
                 System.currentTimeMillis(),
                 getBLEPair().resultHardwareVersion);
-        BluetoothUtils.setPairedMicroBit(MBApp.getApp(), newDev);
+        BluetoothUtils.setCurrentMicroBit(MBApp.getApp(), newDev);
         MBApp.getAppState().eventPairSuccess();
         updatePairedDeviceCard();
 

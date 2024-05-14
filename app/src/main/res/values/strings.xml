@@ -409,5 +409,8 @@
     <string name="retry">Retry?</string>
     <string name="menu_import">Import</string>
     <string name="menu_export">Export</string>
+    <string name="btn_continue">Continue</string>
+    <string name="paired">paired</string>
+    <string name="not_paired">not paired</string>
 </resources>
 
