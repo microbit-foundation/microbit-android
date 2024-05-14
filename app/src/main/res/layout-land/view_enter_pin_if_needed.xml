@@ -25,7 +25,7 @@
             <TextView
                 android:id="@+id/enter_pin_if_needed_title"
                 style="@style/pairing_step_header_style"
-                android:text="@string/searchingTitle" />
+                android:text="@string/enter_pin_if_needed_title" />
 
             <!--pairing animation-->
             <pl.droidsonroids.gif.GifImageView
@@ -42,11 +42,28 @@
 
             <TextView
                 android:id="@+id/enter_pin_if_needed_text"
-                android:layout_width="wrap_content"
                 style="@style/pairing_step_tip_text_style"
-                android:layout_marginBottom="@dimen/pairing_step_tip_title_margin_bottom"
                 android:textSize="@dimen/pairing_step_title_text_size"
-                android:text="@string/searching_tip_step_text_one_line" />
+                android:text="@string/enter_pin_if_needed_next_text" />
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignStart="@id/enter_pin_if_needed_text"
+                android:layout_centerInParent="true">
+                <TextView
+                    style="@style/pairing_step_tip_text_style"
+                    android:layout_width="@dimen/pairing_step_text_width"
+                    android:textSize="@dimen/pairing_step_tip_instruction_text_size"
+                    android:layout_alignBottom="@id/pairing_step_one_image"
+                    android:text="@string/enter_pin_if_needed_text_one_line" />
+
+                <ImageView
+                    android:id="@+id/pairing_step_one_image"
+                    style="@style/pairing_step_image_layout_style"
+                    android:layout_alignParentEnd="true"
+                    android:src="@drawable/ic_person_step_1" />
+            </RelativeLayout>
 
             <!-- Pairing confirmation buttons-->
             <LinearLayout

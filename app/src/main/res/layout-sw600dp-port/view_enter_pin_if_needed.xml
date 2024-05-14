@@ -12,7 +12,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="bottom|center"
-        android:text="@string/searchingTitle" />
+        android:text="@string/enter_pin_if_needed_title" />
 
     <RelativeLayout
         android:layout_width="match_parent"
@@ -40,14 +40,18 @@
             <TextView
                 android:id="@+id/enter_pin_if_needed_text"
                 style="@style/pairing_step_tip_text_style"
-                android:text="@string/searching_tip_step_text" />
+                android:text="@string/enter_pin_if_needed_next_text" />
+
+            <TextView
+                style="@style/pairing_step_tip_text_style"
+                android:text="@string/enter_pin_if_needed_text" />
 
         </LinearLayout>
 
         <ImageView
             android:id="@+id/searching_emoji"
             style="@style/pairing_step_image_layout_style"
-            android:src="@drawable/ic_where_are_you" />
+            android:src="@drawable/ic_person_step_1" />
     </LinearLayout>
 
     <!-- Pairing confirmation buttons-->
