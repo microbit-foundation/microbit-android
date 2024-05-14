@@ -10,6 +10,8 @@
     <include layout="@layout/view_pairing_step_1" />
     <!-- enter the pattern screen (Step 2) -->
     <include layout="@layout/view_pairing_step_2" />
+    <!-- enter pin if needed -->
+    <include layout="@layout/view_enter_pin_if_needed" />
     <!-- searching for micro:bit screen-->
     <include layout="@layout/view_pairing_searching" />
 </LinearLayout>

@@ -15,13 +15,7 @@
             android:id="@+id/searching_microbit_step"
             style="@style/pairing_step_tip_text_style"
             android:paddingEnd="@dimen/pairing_step_searching_tip_text_padding_end"
-            android:text="@string/searching_tip_step_text" />
-
-        <TextView
-            android:id="@+id/searching_microbit_step_instructions"
-            style="@style/pairing_step_tip_text_style"
-            android:contentDescription="@string/desc_searching_tip_text"
-            android:text="@string/searching_tip_text_instructions" />
+            android:text="@string/searching_microbit" />
 
     </LinearLayout>
 
