@@ -94,7 +94,6 @@
                 android:gravity="center"
                 android:textSize="@dimen/pairing_step_button_text_size"
                 android:textColor="@android:color/black"
-                android:textAllCaps="true"
                 android:background="@drawable/white_btn"
                 android:drawableEnd="@drawable/next_step_pairing_btn"
                 android:drawablePadding="8dp"
@@ -128,7 +127,6 @@
                 android:gravity="center_vertical"
                 android:textSize="@dimen/pairing_step_button_text_size"
                 android:textColor="@android:color/black"
-                android:textAllCaps="true"
                 android:background="@drawable/cancel_btn"
                 android:drawableEnd="@drawable/cancel_step_pairing_btn"
                 android:text="@string/txt_cancel_btn" />
@@ -145,7 +143,6 @@
                 android:gravity="center_vertical"
                 android:textSize="@dimen/pairing_step_button_text_size"
                 android:textColor="@android:color/black"
-                android:textAllCaps="true"
                 android:background="@drawable/green_btn"
                 android:drawableEnd="@drawable/ic_done_black"
                 android:text="@string/btn_continue" />

@@ -14,7 +14,7 @@
 
         <TextView
             android:id="@+id/pair_tip_step_1_step"
-            style="@style/pairing_step_title_style"
+            style="@style/white_header_text_style"
             android:contentDescription="@string/desc_connect_tip_text_step"
             android:text="@string/connect_tip_text_step" />
 
