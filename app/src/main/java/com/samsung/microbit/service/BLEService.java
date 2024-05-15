@@ -681,7 +681,7 @@ public class BLEService extends Service {
             rc = bleManager.writeCharacteristic(characteristic);
             rc = interpretCode(rc);
 
-            logi("Data written to " + characteristic.getUuid() + " value : (0x)" + BluetoothUtils.parse
+            logi("Data written to " + characteristic.getUuid() + " value : (0x)" + BluetoothUtils.parseCharacteristic
                     (characteristic) + " Return Value = 0x" + Integer.toHexString(rc));
         }
         return rc;
@@ -773,8 +773,7 @@ public class BLEService extends Service {
     private String searchDeviceAddress() {
         logi("getDeviceAddress()");
 
-        ConnectedDevice currentDevice = BluetoothUtils.getPairedMicrobit(this);
-        String deviceAddress = currentDevice.mAddress;
+        String deviceAddress = BluetoothUtils.getCurrentMicrobit(this).mAddress;
         if(deviceAddress == null) {
             setNotification(false, ERROR_UNKNOWN_3);
         }

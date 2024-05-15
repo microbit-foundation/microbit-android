@@ -35,7 +35,7 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:gravity="center"
-        android:text="@string/flash"
+        android:text="@string/flash_toolbar_header"
         android:textSize="@dimen/app_bar_title_text_size"
         android:textColor="@android:color/white" />
 

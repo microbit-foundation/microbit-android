@@ -36,7 +36,7 @@ public class BLEConnectionHandler {
                 bleConnectionManager.preUpdateUi();
                 //setConnectedDeviceText();
                 if(firmware != null && !firmware.isEmpty()) {
-                    BluetoothUtils.updateFirmwareMicrobit(context, firmware);
+                    BluetoothUtils.setCurrentMicrobitFirmware(context, firmware);
                     return;
                 }
 
@@ -51,10 +51,9 @@ public class BLEConnectionHandler {
                         bleConnectionManager.addPermissionRequest(getNotification);
                         return;
                     }
-                    ConnectedDevice device = BluetoothUtils.getPairedMicrobit(context);
                     if(mActivityState == BaseActivityState.STATE_CONNECTING) {
                         if(error == 0) {
-                            BluetoothUtils.updateConnectionStartTime(context, System.currentTimeMillis());
+                            BluetoothUtils.setCurrentMicrobitConnectionStartTime(context, System.currentTimeMillis());
                             //Check if more permissions were needed and request in the Application
                             if(!bleConnectionManager.arePermissionsGranted()) {
                                 bleConnectionManager.setActivityState(BaseActivityState.STATE_IDLE);
@@ -67,7 +66,7 @@ public class BLEConnectionHandler {
                     }
                     if(error == 0 && mActivityState == BaseActivityState.STATE_DISCONNECTING) {
                         long now = System.currentTimeMillis();
-                        long connectionTime = (now - device.mlast_connection_time) / 1000; //Time in seconds
+                        long connectionTime = (now - BluetoothUtils.getCurrentMicrobit(context).mlast_connection_time) / 1000; //Time in seconds
                     }
 
                     bleConnectionManager.setActivityState(BaseActivityState.STATE_IDLE);

@@ -17,6 +17,14 @@ public class ConnectedDevice {
     public int mhardwareVersion;
 
     public ConnectedDevice() {
+        mPattern = null;
+        mName = null;
+        mStatus = false;
+        mAddress = null;
+        mPairingCode = 0;
+        mfirmware_version = null;
+        mlast_connection_time = 0;
+        mhardwareVersion = 0;
     }
 
     public ConnectedDevice(String name, String pattern,
