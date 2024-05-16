@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Configuration;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -121,14 +122,14 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
      * Setups font style by setting an appropriate typeface.
      */
     private void setupFontStyle() {
-        affirmationOKButton.setTypeface(MBApp.getApp().getRobotoTypeface());
-        cancelButton.setTypeface(MBApp.getApp().getRobotoTypeface());
-        okButton.setTypeface(MBApp.getApp().getRobotoTypeface());
+        affirmationOKButton.setTypeface(MBApp.getApp().getTypefaceBold());
+        cancelButton.setTypeface(MBApp.getApp().getTypefaceBold());
+        okButton.setTypeface(MBApp.getApp().getTypefaceBold());
         messageTxt.setTypeface(MBApp.getApp().getRobotoTypeface());
         titleTxt.setTypeface(MBApp.getApp().getTypefaceBold());
 
-        v1Button.setTypeface(MBApp.getApp().getRobotoTypeface());
-        v2Button.setTypeface(MBApp.getApp().getRobotoTypeface());
+        v1Button.setTypeface(MBApp.getApp().getTypefaceBold());
+        v2Button.setTypeface(MBApp.getApp().getTypefaceBold());
 
     }
 

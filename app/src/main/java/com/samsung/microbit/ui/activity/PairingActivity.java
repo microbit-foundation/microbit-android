@@ -695,10 +695,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         TextView appBarTitle = (TextView) findViewById(R.id.flash_projects_title_txt);
         appBarTitle.setTypeface(defaultTypeface);
 
-        TextView pairBtnText = (TextView) findViewById(R.id.custom_pair_button_text);
-        pairBtnText.setTypeface(defaultTypeface);
-
         Typeface boldTypeface = application.getTypefaceBold();
+
+        TextView pairBtnText = (TextView) findViewById(R.id.custom_pair_button_text);
+        pairBtnText.setTypeface(boldTypeface);
 
         TextView manageMicrobit = (TextView) findViewById(R.id.title_manage_microbit);
         manageMicrobit.setTypeface(boldTypeface);
@@ -714,10 +714,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         stepOneTitle.setTypeface(boldTypeface);
 
         Button cancelPairButton = (Button) findViewById(R.id.cancel_tip_step_1_btn);
-        cancelPairButton.setTypeface(robotoTypeface);
+        cancelPairButton.setTypeface(boldTypeface);
 
         Button nextPairButton = (Button) findViewById(R.id.ok_tip_step_1_btn);
-        nextPairButton.setTypeface(robotoTypeface);
+        nextPairButton.setTypeface(boldTypeface);
 
 
         // Enter Pattern
@@ -731,10 +731,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         stepTwoInstructions.setTypeface(robotoTypeface);
 
         Button cancelEnterPattern = (Button) findViewById(R.id.cancel_enter_pattern_step_2_btn);
-        cancelEnterPattern.setTypeface(robotoTypeface);
+        cancelEnterPattern.setTypeface(boldTypeface);
 
         Button okEnterPatternButton = (Button) findViewById(R.id.ok_enter_pattern_step_2_btn);
-        okEnterPatternButton.setTypeface(robotoTypeface);
+        okEnterPatternButton.setTypeface(boldTypeface);
 
         // Enter pin if needed
         TextView enterPinIfNeededTitle = (TextView) findViewById(R.id.enter_pin_if_needed_title);
@@ -744,10 +744,10 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         enterPinIfNeededText.setTypeface(boldTypeface);
 
         Button cancelEnterPinIfNeededButton = (Button) findViewById(R.id.cancel_enter_pin_if_needed_btn);
-        cancelEnterPinIfNeededButton.setTypeface(robotoTypeface);
+        cancelEnterPinIfNeededButton.setTypeface(boldTypeface);
 
         Button nextEnterPinIfNeededButton = (Button) findViewById(R.id.next_enter_pin_if_needed_btn);
-        nextEnterPinIfNeededButton.setTypeface(robotoTypeface);
+        nextEnterPinIfNeededButton.setTypeface(boldTypeface);
 
         // Searching for micro:bit
         TextView searchMicrobitTitle = (TextView) findViewById(R.id.search_microbit_step_3_title);
@@ -757,7 +757,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         stepThreeTitle.setTypeface(boldTypeface);
 
         Button cancelSearchMicroBit = (Button) findViewById(R.id.cancel_search_microbit_step_3_btn);
-        cancelSearchMicroBit.setTypeface(robotoTypeface);
+        cancelSearchMicroBit.setTypeface(boldTypeface);
 
 
         TextView descriptionManageMicrobit = (TextView) findViewById(R.id.description_manage_microbit);
