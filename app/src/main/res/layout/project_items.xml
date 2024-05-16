@@ -13,6 +13,7 @@
         android:drawableEnd="@drawable/ic_arrow_down"
         android:gravity="start|center_vertical"
         android:longClickable="true"
+        android:textAllCaps="false"
         android:textColor="@android:color/white"
         android:textSize="@dimen/project_items_text_size" />
 
