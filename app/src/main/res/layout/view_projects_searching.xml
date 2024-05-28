@@ -72,7 +72,6 @@
             android:gravity="center|center_vertical"
             android:textSize="@dimen/pairing_step_button_text_size"
             android:textColor="@android:color/black"
-            android:textAllCaps="true"
             android:background="@drawable/white_btn"
             android:drawableEnd="@drawable/next_step_pairing_btn"
             android:drawablePadding="8dp"

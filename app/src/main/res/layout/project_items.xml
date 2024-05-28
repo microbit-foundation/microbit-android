@@ -24,7 +24,6 @@
         android:background="@drawable/editor_grey_bg"
         android:gravity="start|center_vertical"
         android:inputType="textNoSuggestions|textVisiblePassword"
-        android:textAllCaps="false"
         android:textColor="@android:color/white"
         android:textSize="@dimen/project_items_text_size"
         android:visibility="invisible" />
