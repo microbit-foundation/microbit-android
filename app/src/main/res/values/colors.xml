@@ -19,6 +19,7 @@
     <color name="grey_trans_20_opacity_container_highlight">#33424242</color>
     <color name="ok_button_up">#00EC00</color>
     <color name="ok_button_down">#3A871F</color>
+    <color name="fetch_select_gray">#666666</color>
 
     <color name="cancel_button_up">#FD645B</color>
     <color name="cancel_button_down">#AA6666</color>

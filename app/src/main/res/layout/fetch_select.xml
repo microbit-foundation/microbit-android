@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fetchSelect"
+    android:layout_height="match_parent"
+    android:layout_width="match_parent"
+    android:background="@color/black_color"
+    android:layout_gravity="center"
+    android:gravity="center"
+    android:padding="16dp"
+    android:orientation="vertical"
+    android:weightSum="100">
+
+    <!-- Title -->
+    <TextView
+        android:layout_weight="9"
+        android:id="@+id/fetchSelectTitle"
+        style="@style/pairing_step_header_style"
+        android:text="Fetch MY_DATA" />
+
+    <!-- Choice buttons -->
+    <LinearLayout
+        android:id="@+id/fetchSelectChoice"
+        android:layout_weight="15"
+        android:layout_height="0dp"
+        android:layout_width="wrap_content"
+        android:gravity="center"
+        android:layout_gravity="center"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/fetchSelectChoiceButtons"
+            android:layout_height="@dimen/fetchSelectChoiceButtonHeight"
+            android:layout_width="wrap_content"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:orientation="horizontal"
+            android:background="@drawable/fetch_select_gray"
+            android:padding="@dimen/fetchSelectChoiceButtonPadding">
+
+            <Button
+                android:id="@+id/fetchSelectChoiceAfter"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:textSize="@dimen/pairing_step_button_text_size"
+                android:textColor="@android:color/black"
+                android:background="@drawable/white_btn"
+                android:text="After Logging" />
+
+            <Button
+                android:id="@+id/fetchSelectChoiceDuring"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:textSize="@dimen/pairing_step_button_text_size"
+                android:textColor="@android:color/black"
+                android:background="@drawable/fetch_select_gray"
+                android:text="During Logging" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- V2 Only -->
+    <ImageView
+        android:layout_weight="6"
+        android:id="@+id/fetchSelectV2Only"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:contentDescription="@null"
+        android:src="@drawable/v2only"/>
+
+    <View
+        android:layout_weight="2"
+        android:layout_width="match_parent"
+        android:layout_height="0dp" />
+
+    <LinearLayout
+        android:id="@+id/fetchSelectInfo"
+        style="@style/pairing_step_central_image_layout_style"
+        android:orientation="horizontal"
+        android:layout_weight="56">
+
+        <!-- After -->
+        <LinearLayout
+            android:id="@+id/fetchSelectAfter"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/black_color"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="16dp"
+            android:orientation="vertical"
+            android:weightSum="56"
+            android:visibility="gone">
+
+            <!-- Title -->
+            <TextView
+                android:layout_weight="10"
+                android:id="@+id/fetchSelectAfterTitle"
+                android:textSize="@dimen/popup_title_text_size"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:gravity="center|center_vertical"
+                android:textColor="@color/white_color"
+                android:text="@string/viewPairTriplePromptText"  />
+
+            <LinearLayout
+                android:id="@+id/fetchSelectAfterGifLayout"
+                style="@style/pairing_step_central_image_layout_style"
+                android:layout_weight="46">
+
+                <pl.droidsonroids.gif.GifImageView
+                    android:id="@+id/fetchSelectAfterGif"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="@dimen/pairing_step_gif_image_margin"
+                    android:src="@drawable/reset_triple" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- During -->
+        <LinearLayout
+            android:id="@+id/fetchSelectDuring"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/black_color"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:orientation="vertical"
+            android:weightSum="56"
+            android:visibility="visible">
+
+            <!-- Text -->
+            <TextView
+                android:layout_weight="46"
+                android:id="@+id/fetchSelectDuringText"
+                android:textSize="@dimen/fetch_during_text_size"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_gravity="center|center_vertical"
+                android:gravity="center_vertical"
+                android:textColor="@color/white_color"
+                android:text="@string/fetchSelectDuringPlaceholder"  />
+
+            <LinearLayout
+                android:layout_weight="10"
+                android:id="@+id/fetchSelectDuringMoreLayout"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                style="@style/another_way_button_layout_style">
+
+                <Button
+                    android:id="@+id/fetchSelectDuringMore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/pairing_step_button_height"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:textSize="@dimen/pairing_step_button_text_size"
+                    android:textColor="@android:color/black"
+                    android:background="@drawable/white_btn"
+                    android:drawableEnd="@drawable/ic_discover_black"
+                    android:drawablePadding="8dp"
+                    android:layout_margin="8dp"
+                    android:text="Find Out More" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:layout_weight="2"
+        android:layout_width="match_parent"
+        android:layout_height="0dp" />
+
+    <!-- Confirmation buttons -->
+    <LinearLayout
+        android:id="@+id/fetchSelectButtons"
+        android:layout_weight="10"
+        android:layout_height="0dp"
+        android:layout_width="match_parent"
+        android:gravity="center"
+        android:layout_gravity="bottom"
+        android:weightSum="100"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/fetchSelectCancel"
+            android:layout_weight="47"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/pairing_step_button_height"
+            android:gravity="center_vertical"
+            android:textSize="@dimen/pairing_step_button_text_size"
+            android:textColor="@android:color/black"
+            android:background="@drawable/cancel_btn"
+            android:drawableEnd="@drawable/cancel_step_pairing_btn"
+            android:text="@string/txt_cancel_btn" />
+
+        <View
+            android:layout_weight="6"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content" />
+
+        <Button
+            android:id="@+id/fetchSelectOK"
+            android:layout_weight="47"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/pairing_step_button_height"
+            android:gravity="center_vertical"
+            android:textSize="@dimen/pairing_step_button_text_size"
+            android:textColor="@android:color/black"
+            android:background="@drawable/green_btn"
+            android:drawableEnd="@drawable/ic_done_black"
+            android:text="@string/fetch" />
+    </LinearLayout>
+
+</LinearLayout>

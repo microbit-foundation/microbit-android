@@ -1,0 +1,64 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fetchWeb"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:padding="0dp"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/fetchWebBar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/main_gray_color"
+        android:elevation="@dimen/activity_vertical_margin">
+
+        <!-- back button-->
+        <ImageButton
+            android:id="@+id/fetchWebBarBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/back"
+            android:nextFocusDown="@id/fetchWebBarTitle"
+            android:padding="@dimen/app_bar_back_btn_padding"
+            android:src="@drawable/ic_back_arrow" />
+
+        <!-- divider -->
+        <View
+            android:layout_width="@dimen/app_bar_divider_width"
+            android:layout_height="match_parent"
+            android:layout_marginBottom="@dimen/app_bar_small_divider_margin"
+            android:layout_marginTop="@dimen/app_bar_small_divider_margin"
+            android:alpha="@dimen/app_bar_small_divider_alpha"
+            android:background="@android:color/white" />
+
+        <!-- title-->
+        <TextView
+            android:id="@+id/fetchWebBarTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_weight="1"
+            android:contentDescription="@string/my_data"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:text="@string/my_data"
+            android:textSize="@dimen/app_bar_title_text_size"
+            android:textColor="@android:color/white" />
+
+    </LinearLayout>
+
+    <WebView
+        android:id="@+id/fetchWebView"
+        android:background="@color/cancel_button"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginBottom="0dp"
+        android:hardwareAccelerated="true"
+        android:windowSoftInputMode="adjustResize" />
+
+</LinearLayout>

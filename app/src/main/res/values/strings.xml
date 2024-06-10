@@ -30,6 +30,7 @@
     <string name="terms_of_use_url" translatable="false">http://microbit.org/terms-of-use</string>
     <string name="about_url" translatable="false">http://microbit.org/about</string>
     <string name="feedback_email_address" translatable="false">rohit.ail@samsung.com</string>
+    <string name="fetchDuringFindOutMoreUrl" translatable="false">https://microbit.org/get-started/user-guide/mobile</string>
 
 
     <string name="user_agent" translatable="false">SamsungBrowser/microbit Profile/OTA-DFU1.0</string>
@@ -312,7 +313,7 @@
     <string name="nav_draw_terms_conditions"><![CDATA[Terms & Conditions]]></string>
     <string name="nav_draw_send_feedback">Send us your feedback</string>
     <string name="nav_draw_share_statistics">Share Statistics</string>
-    <string name="txt_my_scripts_btn">My Scripts</string>
+    <string name="desc_fetch">Fetch MY_DATA (V2 only)</string>
     <string name="desc_nav_drawer_menu">Close Menu</string>
     <string name="desc_share_statistics_description">This information will only be used to analyse and improve the services offered through this app. For information, see our privacy policy </string>
     <string name="txt_pair_btn">Pair</string>
@@ -401,5 +402,26 @@
     <string name="btn_continue">Continue</string>
     <string name="paired">paired</string>
     <string name="not_paired">not paired</string>
+    <string name="fetch_my_data">Fetch MY_DATA (V2 only)</string>
+    <string name="more">More</string>
+    <string name="fetch">Fetch</string>
+    <string name="fetchSelectDuringHtml"><![CDATA[<div><div>To fetch a preview during logging, without resetting your micro:bit:</div><ul><li>Include the Bluetooth extension in your program</li><li>Pair the micro:bit before logging.</li></ul></div>]]></string>
+    <string name="fetchSelectDuringPlaceholder">To fetch a preview during logging, without resetting your micro:bit:\n\nInclude the Bluetooth extension in your program\n\nPair the micro:bit before logging.</string>
+    <string name="fetchSelectDuring0">To fetch a preview during logging, without resetting your micro:bit:</string>
+    <string name="fetchSelectDuring1">Include the Bluetooth extension in your program</string>
+    <string name="fetchSelectDuring2">Pair the micro:bit before logging.</string>
+    <string name="fetchFailed">Failed to fetch MY_DATA</string>
+    <string name="fetching">Fetching MY_DATA</string>
+    <string name="back">Back</string>
+    <string name="my_data">My Data</string>
+    <string name="fetch_connection_failed">Connection failed</string>
+    <string name="fetch_connection_lost">Connection lost</string>
+    <string name="fetch_connection_broken">Connection broken</string>
+    <string name="fetch_update_the_project_to_add_the_bluetooth_service">Update the project to add the Bluetooth service</string>
+    <string name="fetch_connection_error">Connection error</string>
+    <string name="fetch_no_data_in_micro_bit">No data in micro:bit</string>
+    <string name="fetch_out_of_memory">Out of memory</string>
+    <string name="fetch_failed_to_create_my_data_htm">Failed to create MY_DATA.HTM</string>
+    <string name="fetch_works_with_micro_bit_v2_only">Works with micro:bit V2 only</string>
 </resources>
 

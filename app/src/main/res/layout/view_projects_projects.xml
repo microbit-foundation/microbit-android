@@ -31,10 +31,9 @@
 
     </LinearLayout>
 
-    <!-- View my scripts -->
     <include layout="@layout/view_divider" />
 
-    <!-- My Scripts button -->
+    <!-- Bottom panel -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -42,6 +41,27 @@
         android:gravity="center_horizontal"
         android:weightSum="2">
 
-        <include layout="@layout/custom_projects_button" />
+        <!-- Fetch button -->
+        <LinearLayout
+            android:id="@+id/projectFetch"
+            style="@style/custom_button_layout"
+            android:layout_width="0dp"
+            android:layout_weight="@integer/project_fetch_button_weight"
+            android:layout_margin="@dimen/project_fetch_button_margin"
+            android:background="@drawable/black_btn"
+            android:onClick="onClick">
+
+            <ImageView
+                style="@style/custom_button_image"
+                android:contentDescription="@string/desc_fetch"
+                android:src="@drawable/ic_fetch" />
+
+            <TextView
+                android:id="@+id/projectFetchText"
+                style="@style/fetch_button_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/fetch_my_data" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

@@ -160,6 +160,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private static final int REQUEST_CODE_RESET_TO_BLE = 3;
     private static final int REQUEST_CODE_PAIR_BEFORE_FLASH = 4;
     private static final int REQUEST_CODE_PAIR_BEFORE_FLASH_ALREADY_RESET = 5;
+    private static final int REQUEST_CODE_FETCH = 6;
 
     private enum Screen {
         ScreenMain,
@@ -263,6 +264,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             startActivity(intent);
             finish();
         }
+    }
+
+    private void goToFetch() {
+        Intent i = new Intent(this, FetchActivity.class);
+        startActivityForResult( i, REQUEST_CODE_FETCH);
     }
 
     private void onFlashComplete() {
@@ -538,7 +544,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         flashProjectsTitle.setTypeface(defaultTypeface);
 
         // Create projects
-        TextView createProjectText = (TextView) findViewById(R.id.custom_button_text);
+        TextView createProjectText = (TextView) findViewById(R.id.projectFetchText);
         createProjectText.setTypeface(robotoTypeface);
 
         mEmptyText.setTypeface(defaultTypeface);
@@ -1056,6 +1062,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             case REQUEST_CODE_PAIR_BEFORE_FLASH_ALREADY_RESET:
                 onActivityResultPairing( requestCode, resultCode, data);
                 return;
+            case REQUEST_CODE_FETCH:
+                return;
         }
 
         if (requestCode == RequestCodes.REQUEST_ENABLE_BT) {
@@ -1240,8 +1248,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     public void onClick(final View v) {
         switch(v.getId()) {
-            case R.id.createProject:
-                scriptsPopup();
+            case R.id.projectFetch:
+                goToFetch();
                 break;
 
             case R.id.backBtn:
@@ -1253,6 +1261,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 
             case R.id.deviceName:
                 goToPairingFromAppBarDeviceName();
+                break;
+
+            case R.id.projectMoreButton:
+                scriptsPopup();
                 break;
 
             case R.id.viewProjectsPatternDifferent:
@@ -2471,23 +2483,20 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
 
     private void scriptsPopup() {
-        PopupMenu popupMenu = new PopupMenu( this, findViewById(R.id.createProject));
+        PopupMenu popupMenu = new PopupMenu( this, findViewById(R.id.projectMoreButton));
         int itemID = Menu.FIRST;
-        popupMenu.getMenu().add( 0, itemID, 0, R.string.create_code);
+        popupMenu.getMenu().add( 0, itemID, 0, R.string.menu_import);
         itemID++;
-        popupMenu.getMenu().add( 0, itemID, 1, R.string.menu_import);
-        itemID++;
-        popupMenu.getMenu().add( 0, itemID, 2, R.string.menu_export);
+        popupMenu.getMenu().add( 0, itemID, 1, R.string.menu_export);
         itemID++;
 
         popupMenu.setOnMenuItemClickListener( new PopupMenu.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 switch ( item.getItemId() - Menu.FIRST) {
-                    case 0: scriptsCreateCode(); break;
-                    case 1: scriptsImport(); break;
-                    case 2: scriptsExport(); break;
-                }
+                    case 0: scriptsImport(); break;
+                    case 1: scriptsExport(); break;
+                 }
                 return false;
             }
         });
