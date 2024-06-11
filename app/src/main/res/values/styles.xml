@@ -104,6 +104,13 @@
         <item name="android:textAppearance">?android:textAppearance</item>
     </style>
 
+    <!-- Fetch button -->
+    <style name="fetch_button_text">
+        <item name="android:textSize">@dimen/p1_font_size</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textAppearance">?android:textAppearance</item>
+    </style>
+
     <!-- Edit project button -->
     <style name="edit_project_text">
         <item name="android:textSize">@dimen/p1_font_size</item>

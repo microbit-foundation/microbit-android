@@ -110,4 +110,6 @@
     <dimen name="popup_linear_progress_bar_margin">18dp</dimen>
     <dimen name="popup_round_ok_button_size">66dp</dimen>
     <dimen name="popup_gif_size">128dp</dimen>
+
+    <dimen name="fetch_during_text_size">16sp</dimen>
 </resources>

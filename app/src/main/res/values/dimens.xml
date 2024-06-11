@@ -37,14 +37,14 @@
     <dimen name="custom_button_start_margin">8dp</dimen>
     <dimen name="custom_button_end_margin">8dp</dimen>
     <dimen name="custom_button_image_margin">0dp</dimen>
-    <dimen name="custom_button_margin">16dp</dimen>
+    <dimen name="project_fetch_button_margin">16dp</dimen>
     <dimen name="custom_button_height">52dp</dimen>
     <dimen name="image_delete_button_margin_end">8dp</dimen>
     <dimen name="project_item_buttons_size">48dp</dimen>
     <dimen name="project_items_layout_padding">16dp</dimen>
     <dimen name="project_items_layout_margin_top">16dp</dimen>
     <dimen name="project_items_image_padding">6dp</dimen>
-    <integer name="project_my_scripts_button_weight">2</integer>
+    <integer name="project_fetch_button_weight">2</integer>
     <dimen name="project_item_action_bar_layout_margin">14dp</dimen>
     <dimen name="project_items_text_size">18sp</dimen>
 
@@ -130,5 +130,8 @@
     <dimen name="splash_screen_logo_width">200dp</dimen>
     <dimen name="splash_screen_logo_height">32dp</dimen>
 
+    <dimen name="fetch_during_text_size">18sp</dimen>
+    <dimen name="fetchSelectChoiceButtonHeight">58dp</dimen>
+    <dimen name="fetchSelectChoiceButtonPadding">4dp</dimen>
 
 </resources>

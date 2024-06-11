@@ -148,4 +148,8 @@
 
     <dimen name="pairing_searching_step_cycle_progress_bar_size">100dp</dimen>
 
+    <dimen name="fetch_during_text_size">22sp</dimen>
+    <dimen name="fetchSelectChoiceButtonHeight">76dp</dimen>
+    <dimen name="fetchSelectChoiceButtonPadding">4dp</dimen>
+
 </resources>

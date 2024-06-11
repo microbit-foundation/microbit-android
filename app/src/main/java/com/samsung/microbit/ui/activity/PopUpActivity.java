@@ -347,6 +347,9 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
                 affirmationOKButton.setVisibility(View.VISIBLE);
                 break;
             case PopUp.TYPE_PROGRESS:
+                progressBar.setVisibility(View.VISIBLE);
+                cancelButton.setVisibility(View.VISIBLE);
+                break;
             case PopUp.TYPE_PROGRESS_NOT_CANCELABLE:
                 progressBar.setVisibility(View.VISIBLE);
                 break;

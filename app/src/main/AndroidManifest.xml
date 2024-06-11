@@ -159,6 +159,12 @@
             android:label="MakeCode Webview"
             android:launchMode="singleTask"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"/>
+        <activity
+            android:name=".ui.activity.FetchActivity"
+            android:configChanges="orientation|screenSize"
+            android:label="Fetch MY_DATA"
+            android:launchMode="singleTask"/>
+
         <service
             android:name=".service.DfuService"
             android:enabled="true"/>

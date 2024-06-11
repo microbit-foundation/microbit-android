@@ -53,7 +53,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:layout_weight="1"
-        android:nextFocusDown="@+id/appNameButton"
+        android:nextFocusDown="@+id/projectMoreButton"
         android:orientation="vertical">
 
         <TextView
@@ -75,6 +75,19 @@
 
     <!-- Small divider -->
     <include layout="@layout/app_bar_small_divider" />
+
+    <!-- more button-->
+    <ImageButton
+        android:id="@+id/projectMoreButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/more"
+        android:nextFocusDown="@id/appNameButton"
+        android:onClick="onClick"
+        android:padding="@dimen/app_bar_back_btn_padding"
+        android:src="@drawable/ic_more_vdotw" />
 
     <!-- connected device status -->
 </LinearLayout>
