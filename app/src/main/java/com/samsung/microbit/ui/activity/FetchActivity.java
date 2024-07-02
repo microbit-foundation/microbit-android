@@ -867,6 +867,13 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         searchDrawable.setDeviceName(deviceName);
     }
 
+    private void openURL( String url) {
+        logi( "openURL: " + url);
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse( url));
+        startActivity(intent);
+    }
+
     /**
      * Display WebView
      */
@@ -896,8 +903,22 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                Log.v(TAG, "shouldOverrideUrlLoading: " + url);
-                return false;
+                logi( "shouldOverrideUrlLoading: " + url);
+                Uri uri = Uri.parse( url);
+                String scheme = uri.getScheme();
+                if ( scheme != null) {
+                    logi( "scheme: " + scheme);
+                    if ( scheme.compareToIgnoreCase( "file") == 0) {
+                        String path = displayHtmlGetPath().toLowerCase();
+                        if ( url.toLowerCase().contains( path)) {
+                            return false;
+                        }
+                        openURL( url);
+                        return true;
+                    }
+                }
+                openURL( url);
+                return true;
             }
 
             @Override
@@ -1048,9 +1069,9 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
 
     private void displayHtmlGoBack() {
         if (displayHtmlGetURL().equals(mWebView.getUrl())) {
-            activityCancelled();
-        } else if (!mWebView.canGoBack()) {
-            activityCancelled();
+            activityComplete();
+        } else if ( !mWebView.canGoBack()) {
+            activityComplete();
         } else {
             mWebView.goBack();
         }
