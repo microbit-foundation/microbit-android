@@ -416,9 +416,11 @@
     <string name="my_data">My Data</string>
     <string name="fetch_connection_failed">Connection failed</string>
     <string name="fetch_connection_lost">Connection lost</string>
+    <string name="fetch_connection_interrupted">Connection interrupted</string>
     <string name="fetch_connection_broken">Connection broken</string>
     <string name="fetch_update_the_project_to_add_the_bluetooth_service">Update the project to add the Bluetooth service</string>
     <string name="fetch_connection_error">Connection error</string>
+    <string name="fetch_not_paired">Not paired</string>
     <string name="fetch_no_data_in_micro_bit">No data in micro:bit</string>
     <string name="fetch_out_of_memory">Out of memory</string>
     <string name="fetch_failed_to_create_my_data_htm">Failed to create MY_DATA.HTM</string>

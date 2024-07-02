@@ -42,6 +42,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
 
 import com.samsung.microbit.MBApp;
+import com.samsung.microbit.MBAppState;
 import com.samsung.microbit.R;
 import com.samsung.microbit.core.bluetooth.BluetoothUtils;
 import com.samsung.microbit.data.constants.PermissionCodes;
@@ -155,55 +156,86 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
 
     @Override
     public void bleFetchProgress(float progress) {
-        PopUp.updateProgressBar((int) (progress * 100));
+        runOnUiThread( new Runnable() {
+            @Override
+            public void run() {
+                PopUp.updateProgressBar((int) (progress * 100));
+            }
+        });
     }
 
     @Override
     public void bleFetchState() {
-        switch (mFetch.resultState) {
-            case None:
-            case Found:
-            case Connected:
-                break;
-            case Discovered:
-                mPopups.fetchProgress();
-                break;
-            case ConnectTimeout:
-                PopUp.hide();
-                purposeError(getString(R.string.fetch_connection_failed));
-                break;
-            case WorkTimeout:
-                PopUp.hide();
-                purposeError(getString(R.string.fetch_connection_lost));
-                break;
-            case Error:
-                PopUp.hide();
-                switch (mFetch.mWorkResult) {
-                    case BleError:
-                        purposeError(getString(R.string.fetch_connection_broken));
+        runOnUiThread( new Runnable() {
+            @Override
+            public void run() {
+                switch (mFetch.resultState) {
+                    case None:
+                    case Found:
+                    case Connected:
                         break;
-                    case V2Only:
-                        purposeError(getString(R.string.fetch_works_with_micro_bit_v2_only));
+                    case Discovered:
+                        mPopups.fetchProgress();
                         break;
-                    case NoService:
-                        purposeError(getString(R.string.fetch_update_the_project_to_add_the_bluetooth_service));
+                    case ConnectTimeout:
+                        PopUp.hide();
+                        purposeError(getString(R.string.fetch_connection_failed));
                         break;
-                    case Protocol:
-                        purposeError(getString(R.string.fetch_connection_error));
+                    case WorkTimeout:
+                        PopUp.hide();
+                        purposeError(getString(R.string.fetch_connection_lost));
                         break;
-                    case NoData:
-                        purposeError(getString(R.string.fetch_no_data_in_micro_bit));
+                    case NotBonded:
+                        if ( mFetchChoice == eFetchChoice.During) {
+                            PopUp.hide();
+                            purposeError(getString(R.string.fetch_not_paired));
+                        } else {
+                            PopUp.hide();
+                            purposePairWithReset();
+                        }
                         break;
-                    case OutOfMemory:
-                        purposeError(getString(R.string.fetch_out_of_memory));
+                    case Error:
+                        PopUp.hide();
+                        switch (mFetch.mWorkResult) {
+                            default:
+                            case None:
+                                if ( BluetoothUtils.getCurrentMicrobitIsDefinitelyNotInPairedList( MBApp.getApp())) {
+                                    if ( mFetchChoice == eFetchChoice.During) {
+                                        purposeError(getString(R.string.fetch_not_paired));
+                                    } else {
+                                        purposePairWithReset();
+                                    }
+                                } else {
+                                    purposeError(getString(R.string.fetch_connection_interrupted));
+                                }
+                                break;
+                            case BleError:
+                                purposeError(getString(R.string.fetch_connection_broken));
+                                break;
+                            case V2Only:
+                                purposeError(getString(R.string.fetch_works_with_micro_bit_v2_only));
+                                break;
+                            case NoService:
+                                purposeError(getString(R.string.fetch_update_the_project_to_add_the_bluetooth_service));
+                                break;
+                            case Protocol:
+                                purposeError(getString(R.string.fetch_connection_error));
+                                break;
+                            case NoData:
+                                purposeError(getString(R.string.fetch_no_data_in_micro_bit));
+                                break;
+                            case OutOfMemory:
+                                purposeError(getString(R.string.fetch_out_of_memory));
+                                break;
+                        }
+                        break;
+                    case Success:
+                        PopUp.hide();
+                        purposeData();
                         break;
                 }
-                break;
-            case Success:
-                PopUp.hide();
-                purposeData();
-                break;
-        }
+            }
+        });
     }
 
     /**
@@ -265,19 +297,34 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         switch (requestCode) {
             case FETCH_REQUEST_CODE_RESET_TO_BLE:
                 if (resultCode == RESULT_OK) {
-                    switch (MBApp.getAppState().pairState()) {
-                        case PairStateNone:
-                        case PairStateError:
-                            activityCancelled();
-                            break;
-                        case PairStateLaunch:
-                        case PairStateSession:
-                            purposeCheck();
-                            break;
-                        case PairStateChecked:
-                        default:
-                            purposeConnect();
-                            break;
+                    if ( mFetchChoice == eFetchChoice.During) {
+                        switch ( pairState()) {
+                            case PairStateNone:
+                                activityCancelled();
+                                break;
+                            case PairStateError:
+                            case PairStateLaunch:
+                            case PairStateSession:
+                            case PairStateChecked:
+                            default:
+                                purposeConnect();
+                                break;
+                        }
+                    } else {
+                        switch ( pairState()) {
+                            case PairStateNone:
+                            case PairStateError:
+                                activityCancelled();
+                                break;
+                            case PairStateLaunch:
+                            case PairStateSession:
+                                purposeCheck();
+                                break;
+                            case PairStateChecked:
+                            default:
+                                purposeConnect();
+                                break;
+                        }
                     }
                 } else {
                     activityCancelled();
@@ -332,11 +379,13 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
     }
 
     void activityCancelled() {
+        mFetch.fetchCancel();
         setResult(RESULT_CANCELED);
         finish();
     }
 
     private void activityComplete() {
+        mFetch.fetchCancel();
         setResult(RESULT_OK);
         finish();
     }
@@ -427,46 +476,35 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
     }
 
     private void onClickSelectOK() {
-        if (mFetchChoice == eFetchChoice.During) {
-            if (canFetchNoReset()) {
-                purposeConnect();
+        if ( mFetchChoice == eFetchChoice.During) {
+            switch ( pairState()) {
+                case PairStateNone:
+                    purposeError( getString( R.string.fetch_not_paired));
+                    break;
+                case PairStateError:
+                case PairStateLaunch:
+                case PairStateSession:
+                case PairStateChecked:
+                default:
+                    purposeFetch();
+                    break;
             }
-            // button should be disabled otherwise
-            return;
+        } else {
+            switch ( pairState()) {
+                case PairStateNone:
+                case PairStateError:
+                    purposePairWithoutReset();
+                    break;
+                case PairStateLaunch:
+                case PairStateSession:
+                    purposeCheck();
+                    break;
+                case PairStateChecked:
+                default:
+                    purposeFetch();
+                    break;
+            }
         }
-
-        switch (MBApp.getAppState().pairState()) {
-            case PairStateNone:
-            case PairStateError:
-                purposePairWithoutReset();
-                break;
-            case PairStateLaunch:
-            case PairStateSession:
-                purposeCheck();
-                break;
-            case PairStateChecked:
-            default:
-                purposeFetch();
-                break;
-        }
-    }
-
-    private boolean canFetchNoReset() {
-        boolean can = true;
-
-        switch (MBApp.getAppState().pairState()) {
-            case PairStateNone:
-            case PairStateError:
-                can = false;
-                break;
-            case PairStateLaunch:
-            case PairStateSession:
-            case PairStateChecked:
-            default:
-                break;
-        }
-
-        return can;
     }
 
     /**
@@ -547,6 +585,7 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
 
     private void purposeError(String message) {
         logi("purposeError");
+        mFetch.fetchCancel();
         MBApp.getAppState().eventPairSendError();
         mPurpose = ePurpose.Error;
         mPopups.fetchFailed(message);
@@ -585,28 +624,48 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
     }
 
     private void connectWithChecksAfterBlePermissionGrantedAndBleEnabled() {
-
-        switch (MBApp.getAppState().pairState()) {
-            case PairStateNone:
-            case PairStateError:
-                //showPopupQuestionFlashToDevice( true);
-                purposePairWithoutReset();
-                break;
-            case PairStateLaunch:
-            case PairStateSession:
-                purposeCheck();
-                break;
-            case PairStateChecked:
-                purposeConnect();
-                break;
-            default:
-                purposePairWithoutReset();
-                break;
+        if ( mFetchChoice == eFetchChoice.During) {
+            switch ( pairState()) {
+                case PairStateNone:
+                    PopUp.hide();
+                    purposeError( getString( R.string.fetch_not_paired));
+                    break;
+                case PairStateError:
+                case PairStateLaunch:
+                case PairStateSession:
+                case PairStateChecked:
+                default:
+                    purposeConnect();
+                    break;
+            }
+        } else {
+            switch ( pairState()) {
+                default:
+                case PairStateNone:
+                case PairStateError:
+                    //showPopupQuestionFlashToDevice( true);
+                    purposePairWithoutReset();
+                    break;
+                case PairStateLaunch:
+                case PairStateSession:
+                    purposeCheck();
+                    break;
+                case PairStateChecked:
+                    purposeConnect();
+                    break;
+            }
         }
     }
 
     private void connectWithChecksAfterPairing() {
         goToPairingResetToBLE();
+    }
+
+    private MBAppState.PairState pairState() {
+//        if ( BluetoothUtils.getCurrentMicrobitIsDefinitelyNotInPairedList( MBApp.getApp())) {
+//            return MBAppState.PairState.PairStateNone;
+//        }
+        return MBApp.getAppState().pairState();
     }
 
     /**
@@ -761,8 +820,6 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         mui.setVisible(R.id.fetchSelect, select);
         mui.setVisible(R.id.viewProjectsPattern, pattern);
         mui.setVisible(R.id.viewProjectsSearching, searching);
-
-        mui.setEnabled(R.id.fetchSelectOK, mFetchChoice == eFetchChoice.After || canFetchNoReset());
 
         Drawable yes = AppCompatResources.getDrawable(this, R.drawable.white_btn);
         Drawable no = AppCompatResources.getDrawable(this, R.drawable.fetch_select_gray);

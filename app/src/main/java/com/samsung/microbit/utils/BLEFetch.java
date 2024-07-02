@@ -43,6 +43,7 @@ public class BLEFetch implements MicroBitUtility.Client {
         Discovered,
         ConnectTimeout,
         WorkTimeout,
+        NotBonded,
         Error,
         Success,
         Next
@@ -164,6 +165,14 @@ public class BLEFetch implements MicroBitUtility.Client {
         }
     };
 
+    private final Runnable delayCallbackSignalResult = new Runnable() {
+        @Override
+        public void run() {
+            logi("delayCallbackSignalResult");
+            signalResult( resultState);
+        }
+    };
+
     private final Runnable delayCallbackWorkTimeout = new Runnable() {
         @Override
         public void run() {
@@ -176,7 +185,9 @@ public class BLEFetch implements MicroBitUtility.Client {
         @Override
         public void run() {
             logi("delayCallbackOnDescriptorWrite");
-            fetchOnDescriptorWrite();
+            if ( working) {
+                fetchOnDescriptorWrite();
+            }
         }
     };
 
@@ -204,6 +215,7 @@ public class BLEFetch implements MicroBitUtility.Client {
         mainLooperHandler.removeCallbacks( delayCallbackConnect);
         mainLooperHandler.removeCallbacks( delayCallbackDiscover);
         mainLooperHandler.removeCallbacks( delayCallbackSignalState);
+        mainLooperHandler.removeCallbacks( delayCallbackSignalResult);
         mainLooperHandler.removeCallbacks( delayCallbackWorkTimeout);
         mainLooperHandler.removeCallbacks( delayCallbackOnDescriptorWrite);
     }
@@ -221,6 +233,34 @@ public class BLEFetch implements MicroBitUtility.Client {
         mainLooperHandler.postDelayed(callback, milliseconds);
     }
 
+    private void delayConnectTry() {
+        logi("delayConnectTry");
+        delayStopAll();
+        connectStop();
+        gattState = enumGattState.Error;
+        resultState = enumResult.Found;
+        delayStart(delayCallbackConnect, 1000);
+    }
+
+    private void delaySignalError( enumResult result, MicroBitUtility.Result work) {
+        logi("delaySignalError " + result + " " + work);
+        delayStopAll();
+        connectStop();
+        gattState = enumGattState.Error;
+        mWorkResult = work;
+        resultState = result;
+        delayStart( delayCallbackSignalResult, 1);
+    }
+
+    private void delaySignalSuccess( MicroBitUtility.Result work) {
+        logi("delaySignalSuccess " + work);
+        delayStopAll();
+        connectStop();
+        mWorkResult = work;
+        resultState = enumResult.Success;
+        delayStart( delayCallbackSignalResult, 1);
+    }
+
     BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
         @Override
@@ -233,17 +273,28 @@ public class BLEFetch implements MicroBitUtility.Client {
 
             logi("onConnectionStateChange " + newState + " status " + status);
             if ( status != BluetoothGatt.GATT_SUCCESS) {
-                connectStop();
-                logi("ERROR - status");
-                logi("Prepare for retry after a short delay");
-                gattState = enumGattState.Error;
-                resultState = enumResult.Found;
-                delayStart( delayCallbackConnect, 1000);
+                if ( gatt.getDevice().getBondState() != BluetoothDevice.BOND_BONDED) {
+                    logi("ERROR - Not bonded");
+                    delaySignalError( enumResult.NotBonded, MicroBitUtility.Result.None);
+                } else if ( gattState == enumGattState.Connecting) {
+                    logi("ERROR while connecting - Prepare for retry after a short delay");
+                    delayConnectTry();
+                } else {
+                    logi("ERROR after connected - fail");
+                    delaySignalError( enumResult.Error, MicroBitUtility.Result.None);
+                }
                 return;
             }
 
             if ( newState == STATE_CONNECTED) {
                 logi("STATE_CONNECTED");
+
+                if ( gatt.getDevice().getBondState() != BluetoothDevice.BOND_BONDED) {
+                    logi("ERROR - Not bonded");
+                    delaySignalError( enumResult.NotBonded, MicroBitUtility.Result.None);
+                    return;
+                }
+
                 gattState = enumGattState.Connected;
                 resultState = enumResult.Connected;
                 delayStop( delayCallbackConnect);
@@ -252,23 +303,10 @@ public class BLEFetch implements MicroBitUtility.Client {
                  * Nordic says to wait 1600ms for possible service changed before discovering
                  * https://github.com/NordicSemiconductor/Android-DFU-Library/blob/e0ab213a369982ae9cf452b55783ba0bdc5a7916/dfu/src/main/java/no/nordicsemi/android/dfu/DfuBaseService.java#L888
                  */
-                if ( gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED) {
-                    logi("Already bonded - delay calling discoverServices()");
-                    delayStart( delayCallbackDiscover, 1600);
-                    // NOTE: This also works with shorted waiting time. The gatt.discoverServices() must be called after the indication is received which is
-                    // about 600ms after establishing connection. Values 600 - 1600ms should be OK.
-                } else {
-                    logi("calling discoverServices()");
-                    gattState = enumGattState.WaitingForServices;
-                    boolean success = gatt.discoverServices();
-                    if (!success) {
-                        logi("ERROR - discoverServices() failed");
-                        logi("Prepare delayed retry");
-                        gattState = enumGattState.Error;
-                        delayStart( delayCallbackConnect, 1000);
-                        return;
-                    }
-                }
+                logi("Already bonded - delay calling discoverServices()");
+                delayStart( delayCallbackDiscover, 1600);
+                // NOTE: This also works with shorted waiting time. The gatt.discoverServices() must be called after the indication is received which is
+                // about 600ms after establishing connection. Values 600 - 1600ms should be OK.
             }
             else if( newState == STATE_DISCONNECTED) {
                 logi("STATE_DISCONNECTED");
@@ -283,13 +321,17 @@ public class BLEFetch implements MicroBitUtility.Client {
                 return;
             }
             logi("onServicesDiscovered status " + status);
+
+            if ( gatt.getDevice().getBondState() != BluetoothDevice.BOND_BONDED) {
+                logi("ERROR - Not bonded");
+                delaySignalError( enumResult.NotBonded, MicroBitUtility.Result.None);
+                return;
+            }
+
             if ( status != BluetoothGatt.GATT_SUCCESS) {
-                connectStop();
                 logi("ERROR - status");
                 logi("Prepare for retry after a short delay");
-                gattState = enumGattState.Error;
-                resultState = enumResult.Found;
-                delayStart( delayCallbackConnect, 1000);
+                delayConnectTry();
                 return;
             }
 
@@ -297,6 +339,7 @@ public class BLEFetch implements MicroBitUtility.Client {
             resultState = enumResult.Discovered;
             delayStop( delayCallbackConnect);
             delayStart( delayCallbackSignalState, 1);
+
             fetchOnDiscovered();
         }
 
@@ -306,9 +349,7 @@ public class BLEFetch implements MicroBitUtility.Client {
                                            int status) {
             logi( "onCharacteristicWrite " + status);
             if ( status != BluetoothGatt.GATT_SUCCESS) {
-                connectStop();
-                gattState = enumGattState.Error;
-                delayStart( delayCallbackConnect, 1000);
+                delaySignalError( enumResult.Error, MicroBitUtility.Result.BleError);
                 return;
             }
         }
@@ -320,14 +361,24 @@ public class BLEFetch implements MicroBitUtility.Client {
                                          int status) {
             logi( "onCharacteristicRead " + status);
             if ( status != BluetoothGatt.GATT_SUCCESS) {
-                connectStop();
-                gattState = enumGattState.Error;
-                delayStart( delayCallbackConnect, 1000);
+                delaySignalError( enumResult.Error, MicroBitUtility.Result.BleError);
                 return;
             }
             
             BluetoothGattCharacteristic musc = findCharacteristic(MICROBIT_UTILITY_SERVICE, MICROBIT_UTILITY_CTRL);
             
+            if ( characteristic.getUuid().equals( musc.getUuid())) {
+                fetchOnCharacteristicChanged( value, value.length);
+            }
+        }
+
+        @Override
+        public void onCharacteristicChanged(@NonNull BluetoothGatt gatt,
+                                            @NonNull BluetoothGattCharacteristic characteristic) {
+            logi( "onCharacteristicChanged (legacy)");
+            BluetoothGattCharacteristic musc = findCharacteristic(MICROBIT_UTILITY_SERVICE, MICROBIT_UTILITY_CTRL);
+
+            byte [] value = characteristic.getValue();
             if ( characteristic.getUuid().equals( musc.getUuid())) {
                 fetchOnCharacteristicChanged( value, value.length);
             }
@@ -359,14 +410,36 @@ public class BLEFetch implements MicroBitUtility.Client {
                                       int status) {
             logi( "onDescriptorWrite " + status);
             if ( status != BluetoothGatt.GATT_SUCCESS) {
-                connectStop();
-                gattState = enumGattState.Error;
-                delayStart( delayCallbackConnect, 1000);
+                delaySignalError( enumResult.Error, MicroBitUtility.Result.BleError);
                 return;
             }
-            delayStart( delayCallbackOnDescriptorWrite, 100);
+            if ( working) {
+                delayStart(delayCallbackOnDescriptorWrite, 1000);
+            }
         }
     };
+    @SuppressLint("MissingPermission")
+    private BluetoothDevice findDevice() {
+        logi("findDevice");
+        Context context = mClient.bleFetchGetActivity();
+        String address = mClient.bleFetchGetDeviceAddress();
+        if ( context == null || address == null) {
+            return null;
+        }
+        BluetoothManager manager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        if ( manager == null) {
+            return null;
+        }
+        BluetoothAdapter adapter = manager.getAdapter();
+        if ( adapter == null) {
+            return null;
+        }
+        if (!adapter.isEnabled()) {
+            return null;
+        }
+        BluetoothDevice device = adapter.getRemoteDevice( address);
+        return device;
+    }
 
     @SuppressLint("MissingPermission")
     private void connectStop() {
@@ -389,23 +462,7 @@ public class BLEFetch implements MicroBitUtility.Client {
         }
         connectStop();
 
-        Context context = mClient.bleFetchGetActivity();
-        String address = mClient.bleFetchGetDeviceAddress();
-        if ( context == null || address == null) {
-            return false;
-        }
-        BluetoothManager manager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
-        if ( manager == null) {
-            return false;
-        }
-        BluetoothAdapter adapter = manager.getAdapter();
-        if ( adapter == null) {
-            return false;
-        }
-        if (!adapter.isEnabled()) {
-            return false;
-        }
-        BluetoothDevice device = adapter.getRemoteDevice( address);
+        BluetoothDevice device = findDevice();
         if ( device == null) {
             return false;
         }
@@ -449,14 +506,23 @@ public class BLEFetch implements MicroBitUtility.Client {
     }
     
     private BluetoothGattCharacteristic findCharacteristic(UUID uuidService, UUID uuidChr) {
-        BluetoothGattService s = mBleGatt.getService( uuidService);
-        return s == null ? null : s.getCharacteristic( uuidChr);
+        BluetoothGattCharacteristic c = null;
+        if ( mBleGatt != null) {
+            BluetoothGattService s = mBleGatt.getService(uuidService);
+            if ( s != null) {
+                c = s.getCharacteristic(uuidChr);
+            }
+        }
+        return c;
     }
 
     @SuppressLint("MissingPermission")
     private int writeCharacteristic( BluetoothGattCharacteristic c, byte[] data, int writeType) {
         logi( "writeCharacteristic " + c.getUuid() + " writeType " + writeType);
-        //onWriteCharacteristicStatus = BLE_PENDING;
+        if ( mBleGatt == null) {
+            return BLE_ERROR_UNKNOWN;
+        }
+
         if ( Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             c.setWriteType( writeType);
             c.setValue(data);
@@ -473,8 +539,15 @@ public class BLEFetch implements MicroBitUtility.Client {
     @SuppressLint("MissingPermission")
     private boolean cccEnableNotify( BluetoothGattCharacteristic chr, boolean enable) {
         logi( "cccEnableNotify " + enable);
+        if ( mBleGatt == null) {
+            return false;
+        }
         BluetoothGattDescriptor ccc = chr.getDescriptor(CLIENT_CHARACTERISTIC_CONFIG);
         if (ccc == null) {
+            return false;
+        }
+
+        if ( !mBleGatt.setCharacteristicNotification( chr, enable)) {
             return false;
         }
 
@@ -494,7 +567,7 @@ public class BLEFetch implements MicroBitUtility.Client {
             }
         }
 
-        return mBleGatt.setCharacteristicNotification( chr, enable);
+        return true;
     }
     
     public static final UUID MICROBIT_UTILITY_SERVICE   = UUID.fromString("E95D0001-251D-470A-A062-FA1922DFA9A8");
@@ -518,15 +591,13 @@ public class BLEFetch implements MicroBitUtility.Client {
 
     private void fetchSignalError( MicroBitUtility.Result result) {
         logi("fetchSignalError " + result);
-        mWorkResult = result;
-        signalResult( enumResult.Error);
+        delaySignalError( enumResult.Error, result);
     }
 
     private void fetchSignalFinished( MicroBitUtility.Result result) {
         logi("fetchSignalFinished " + result);
-        mWorkResult = result;
-        signalResult( enumResult.Success);
-    }
+        delaySignalSuccess( result);
+   }
     
     private void fetchSignalProgress( float progress) {
         logi("fetchSignalProgress " + progress);
@@ -556,6 +627,10 @@ public class BLEFetch implements MicroBitUtility.Client {
     {
         fetchTimeoutStop();
         logi( "fetchOnDiscovered");
+        if ( mBleGatt == null) {
+            fetchSignalError( MicroBitUtility.Result.BleError);
+            return;
+        }
 
         BluetoothGattService s = mBleGatt.getService(UUID.fromString("0000fe59-0000-1000-8000-00805f9b34fb"));
         BluetoothGattCharacteristic c = findCharacteristic(MICROBIT_UTILITY_SERVICE, MICROBIT_UTILITY_CTRL);
