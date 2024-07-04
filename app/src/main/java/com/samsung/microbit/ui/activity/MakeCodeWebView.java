@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -15,6 +16,7 @@ import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -32,6 +34,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Map;
 
 import static android.content.ContentValues.TAG;
 
@@ -43,7 +46,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private WebView webView;
     public static String makecodeUrl = "https://makecode.microbit.org/?androidapp=" + BuildConfig.VERSION_CODE;
-    public static Activity activityHandle = null;
+    public static MakeCodeWebView activityHandle = null;
 
     boolean projectDownload = false;
 
@@ -52,6 +55,12 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     private static final int REQUEST_CODE_FLASH = 3;
     private byte[] dataToSave = null;
     private ValueCallback<Uri[]> onShowFileChooser_filePathCallback;
+
+    private boolean mRelaunchOnFinishNavigation = false;
+    private boolean mScriptSubmitOnFinishNavigation = false;
+
+    private String  mRelaunchURL = makecodeUrl;
+
 
     public static void setMakecodeUrl(String url) {
         makecodeUrl = url;
@@ -93,13 +102,21 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                Log.v(TAG, "url: " + url);
-                if (url.contains("https://microbit.org/")) {
-                    MBApp.getAppState().eventPairMakeCodeEnd();
-                    activityHandle.finish();
+            public boolean shouldOverrideUrlLoading( WebView view, String url) {
+                Log.v(TAG, "shouldOverrideUrlLoading (legacy) " + url);
+                return overrideUri( Uri.parse( url));
+            }
+            public boolean shouldOverrideUrlLoading( WebView view, WebResourceRequest request ) {
+                Log.v(TAG, "shouldOverrideUrlLoading " + request);
+                Log.v(TAG, "getUrl " + request.getUrl());
+                Log.v(TAG, "isForMainFrame " + request.isForMainFrame());
+                Log.v(TAG, "hasGesture " + request.hasGesture());
+                Log.v(TAG, "getMethod " + request.getMethod());
+                Log.v(TAG, "getRequestHeaders " + request.getRequestHeaders());
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    Log.v(TAG, "isRedirect " + request.isRedirect());
                 }
-                return false;
+                return overrideUri( request.getUrl());
             }
 
             @Override
@@ -112,9 +129,26 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             public void onPageFinished (WebView view, String url) {
                 super.onPageFinished(view, url);
                 Log.v(TAG, "onPageFinished(" + url + ");");
-                onPageFinishedJS( view, url);
+                onPageFinishedJS(view, url);
+                
+                if ( url.startsWith( makecodeUrl)) {
+                    mRelaunchURL = makecodeUrl;
+                    String hashEditor = "#editor";
+                    if ( url.contains( hashEditor)) {
+                        if ( mRelaunchURL.endsWith( "#")) {
+                            mRelaunchURL = mRelaunchURL.substring( 0, mRelaunchURL.length() - 1);
+                        }
+                        mRelaunchURL = mRelaunchURL + hashEditor;
+                    }
+                    Log.v(TAG, "Remember relaunch URL " + mRelaunchURL);
+                }
+                
+                if ( mRelaunchOnFinishNavigation) {
+                    mRelaunchOnFinishNavigation = false;
+                    webView.loadUrl( mRelaunchURL);
+                }
             }
-        }); //setWebViewClient
+       }); //setWebViewClient
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -251,6 +285,70 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         MBApp.getAppState().eventPairMakeCodeBegin();
     } // onCreate
 
+
+    private boolean overrideUri( final Uri uri) {
+        String url = uri.toString().toLowerCase();
+        Log.v(TAG, "overrideUri: " + url);
+        if ( url.contains("https://microbit.org/code")) {
+            MBApp.getAppState().eventPairMakeCodeEnd();
+            finish();
+            return true;
+        }
+
+        String host = uri.getHost();
+        String path = uri.getPath();
+        String frag = uri.getFragment();
+        host = host == null ? "" : host.toLowerCase();
+        path = path == null ? "" : path.toLowerCase();
+
+        if ( host.startsWith( "makecode.microbit.org")) {
+            if ( url.startsWith( makecodeUrl))
+                return false;
+            else if ( path.startsWith( "/oauth/login"))
+                return false;
+            else if ( path.equals( "/") && uri.getQueryParameter("authcallback") != null)
+                return false;
+        }
+        else if ( host.startsWith( "makecode.com")) {
+            if ( path.startsWith("/oauth/callback"))
+                return false;
+            else if ( path.startsWith("/auth/callback"))
+                return false;
+        }
+        else if ( host.startsWith( "login.live.com"))
+            return false;
+        else if ( host.startsWith( "login.microsoftonline.com"))
+            return false;
+        else if ( host.startsWith( "www.pxt.io"))
+            return false;
+        else if ( host.startsWith( "trg-microbit.userpxt.io"))
+            return false;
+        else if ( host.startsWith( "pxt.azureedge.net"))
+            return false;
+        else if ( host.startsWith( "accounts.google.com"))
+            return false;
+        else if ( host.startsWith( "clever.com"))
+            return false;
+        else if ( host.startsWith( "github.com")) {
+            // When signing out of GitHub, relaunch MakeCode,
+            // otherwise it takes 2 or 3 "backs" to return to MakeCode
+            if ( path.equals( "/")) {
+                mRelaunchOnFinishNavigation = true;
+            }
+            return false;
+        }
+
+        openUri( uri);
+        return true;
+    }
+
+    void openUri( Uri uri) {
+        Log.v(TAG, "openUri: " + uri);
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData( uri);
+        startActivity(intent);
+    }
+
     private void saveData( String name, String mimetype, byte[] data) {
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -297,7 +395,8 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     @Override
     public void onBackPressed() {
-        if(webView.canGoBack()) {
+        String url = webView.getUrl();
+        if ( url != null && !url.startsWith( makecodeUrl) && webView.canGoBack()) {
             webView.goBack();
         } else {
             super.onBackPressed();
