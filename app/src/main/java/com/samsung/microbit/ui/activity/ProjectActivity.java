@@ -370,19 +370,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 //    };
 
     /**
-     * Allows to handle forced closing of the bluetooth service and
-     * update information and UI about currently paired device.
-     */
-    private final BroadcastReceiver gattForceClosedReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if(intent.getAction().equals(BLEService.GATT_FORCE_CLOSED)) {
-                setConnectedDeviceText();
-            }
-        }
-    };
-
-    /**
      * Listener for OK button on a permission requesting dialog.
      * Allows to request permission for incoming calls or incoming sms messages.
      */
@@ -456,17 +443,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     public void setActivityState(int baseActivityState) {
         mActivityState = baseActivityState;
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                setConnectedDeviceText();
-            }
-        });
     }
 
     @Override
     public void preUpdateUi() {
-        setConnectedDeviceText();
     }
 
     @Override
@@ -525,7 +505,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         setContentView(R.layout.activity_projects);
         initViews();
         setupFontStyle();
-        setConnectedDeviceText();
         setupListAdapter();
     }
 
@@ -654,9 +633,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
             IntentFilter broadcastIntentFilter = new IntentFilter(IPCConstants.INTENT_BLE_NOTIFICATION);
             localBroadcastManager.registerReceiver(connectionChangedReceiver, broadcastIntentFilter);
-
-            localBroadcastManager.registerReceiver(gattForceClosedReceiver, new IntentFilter(BLEService
-                    .GATT_FORCE_CLOSED));
         }
 
         logi("onCreate() :: ");
@@ -671,7 +647,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         minimumPermissionsGranted = ProjectsHelper.havePermissions(this);
 
         checkMinimumPermissionsForThisScreen();
-        setConnectedDeviceText();
 
         if (savedInstanceState == null && getIntent() != null) {
             handleIncomingIntent(getIntent());
@@ -752,7 +727,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(application);
 
-        localBroadcastManager.unregisterReceiver(gattForceClosedReceiver);
         localBroadcastManager.unregisterReceiver(connectionChangedReceiver);
 
         unregisterCallbacksForFlashing();
@@ -899,43 +873,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         } else {
             //We have required permission. Update the list directly
             updateProjectsListSortOrder(true);
-        }
-    }
-
-    /**
-     * Updates UI of current connection status and device name.
-     */
-    private void setConnectedDeviceText() {
-
-        TextView connectedIndicatorText = (TextView) findViewById(R.id.connectedIndicatorText);
-        connectedIndicatorText.setText(connectedIndicatorText.getText());
-        connectedIndicatorText.setTypeface(MBApp.getApp().getRobotoTypeface());
-        TextView deviceName = (TextView) findViewById(R.id.deviceName);
-        deviceName.setContentDescription(deviceName.getText());
-        deviceName.setTypeface(MBApp.getApp().getRobotoTypeface());
-        deviceName.setOnClickListener(this);
-        // ImageView connectedIndicatorIcon = (ImageView) findViewById(R.id.connectedIndicatorIcon);
-
-        //Override the connection Icon in case of active flashing
-        if ( activityStateIsFlashing()) {
-            // connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
-            connectedIndicatorText.setText(getString(R.string.connected_to));
-            return;
-        }
-
-        boolean status = BluetoothUtils.getCurrentMicrobit(this).mStatus;
-        String name = BluetoothUtils.getCurrentMicrobit(this).mName;
-        if ( name == null) {
-            name = "";
-        }
-        if(!status) {
-            // connectedIndicatorIcon.setImageResource(R.drawable.device_status_disconnected);
-            connectedIndicatorText.setText(getString(R.string.not_connected));
-            deviceName.setText(name);
-        } else {
-            //  connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
-            connectedIndicatorText.setText(getString(R.string.connected_to));
-            deviceName.setText(name);
         }
     }
 
@@ -1259,10 +1196,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 finish();
                 break;
                 
-            case R.id.deviceName:
-                goToPairingFromAppBarDeviceName();
-                break;
-
             case R.id.projectMoreButton:
                 scriptsPopup();
                 break;
@@ -2489,6 +2422,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         itemID++;
         popupMenu.getMenu().add( 0, itemID, 1, R.string.menu_export);
         itemID++;
+        popupMenu.getMenu().add( 0, itemID, 2, R.string.create_code);
+        itemID++;
 
         popupMenu.setOnMenuItemClickListener( new PopupMenu.OnMenuItemClickListener() {
             @Override
@@ -2496,6 +2431,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 switch ( item.getItemId() - Menu.FIRST) {
                     case 0: scriptsImport(); break;
                     case 1: scriptsExport(); break;
+                    case 2: scriptsCreateCode(); break;
                  }
                 return false;
             }
