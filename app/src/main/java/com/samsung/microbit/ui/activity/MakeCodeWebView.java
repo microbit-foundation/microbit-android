@@ -1,12 +1,9 @@
 package com.samsung.microbit.ui.activity;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -29,12 +26,7 @@ import com.samsung.microbit.utils.FileUtils;
 import com.samsung.microbit.utils.ProjectsHelper;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Map;
 
 import static android.content.ContentValues.TAG;
 
@@ -57,8 +49,6 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     private ValueCallback<Uri[]> onShowFileChooser_filePathCallback;
 
     private boolean mRelaunchOnFinishNavigation = false;
-    private boolean mScriptSubmitOnFinishNavigation = false;
-
     private String  mRelaunchURL = makecodeUrl;
 
 
@@ -108,14 +98,6 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             }
             public boolean shouldOverrideUrlLoading( WebView view, WebResourceRequest request ) {
                 Log.v(TAG, "shouldOverrideUrlLoading " + request);
-                Log.v(TAG, "getUrl " + request.getUrl());
-                Log.v(TAG, "isForMainFrame " + request.isForMainFrame());
-                Log.v(TAG, "hasGesture " + request.hasGesture());
-                Log.v(TAG, "getMethod " + request.getMethod());
-                Log.v(TAG, "getRequestHeaders " + request.getRequestHeaders());
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    Log.v(TAG, "isRedirect " + request.isRedirect());
-                }
                 return overrideUri( request.getUrl());
             }
 
@@ -297,7 +279,6 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
         String host = uri.getHost();
         String path = uri.getPath();
-        String frag = uri.getFragment();
         host = host == null ? "" : host.toLowerCase();
         path = path == null ? "" : path.toLowerCase();
 
