@@ -160,6 +160,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     private static final int REQUEST_CODE_RESET_TO_BLE = 3;
     private static final int REQUEST_CODE_PAIR_BEFORE_FLASH = 4;
     private static final int REQUEST_CODE_PAIR_BEFORE_FLASH_ALREADY_RESET = 5;
+    private static final int REQUEST_CODE_FETCH = 6;
 
     private enum Screen {
         ScreenMain,
@@ -265,6 +266,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         }
     }
 
+    private void goToFetch() {
+        Intent i = new Intent(this, FetchActivity.class);
+        startActivityForResult( i, REQUEST_CODE_FETCH);
+    }
+
     private void onFlashComplete() {
         switch ( mPurpose) {
             default:
@@ -364,19 +370,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 //    };
 
     /**
-     * Allows to handle forced closing of the bluetooth service and
-     * update information and UI about currently paired device.
-     */
-    private final BroadcastReceiver gattForceClosedReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if(intent.getAction().equals(BLEService.GATT_FORCE_CLOSED)) {
-                setConnectedDeviceText();
-            }
-        }
-    };
-
-    /**
      * Listener for OK button on a permission requesting dialog.
      * Allows to request permission for incoming calls or incoming sms messages.
      */
@@ -450,17 +443,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     public void setActivityState(int baseActivityState) {
         mActivityState = baseActivityState;
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                setConnectedDeviceText();
-            }
-        });
     }
 
     @Override
     public void preUpdateUi() {
-        setConnectedDeviceText();
     }
 
     @Override
@@ -519,7 +505,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         setContentView(R.layout.activity_projects);
         initViews();
         setupFontStyle();
-        setConnectedDeviceText();
         setupListAdapter();
     }
 
@@ -538,7 +523,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         flashProjectsTitle.setTypeface(defaultTypeface);
 
         // Create projects
-        TextView createProjectText = (TextView) findViewById(R.id.custom_button_text);
+        TextView createProjectText = (TextView) findViewById(R.id.projectFetchText);
         createProjectText.setTypeface(robotoTypeface);
 
         mEmptyText.setTypeface(defaultTypeface);
@@ -648,9 +633,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
             IntentFilter broadcastIntentFilter = new IntentFilter(IPCConstants.INTENT_BLE_NOTIFICATION);
             localBroadcastManager.registerReceiver(connectionChangedReceiver, broadcastIntentFilter);
-
-            localBroadcastManager.registerReceiver(gattForceClosedReceiver, new IntentFilter(BLEService
-                    .GATT_FORCE_CLOSED));
         }
 
         logi("onCreate() :: ");
@@ -665,7 +647,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         minimumPermissionsGranted = ProjectsHelper.havePermissions(this);
 
         checkMinimumPermissionsForThisScreen();
-        setConnectedDeviceText();
 
         if (savedInstanceState == null && getIntent() != null) {
             handleIncomingIntent(getIntent());
@@ -746,7 +727,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
         LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(application);
 
-        localBroadcastManager.unregisterReceiver(gattForceClosedReceiver);
         localBroadcastManager.unregisterReceiver(connectionChangedReceiver);
 
         unregisterCallbacksForFlashing();
@@ -897,43 +877,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     }
 
     /**
-     * Updates UI of current connection status and device name.
-     */
-    private void setConnectedDeviceText() {
-
-        TextView connectedIndicatorText = (TextView) findViewById(R.id.connectedIndicatorText);
-        connectedIndicatorText.setText(connectedIndicatorText.getText());
-        connectedIndicatorText.setTypeface(MBApp.getApp().getRobotoTypeface());
-        TextView deviceName = (TextView) findViewById(R.id.deviceName);
-        deviceName.setContentDescription(deviceName.getText());
-        deviceName.setTypeface(MBApp.getApp().getRobotoTypeface());
-        deviceName.setOnClickListener(this);
-        // ImageView connectedIndicatorIcon = (ImageView) findViewById(R.id.connectedIndicatorIcon);
-
-        //Override the connection Icon in case of active flashing
-        if ( activityStateIsFlashing()) {
-            // connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
-            connectedIndicatorText.setText(getString(R.string.connected_to));
-            return;
-        }
-
-        boolean status = BluetoothUtils.getCurrentMicrobit(this).mStatus;
-        String name = BluetoothUtils.getCurrentMicrobit(this).mName;
-        if ( name == null) {
-            name = "";
-        }
-        if(!status) {
-            // connectedIndicatorIcon.setImageResource(R.drawable.device_status_disconnected);
-            connectedIndicatorText.setText(getString(R.string.not_connected));
-            deviceName.setText(name);
-        } else {
-            //  connectedIndicatorIcon.setImageResource(R.drawable.device_status_connected);
-            connectedIndicatorText.setText(getString(R.string.connected_to));
-            deviceName.setText(name);
-        }
-    }
-
-    /**
      * Allows to rename file by given file path and a new file name.
      *
      * @param filePath Full path to the file.
@@ -1055,6 +998,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             case REQUEST_CODE_PAIR_BEFORE_FLASH:
             case REQUEST_CODE_PAIR_BEFORE_FLASH_ALREADY_RESET:
                 onActivityResultPairing( requestCode, resultCode, data);
+                return;
+            case REQUEST_CODE_FETCH:
                 return;
         }
 
@@ -1240,8 +1185,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     public void onClick(final View v) {
         switch(v.getId()) {
-            case R.id.createProject:
-                scriptsPopup();
+            case R.id.projectFetch:
+                goToFetch();
                 break;
 
             case R.id.backBtn:
@@ -1251,8 +1196,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 finish();
                 break;
                 
-            case R.id.deviceName:
-                goToPairingFromAppBarDeviceName();
+            case R.id.projectMoreButton:
+                scriptsPopup();
                 break;
 
             case R.id.viewProjectsPatternDifferent:
@@ -2481,23 +2426,23 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
 
     private void scriptsPopup() {
-        PopupMenu popupMenu = new PopupMenu( this, findViewById(R.id.createProject));
+        PopupMenu popupMenu = new PopupMenu( this, findViewById(R.id.projectMoreButton));
         int itemID = Menu.FIRST;
-        popupMenu.getMenu().add( 0, itemID, 0, R.string.create_code);
+        popupMenu.getMenu().add( 0, itemID, 0, R.string.menu_import);
         itemID++;
-        popupMenu.getMenu().add( 0, itemID, 1, R.string.menu_import);
+        popupMenu.getMenu().add( 0, itemID, 1, R.string.menu_export);
         itemID++;
-        popupMenu.getMenu().add( 0, itemID, 2, R.string.menu_export);
+        popupMenu.getMenu().add( 0, itemID, 2, R.string.create_code);
         itemID++;
 
         popupMenu.setOnMenuItemClickListener( new PopupMenu.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
                 switch ( item.getItemId() - Menu.FIRST) {
-                    case 0: scriptsCreateCode(); break;
-                    case 1: scriptsImport(); break;
-                    case 2: scriptsExport(); break;
-                }
+                    case 0: scriptsImport(); break;
+                    case 1: scriptsExport(); break;
+                    case 2: scriptsCreateCode(); break;
+                 }
                 return false;
             }
         });

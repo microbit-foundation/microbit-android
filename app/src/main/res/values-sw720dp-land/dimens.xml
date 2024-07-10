@@ -103,4 +103,6 @@
     <dimen name="popup_gif_size">220dp</dimen>
     <dimen name="popup_linear_progress_bar_margin">32dp</dimen>
     <dimen name="popup_title_padding_bottom">18dp</dimen>
+
+    <dimen name="fetch_during_text_size">24dp</dimen>
 </resources>

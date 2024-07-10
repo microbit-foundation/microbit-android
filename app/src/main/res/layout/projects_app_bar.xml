@@ -34,47 +34,27 @@
         android:contentDescription="@string/desc_flash_toolbar_header"
         android:focusable="true"
         android:focusableInTouchMode="true"
+        android:nextFocusDown="@id/projectMoreButton"
         android:gravity="center"
         android:text="@string/flash_toolbar_header"
         android:textSize="@dimen/app_bar_title_text_size"
         android:textColor="@android:color/white" />
 
-    <!-- Big divider -->
-    <View
-        android:layout_width="@dimen/app_bar_divider_width"
-        android:layout_height="match_parent"
-        android:alpha="@dimen/app_bar_divider_alpha"
-        android:background="@android:color/white" />
-
-    <!-- Connected device  -->
-    <LinearLayout
-        android:id="@+id/ll_toolbar_indicator"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
-        android:layout_weight="1"
-        android:nextFocusDown="@+id/appNameButton"
-        android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/connectedIndicatorText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textColor="@android:color/white" />
-
-        <TextView
-            android:id="@+id/deviceName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:layout_marginTop="@dimen/project_app_bat_device_name_margin_top"
-            android:textColor="@android:color/white" />
-
-    </LinearLayout>
-
     <!-- Small divider -->
     <include layout="@layout/app_bar_small_divider" />
+
+    <!-- more button-->
+    <ImageButton
+        android:id="@+id/projectMoreButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/more"
+        android:nextFocusDown="@id/appNameButton"
+        android:onClick="onClick"
+        android:padding="@dimen/app_bar_back_btn_padding"
+        android:src="@drawable/ic_more_vdotw" />
 
     <!-- connected device status -->
 </LinearLayout>
