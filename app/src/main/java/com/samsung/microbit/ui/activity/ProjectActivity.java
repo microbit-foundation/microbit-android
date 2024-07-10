@@ -239,7 +239,7 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
             case REQUEST_CODE_PAIR_BEFORE_FLASH_ALREADY_RESET:
                 if (resultCode == RESULT_OK) {
                     // micro:bit should still be in Bluetooth mode
-                    flashingChecks( true);
+                    flashingChecks( false);
                 } else {
                     onFlashComplete();
                 }
@@ -2094,7 +2094,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                             }
                         }, popupClickFlashComplete);
             } else if(intent.getAction().equals(PartialFlashingService.BROADCAST_ERROR)) {
-                MBApp.getAppState().eventPairSendError();
                 final int errorCode = intent.getIntExtra(PartialFlashingService.EXTRA_DATA, 0);
                 String error_message = getString(R.string.connection_failed);
 
@@ -2108,9 +2107,16 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     case PartialFlashingService.ERROR_DFU_MODE:
                         error_message = getString(R.string.reset_to_dfu_mode_failed);
                         break;
+                    case PartialFlashingService.ERROR_BROKEN:
+                        error_message = getString(R.string.connection_broken);
+                        break;
+                    case PartialFlashingService.ERROR_BONDED:
+                        restartPurpose();
+                        return;
                 }
 
                 logi("PFResultReceiver.onReceive() :: " + error_message + " code " + errorCode);
+                MBApp.getAppState().eventPairSendError();
 
                 PopUp.show( error_message + "\n\n" + getString(R.string.retry),
                         getString(R.string.flashing_failed_title),
@@ -2400,6 +2406,10 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                         error_message = getString(R.string.dfu_error_CODE, error_message);
                         break;
                     default:
+                        if ( errorCode == DfuBaseService.ERROR_DEVICE_NOT_BONDED) {
+                            restartPurpose();
+                            return;
+                        }
                         if ( errorCode == 0) {
                             error_message = getString(R.string.not_found);
                         } else {

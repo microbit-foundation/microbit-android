@@ -62,13 +62,16 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
     // Android 13 - I have seen 4 status 133s before a good connect and pair
     private int pairChecks = 0;
     private int pairTries = 0;
-    private Boolean scanning = false;
-    private Boolean pairing = false;
+    private boolean scanning = false;
+    private boolean pairing = false;
+    private boolean waitingForDisconnect = false;
+    private boolean wasNotBonded = false;
 
     public enum enumResult {
         None,
         Found,
         Connected,
+        AlreadyPaired,
         Paired,
         TimeoutScan,
         TimeoutConnect,
@@ -165,16 +168,49 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
     }
 
     @SuppressLint("MissingPermission")
-    private void signalResultPairedIfBondedAndHardwareVersionDiscovered() {
-        if (resultDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
-            // Wait for service discovery to set resultHardwareVersion
-            logi("Bonded resultHardwareVersion " + resultHardwareVersion);
-            if ( resultHardwareVersion > 0) {
-                signalResult(enumResult.Paired);
-            }
+    private boolean bondedAndHardwareVersionDiscovered() {
+        logi("bondedAndHardwareVersionDiscovered state " + resultDevice.getBondState() + " resultHardwareVersion " + resultHardwareVersion);
+        if ( resultDevice.getBondState() != BluetoothDevice.BOND_BONDED) {
+            wasNotBonded = true;
+            return false;
         }
+        // Wait for service discovery to set resultHardwareVersion
+        if ( resultHardwareVersion <= 0) {
+            return false;
+        }
+        return true;
     }
 
+    @SuppressLint("MissingPermission")
+    private boolean startWaitingForDisconnectIfBondedAndHardwareVersionDiscovered() {
+        if ( !bondedAndHardwareVersionDiscovered()) {
+            return false;
+        }
+        // Wait for micro:bit to disconnect
+        waitingForDisconnect = true;
+        delayStopAll();
+        delayStart( delayCallbackWaitingForDisconnect, 6000);
+        logi("Start waiting for disconnect");
+        return true;
+    }
+
+    private void onDisconnect() {
+        // If actually pairing, micro:bit will break the connection
+        // Allow time for tick to appear
+        logi("onDisconnect");
+        if ( bondedAndHardwareVersionDiscovered()) {
+            delayStopAll();
+            delayStart( delayCallbackSignalResultPaired, 300);
+        } else if ( waitingForDisconnect) {
+            delayStopAll();
+            delayStart( delayCallbackSignalResultPaired, 300);
+        } else {
+            logi("ERROR - disconnected");
+            logi("Prepare delayed retry");
+            gattState = enumGattState.Error;
+            delayStart( delayCallbackConnect, 1000);
+        }
+    }
     private void logi(String message) {
         if(DEBUG) {
             Log.i(TAG, "### " + Thread.currentThread().getId() + " # " + message);
@@ -248,13 +284,15 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
             }
         }
     };
-        
+
     private final Runnable delayCallbackCheck = new Runnable() {
         @Override
         public void run() {
             logi("delayCallbackCheck pairChecks " + pairChecks);
             if (pairing) {
-                signalResultPairedIfBondedAndHardwareVersionDiscovered();
+                if ( startWaitingForDisconnectIfBondedAndHardwareVersionDiscovered()) {
+                    return;
+                }
                 if ( pairChecks > 0) {
                     // We are connected and polling for bonding
                     pairChecks -= 1;
@@ -263,6 +301,22 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
                 }
                 signalResult(enumResult.TimeoutPair);
             }
+        }
+    };
+
+    private final Runnable delayCallbackWaitingForDisconnect = new Runnable() {
+        @Override
+        public void run() {
+            logi("delayCallbackWaitingForDisconnect wasNotBonded = " + wasNotBonded);
+            signalResult( wasNotBonded ? enumResult.Paired : enumResult.AlreadyPaired);
+        }
+    };
+
+    private final Runnable delayCallbackSignalResultPaired = new Runnable() {
+        @Override
+        public void run() {
+            logi("delayCallbackSignalResultPaired wasNotBonded = " + wasNotBonded);
+            signalResult( wasNotBonded ? enumResult.Paired : enumResult.AlreadyPaired);
         }
     };
 
@@ -275,6 +329,8 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
         mainLooperHandler.removeCallbacks( delayCallbackDiscover);
         mainLooperHandler.removeCallbacks( delayCallbackBond);
         mainLooperHandler.removeCallbacks( delayCallbackCheck);
+        mainLooperHandler.removeCallbacks( delayCallbackWaitingForDisconnect);
+        mainLooperHandler.removeCallbacks( delayCallbackSignalResultPaired);
     }
 
     private void delayStop( Runnable callback)
@@ -460,8 +516,17 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
                 return;
             }
 
+            if ( gatt.getDevice().getBondState() != BluetoothDevice.BOND_BONDED) {
+                wasNotBonded = true;
+            }
+
             logi("onConnectionStateChange " + newState + " status " + status);
-            if ( status != 0) {
+            if ( status != BluetoothGatt.GATT_SUCCESS) {
+                if ( newState == STATE_DISCONNECTED) {
+                    onDisconnect();
+                    return;
+                }
+                delayStopAll();
                 pairStop();
                 logi("ERROR - status");
                 logi("Prepare for retry after a short delay");
@@ -487,6 +552,7 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
                     // about 600ms after establishing connection. Values 600 - 1600ms should be OK.
                 } else {
                     logi("calling discoverServices()");
+                    wasNotBonded = true;
                     gattState = enumGattState.WaitingForServices;
                     boolean success = gatt.discoverServices();
                     if (!success) {
@@ -502,7 +568,7 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
             else if( newState == STATE_DISCONNECTED) {
                 // If actually pairing, micro:bit will break the connection
                 logi("STATE_DISCONNECTED");
-                delayStartCheck();
+                onDisconnect();
             }
         }
 
@@ -537,7 +603,10 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
 
                 gattState = enumGattState.ServicesDiscovered;
 
-                if (resultDevice.getBondState() == BluetoothDevice.BOND_NONE) {
+                if ( startWaitingForDisconnectIfBondedAndHardwareVersionDiscovered())
+                    return;
+
+                if ( resultDevice.getBondState() == BluetoothDevice.BOND_NONE) {
                     logi("Delay calling createBond() to wait for bonding to start automatically");
                     delayStart( delayCallbackBond, 1500);
                 }
@@ -571,6 +640,7 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
 
         paramCallback.BLEPairGetActivity().registerReceiver( pairReceiver, new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED));
 
+        waitingForDisconnect = false;
         resultHardwareVersion = 0;
         gattState = enumGattState.Connecting;
         pairing = true;
@@ -643,13 +713,16 @@ public class BLEPair implements BluetoothAdapter.LeScanCallback {
                 final int state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR);
                 final int prevState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.ERROR);
                 logi("pairReceiver -" + " name = " + name + " addr = " + addr + " state = " + state + " prevState = " + prevState);
+                if ( state != BluetoothDevice.BOND_BONDED && prevState != BluetoothDevice.BOND_BONDED) {
+                    wasNotBonded = true;
+                }
                 if (name == null || name.isEmpty() || addr.isEmpty()) {
                     return;
                 }
                 // Check the changed device is the one we are trying to pair
                 if ( pairing && nameIsMicrobitWithCode(device.getName(), paramCallback.BLEPairGetDeviceCode())) {
                     if (state == BluetoothDevice.BOND_BONDED) {
-                        signalResultPairedIfBondedAndHardwareVersionDiscovered();
+                        startWaitingForDisconnectIfBondedAndHardwareVersionDiscovered();
                     }
                 }
             }

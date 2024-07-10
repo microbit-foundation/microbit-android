@@ -255,6 +255,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                             popupPairingFailed();
                         }
                         break;
+                    case AlreadyPaired:
+                        // micro:bit seems to need reset even if already paired
                     case Paired:
                         handlePairingSuccessful();
                         break;

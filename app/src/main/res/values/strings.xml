@@ -395,6 +395,7 @@
     <string name="connection_failed">Unable to connect</string>
     <string name="reconnection_failed">Unable to reconnect</string>
     <string name="reset_to_dfu_mode_failed">Unable to reset to DFU mode</string>
+    <string name="connection_broken">Connection lost</string>
     <string name="retry">Retry?</string>
     <string name="menu_import">Import</string>
     <string name="menu_export">Export</string>
