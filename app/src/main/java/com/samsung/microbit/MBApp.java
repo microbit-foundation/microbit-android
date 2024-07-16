@@ -96,16 +96,18 @@ public class MBApp extends Application implements DefaultLifecycleObserver {
         MBApp.getAppState().eventPairForeground();
     }
 
+    //onPause & onResume occur when pairing confirmation dialogue shows
+
     @Override
     public void onResume(@NonNull LifecycleOwner owner) {
         logi("onResume");
-        MBApp.getAppState().eventPairForeground();
+        //MBApp.getAppState().eventPairForeground();
     }
 
     @Override
     public void onPause(@NonNull LifecycleOwner owner) {
         logi("onPause");
-        MBApp.getAppState().eventPairBackground();
+         //MBApp.getAppState().eventPairBackground();
     }
 
     @Override
