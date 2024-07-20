@@ -4,6 +4,9 @@ import static com.samsung.microbit.BuildConfig.DEBUG;
 
 import android.app.Application;
 import android.graphics.Typeface;
+import android.os.Build;
+import android.os.StrictMode;
+import android.os.strictmode.Violation;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -12,6 +15,8 @@ import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
 import com.samsung.microbit.MBAppState;
+
+import java.util.concurrent.Executors;
 
 /**
  * Represents a custom class of the app.
@@ -39,6 +44,30 @@ public class MBApp extends Application implements DefaultLifecycleObserver {
 
     @Override
     public void onCreate() {
+        if (DEBUG) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+                        .detectAll()
+                        .penaltyLog()
+//                        .penaltyFlashScreen()
+//                        .penaltyListener(Executors.newSingleThreadExecutor(), new StrictMode.OnThreadViolationListener() {
+//                            @Override
+//                            public void onThreadViolation(Violation v) {
+//                            }
+//                        })
+                        .build());
+
+                StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
+                        .detectAll()
+                        .penaltyLog()
+//                        .penaltyListener(Executors.newSingleThreadExecutor(), new StrictMode.OnVmViolationListener() {
+//                            @Override
+//                            public void onVmViolation(Violation v) {
+//                            }
+//                        })
+                        .build());
+            }
+        }
         super.onCreate();
         app = this;
         ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
