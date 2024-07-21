@@ -311,12 +311,20 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         else if ( host.startsWith( "clever.com"))
             return false;
         else if ( host.startsWith( "github.com")) {
+            if ( path.startsWith( "/login/oauth/"))
+                return false;
+            if ( path.equals( "/login"))
+                return false;
+            if ( path.startsWith( "/sessions/"))
+                return false;
+            if ( path.equals( "/logout"))
+                return false;
             // When signing out of GitHub, relaunch MakeCode,
             // otherwise it takes 2 or 3 "backs" to return to MakeCode
             if ( path.equals( "/")) {
                 mRelaunchOnFinishNavigation = true;
+                return false;
             }
-            return false;
         }
 
         openUri( uri);
