@@ -44,30 +44,30 @@ public class MBApp extends Application implements DefaultLifecycleObserver {
 
     @Override
     public void onCreate() {
-        if (DEBUG) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
-                        .detectAll()
-                        .penaltyLog()
-//                        .penaltyFlashScreen()
+//        if (DEBUG) {
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+//                StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+//                        .detectAll()
+//                        .permitDiskReads()
+//                        .penaltyLog()
 //                        .penaltyListener(Executors.newSingleThreadExecutor(), new StrictMode.OnThreadViolationListener() {
 //                            @Override
 //                            public void onThreadViolation(Violation v) {
 //                            }
 //                        })
-                        .build());
-
-                StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
-                        .detectAll()
-                        .penaltyLog()
+//                        .build());
+//
+//                StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
+//                        .detectAll()
+//                        .penaltyLog()
 //                        .penaltyListener(Executors.newSingleThreadExecutor(), new StrictMode.OnVmViolationListener() {
 //                            @Override
 //                            public void onVmViolation(Violation v) {
 //                            }
 //                        })
-                        .build());
-            }
-        }
+//                        .build());
+//            }
+//        }
         super.onCreate();
         app = this;
         ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
