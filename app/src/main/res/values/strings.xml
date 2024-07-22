@@ -24,7 +24,7 @@
 
     <!-- External links -->
     <string name="create_code_url" translatable="false">https://makecode.microbit.org/</string>
-    <string name="discover_url" translatable="false">http://microbit.org/</string>
+    <string name="discover_url" translatable="false">https://microbit.org/projects/make-it-code-it/?filters=makecode</string>
     <string name="my_scripts_url" translatable="false">https://makecode.microbit.org/</string>
     <string name="privacy_policy_url" translatable="false">http://microbit.org/privacy</string>
     <string name="terms_of_use_url" translatable="false">http://microbit.org/terms-of-use</string>
