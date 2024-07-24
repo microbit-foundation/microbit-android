@@ -2337,6 +2337,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                 final int errorType = intent.getIntExtra(DfuBaseService.EXTRA_ERROR_TYPE, 0);
                 String error_message = "";
 
+                PopUp.hide();
+
                 switch (errorType) {
                     case DfuBaseService.ERROR_TYPE_COMMUNICATION_STATE:
                         if ( errorCode == 0x0085) {

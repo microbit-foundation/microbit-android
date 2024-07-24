@@ -361,7 +361,7 @@ public class ProjectAdapter extends BaseAdapter {
 
         Project project = mProjects.get(position);
         if(convertView == null) {
-            LayoutInflater inflater = LayoutInflater.from(MBApp.getApp());
+            LayoutInflater inflater = LayoutInflater.from( mProjectActivity);
             convertView = inflater.inflate(R.layout.project_items, null);
         }
 
