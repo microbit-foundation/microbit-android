@@ -282,7 +282,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         host = host == null ? "" : host.toLowerCase();
         path = path == null ? "" : path.toLowerCase();
 
-        if ( host.startsWith( "makecode.microbit.org")) {
+        if ( host.equals("makecode.microbit.org")) {
             if ( url.startsWith( makecodeUrl))
                 return false;
             else if ( path.startsWith( "/oauth/login"))
@@ -290,27 +290,27 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             else if ( path.equals( "/") && uri.getQueryParameter("authcallback") != null)
                 return false;
         }
-        else if ( host.startsWith( "makecode.com")) {
+        else if ( host.equals( "makecode.com")) {
             if ( path.startsWith("/oauth/callback"))
                 return false;
             else if ( path.startsWith("/auth/callback"))
                 return false;
         }
-        else if ( host.startsWith( "login.live.com"))
+        else if ( host.equals( "login.live.com"))
             return false;
-        else if ( host.startsWith( "login.microsoftonline.com"))
+        else if ( host.equals( "login.microsoftonline.com"))
             return false;
-        else if ( host.startsWith( "www.pxt.io"))
+        else if ( host.equals( "www.pxt.io"))
             return false;
-        else if ( host.startsWith( "trg-microbit.userpxt.io"))
+        else if ( host.equals( "trg-microbit.userpxt.io"))
             return false;
-        else if ( host.startsWith( "pxt.azureedge.net"))
+        else if ( host.equals( "pxt.azureedge.net"))
             return false;
-        else if ( host.startsWith( "accounts.google.com"))
+        else if ( host.equals( "accounts.google.com"))
             return false;
-        else if ( host.startsWith( "clever.com"))
+        else if ( host.equals( "clever.com"))
             return false;
-        else if ( host.startsWith( "github.com")) {
+        else if ( host.equals( "github.com")) {
             if ( path.startsWith( "/login/oauth/"))
                 return false;
             if ( path.equals( "/login"))
