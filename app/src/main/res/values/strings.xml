@@ -426,5 +426,9 @@
     <string name="fetch_out_of_memory">Out of memory</string>
     <string name="fetch_failed_to_create_my_data_htm">Failed to create MY_DATA.HTM</string>
     <string name="fetch_works_with_micro_bit_v2_only">Works with micro:bit V2 only</string>
+    <string name="this_device_may_have_restrictions_in_place">"This device may have restrictions in place."</string>
+    <string name="unable_to_start_activity_to_enable_bluetooth">"Unable to enable Bluetooth"</string>
+    <string name="unable_to_start_activity_to_enable_location_services">"Unable to enable Location"</string>
+    <string name="unable_to_start_activity">"Unable to start activity"</string>
+    <string name="unable_to_open_link">"Unable to open link"</string>
 </resources>
-

@@ -59,6 +59,15 @@ public class FetchPopups {
                 popupClickActivityCancelled, popupClickActivityCancelled);
     }
 
+    public void bluetoothEnableRestricted() {
+        PopUp.show( mClient.fetchPopupsContext().getString(R.string.this_device_may_have_restrictions_in_place), //message
+                mClient.fetchPopupsContext().getString(R.string.unable_to_start_activity_to_enable_bluetooth),
+                R.drawable.error_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_ALERT,
+                popupClickActivityCancelled, popupClickActivityCancelled);
+    }
+
     public void bluetoothConnectPermissionError() {
         PopUp.show(mClient.fetchPopupsContext().getString(R.string.ble_permission_connect_error),
                 mClient.fetchPopupsContext().getString(R.string.permissions_needed_title),

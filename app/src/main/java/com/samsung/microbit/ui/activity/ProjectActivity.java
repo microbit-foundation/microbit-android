@@ -52,6 +52,7 @@ import com.samsung.microbit.service.DfuService;
 import com.samsung.microbit.service.PartialFlashingService;
 import com.samsung.microbit.ui.BluetoothChecker;
 import com.samsung.microbit.ui.PopUp;
+import com.samsung.microbit.ui.UIUtils;
 import com.samsung.microbit.ui.adapter.ProjectAdapter;
 import com.samsung.microbit.ui.view.PatternDrawable;
 import com.samsung.microbit.utils.BLEConnectionHandler;
@@ -1084,7 +1085,15 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @SuppressLint("MissingPermission")
     private void enableBluetooth() {
         Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-        startActivityForResult(enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
+        int error = UIUtils.safelyStartActivityForResult( this, false, enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
+        if ( error != 0) {
+            PopUp.show( getString(R.string.this_device_may_have_restrictions_in_place), //message
+                    getString(R.string.unable_to_start_activity_to_enable_bluetooth),
+                    R.drawable.error_face, R.drawable.red_btn,
+                    PopUp.GIFF_ANIMATION_ERROR,
+                    TYPE_ALERT,
+                    popupClickFlashComplete, popupClickFlashComplete);
+        }
     }
 
     private boolean havePermission(String permission) {
@@ -2462,7 +2471,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         intent.setType("application/octet-stream");
-        startActivityForResult( Intent.createChooser(intent, messageTitle), REQUEST_CODE_IMPORT);
+        int error = UIUtils.safelyStartActivityForResult( this, true, Intent.createChooser(intent, messageTitle), REQUEST_CODE_IMPORT);
+        if ( error != 0) {
+        }
     }
 
     protected void onActivityResultScriptsImport(int requestCode, int resultCode, Intent data) {
@@ -2482,7 +2493,9 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         intent.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         intent.setType( mimetype);
         intent.putExtra(Intent.EXTRA_TITLE, name);
-        startActivityForResult( Intent.createChooser(intent, messageTitle), REQUEST_CODE_EXPORT);
+        int error = UIUtils.safelyStartActivityForResult( this, true, Intent.createChooser(intent, messageTitle), REQUEST_CODE_EXPORT);
+        if ( error != 0) {
+        }
     }
 
     protected void onActivityResultScriptsExport(int requestCode, int resultCode, Intent data) {

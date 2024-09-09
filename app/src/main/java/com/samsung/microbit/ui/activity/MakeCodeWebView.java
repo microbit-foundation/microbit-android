@@ -22,6 +22,7 @@ import android.widget.Toast;
 import com.samsung.microbit.BuildConfig;
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.R;
+import com.samsung.microbit.ui.UIUtils;
 import com.samsung.microbit.utils.FileUtils;
 import com.samsung.microbit.utils.ProjectsHelper;
 
@@ -135,15 +136,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
-                onShowFileChooser_filePathCallback = filePathCallback;
-                try {
-                    Intent intent = fileChooserParams.createIntent();
-                    startActivityForResult(intent, REQUEST_CODE_CHOOSE_FILE);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return false;
-                }
-                return true;
+                return onShowFileChooser( webView, filePathCallback, fileChooserParams);
 
             }
         }); //setWebChromeClient
@@ -268,6 +261,23 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     } // onCreate
 
 
+    private boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+        onShowFileChooser_filePathCallback = filePathCallback;
+        try {
+            Intent intent = fileChooserParams.createIntent();
+            int error = UIUtils.safelyStartActivityForResult( this, true, intent, REQUEST_CODE_CHOOSE_FILE);
+            if ( error != 0) {
+                onShowFileChooser_filePathCallback.onReceiveValue( null);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+
+    }
+
+
     private boolean overrideUri( final Uri uri) {
         String url = uri.toString().toLowerCase();
         Log.v(TAG, "overrideUri: " + url);
@@ -333,9 +343,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     void openUri( Uri uri) {
         Log.v(TAG, "openUri: " + uri);
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setData( uri);
-        startActivity(intent);
+        UIUtils.safelyStartActivityViewURI( this, true, uri);
     }
 
     private void saveData( String name, String mimetype, byte[] data) {
@@ -344,7 +352,10 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         intent.setType( mimetype);
         intent.putExtra(Intent.EXTRA_TITLE, name);
         dataToSave = data;
-        startActivityForResult( intent, REQUEST_CODE_SAVEDATA);
+        int error = UIUtils.safelyStartActivityForResult( this, true, intent, REQUEST_CODE_SAVEDATA);
+        if ( error != 0) {
+            dataToSave = null;
+        }
     }
 
     @Override

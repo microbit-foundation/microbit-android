@@ -50,6 +50,7 @@ import com.samsung.microbit.data.model.ui.PairingActivityState;
 import com.samsung.microbit.service.BLEService;
 import com.samsung.microbit.ui.BluetoothChecker;
 import com.samsung.microbit.ui.PopUp;
+import com.samsung.microbit.ui.UIUtils;
 import com.samsung.microbit.ui.adapter.LEDAdapter;
 import com.samsung.microbit.utils.BLEConnectionHandler;
 import com.samsung.microbit.utils.Utils;
@@ -1200,7 +1201,17 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
      */
     private void enableBluetooth() {
         Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-        startActivityForResult(enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
+        int error = UIUtils.safelyStartActivityForResult( this, false, enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
+        if ( error != 0) {
+            //Change state back to Idle
+            setActivityState(PairingActivityState.STATE_IDLE);
+            PopUp.show( getString(R.string.this_device_may_have_restrictions_in_place), //message
+                    getString(R.string.unable_to_start_activity_to_enable_bluetooth),
+                    R.drawable.error_face, R.drawable.red_btn,
+                    PopUp.GIFF_ANIMATION_ERROR,
+                    PopUp.TYPE_ALERT,
+                    failedPermissionHandler, failedPermissionHandler);
+        }
     }
 
     private void enableLocation() {
@@ -1212,9 +1223,7 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                     @Override
                     public void onClick(View v) {
                         PopUp.hide();
-                        //Unpair the device for secure BLE
-                        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                        startActivityForResult( intent, RequestCodes.REQUEST_ENABLE_LOCATION);
+                        enableLocationOK();
                     }
                 },//override click listener for ok button
                 new View.OnClickListener() {
@@ -1227,9 +1236,27 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
                 });
     }
 
+    private void enableLocationOK() {
+        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+        int error = UIUtils.safelyStartActivityForResult( this, false, intent, RequestCodes.REQUEST_ENABLE_LOCATION);
+        if ( error != 0) {
+            setActivityState(PairingActivityState.STATE_IDLE);
+            popupLocationRestricted();
+        }
+    }
+
     public void popupLocationNeeded() {
         PopUp.show("Cannot continue without enabling location", //message
                 "",
+                R.drawable.error_face, R.drawable.red_btn,
+                PopUp.GIFF_ANIMATION_ERROR,
+                PopUp.TYPE_ALERT,
+                failedPermissionHandler, failedPermissionHandler);
+    }
+
+    public void popupLocationRestricted() {
+        PopUp.show( getString(R.string.this_device_may_have_restrictions_in_place), //message
+                getString(R.string.unable_to_start_activity_to_enable_location_services),
                 R.drawable.error_face, R.drawable.red_btn,
                 PopUp.GIFF_ANIMATION_ERROR,
                 PopUp.TYPE_ALERT,
