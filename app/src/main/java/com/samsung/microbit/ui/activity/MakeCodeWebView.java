@@ -136,7 +136,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
-                return onShowFileChooser( webView, filePathCallback, fileChooserParams);
+                return showFileChooser( webView, filePathCallback, fileChooserParams);
 
             }
         }); //setWebChromeClient
@@ -236,7 +236,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
                             openProjectActivity( hexToWrite);
                         } else {
                             Toast.makeText( MakeCodeWebView.this,
-                                    "Saved to FLASH page", Toast.LENGTH_LONG).show();
+                                    "Saved to My Programs page", Toast.LENGTH_LONG).show();
                         }
                     }
                 } catch ( Exception e) {
@@ -261,7 +261,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     } // onCreate
 
 
-    private boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+    private boolean showFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
         onShowFileChooser_filePathCallback = filePathCallback;
         try {
             Intent intent = fileChooserParams.createIntent();

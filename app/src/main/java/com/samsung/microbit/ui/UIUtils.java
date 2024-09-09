@@ -19,6 +19,7 @@ import android.view.WindowMetrics;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.samsung.microbit.R;
 
@@ -278,26 +279,42 @@ public class UIUtils {
         }
     }
 
-    public static void safelyStartActivityPopup( String message, String title) {
-        PopUp.show( message, title,
-                R.drawable.error_face,
-                R.drawable.red_btn,
-                PopUp.GIFF_ANIMATION_ERROR,
-                PopUp.TYPE_ALERT,
-                null,
-                null);
+//    public static void safelyStartActivityPopup( Context context, String message, String title) {
+//        PopUp.show( message, title,
+//                R.drawable.error_face,
+//                R.drawable.red_btn,
+//                PopUp.GIFF_ANIMATION_ERROR,
+//                PopUp.TYPE_ALERT,
+//                null,
+//                null);
+//    }
+//
+//    public static void safelyStartActivityPopup( Context context, String title) {
+//        safelyStartActivityPopup( context, context.getString(R.string.this_device_may_have_restrictions_in_place), title);
+//    }
+//
+//    public static void safelyStartActivityPopupGeneric( Context context) {
+//        safelyStartActivityPopup( context, context.getString(R.string.unable_to_start_activity));
+//    }
+//
+//    public static void safelyStartActivityPopupOpenLink( Context context) {
+//        safelyStartActivityPopup( context, context.getString(R.string.unable_to_open_link));
+//    }
 
-    }
-    public static void safelyStartActivityPopup( Context context, String title) {
-        safelyStartActivityPopup( context.getString(R.string.this_device_may_have_restrictions_in_place), title);
-    }
-
-    public static void safelyStartActivityPopupGeneric( Context context) {
-        safelyStartActivityPopup( context, context.getString(R.string.unable_to_start_activity));
+    public static void safelyStartActivityToast( Context context, String message, String title) {
+        Toast.makeText( context, title + ".\n" + message, Toast.LENGTH_LONG).show();
     }
 
-    public static void safelyStartActivityPopupOpenLink( Context context) {
-        safelyStartActivityPopup( context, context.getString(R.string.unable_to_open_link));
+    public static void safelyStartActivityToast( Context context, String title) {
+        safelyStartActivityToast( context, context.getString(R.string.this_device_may_have_restrictions_in_place), title);
+    }
+
+    public static void safelyStartActivityToastGeneric( Context context) {
+        safelyStartActivityToast( context, context.getString(R.string.unable_to_start_activity));
+    }
+
+    public static void safelyStartActivityToastOpenLink( Context context) {
+        safelyStartActivityToast( context, context.getString(R.string.unable_to_open_link));
     }
 
     // Wrap startActivity and startActivityForResult
@@ -307,6 +324,11 @@ public class UIUtils {
     // needs to add code similar to the cancel case in onActivityResult
     public static int safelyStartActivity( Context context, boolean report, Intent intent,
                                            boolean forResult, int requestCode, Bundle options) {
+//        if ( report) {
+//            safelyStartActivityToastGeneric( context);
+//        }
+//        return 4;
+
         int error = 0;
         ComponentName componentName = intent.resolveActivity( context.getPackageManager());
         if ( componentName == null) {
@@ -329,9 +351,8 @@ public class UIUtils {
                 error = 2;
             }
         }
-        if ( report && error != 0)
-        {
-            safelyStartActivityPopupGeneric( context);
+        if ( report && error != 0) {
+            safelyStartActivityToastGeneric( context);
         }
         return error;
     }
@@ -357,7 +378,7 @@ public class UIUtils {
         intent.setData( uri);
         int error = UIUtils.safelyStartActivity( context, false, intent);
         if ( report && error != 0) {
-            safelyStartActivityPopupOpenLink( context);
+            safelyStartActivityToastOpenLink( context);
         }
         return error;
     }

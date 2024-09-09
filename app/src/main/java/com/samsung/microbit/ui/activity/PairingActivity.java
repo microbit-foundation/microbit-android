@@ -1205,12 +1205,14 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
         if ( error != 0) {
             //Change state back to Idle
             setActivityState(PairingActivityState.STATE_IDLE);
-            PopUp.show( getString(R.string.this_device_may_have_restrictions_in_place), //message
-                    getString(R.string.unable_to_start_activity_to_enable_bluetooth),
-                    R.drawable.error_face, R.drawable.red_btn,
-                    PopUp.GIFF_ANIMATION_ERROR,
-                    PopUp.TYPE_ALERT,
-                    failedPermissionHandler, failedPermissionHandler);
+            UIUtils.safelyStartActivityToast( this, getString(R.string.unable_to_start_activity_to_enable_bluetooth));
+            onFinish( RESULT_CANCELED);
+//            PopUp.show( getString(R.string.this_device_may_have_restrictions_in_place), //message
+//                    getString(R.string.unable_to_start_activity_to_enable_bluetooth),
+//                    R.drawable.error_face, R.drawable.red_btn,
+//                    PopUp.GIFF_ANIMATION_ERROR,
+//                    PopUp.TYPE_ALERT,
+//                    failedPermissionHandler, failedPermissionHandler);
         }
     }
 
@@ -1255,12 +1257,15 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     }
 
     public void popupLocationRestricted() {
-        PopUp.show( getString(R.string.this_device_may_have_restrictions_in_place), //message
-                getString(R.string.unable_to_start_activity_to_enable_location_services),
-                R.drawable.error_face, R.drawable.red_btn,
-                PopUp.GIFF_ANIMATION_ERROR,
-                PopUp.TYPE_ALERT,
-                failedPermissionHandler, failedPermissionHandler);
+        UIUtils.safelyStartActivityToast( this,
+                getString(R.string.unable_to_start_activity_to_enable_location_services));
+        onFinish( RESULT_CANCELED);
+//        PopUp.show( getString(R.string.this_device_may_have_restrictions_in_place), //message
+//                getString(R.string.unable_to_start_activity_to_enable_location_services),
+//                R.drawable.error_face, R.drawable.red_btn,
+//                PopUp.GIFF_ANIMATION_ERROR,
+//                PopUp.TYPE_ALERT,
+//                failedPermissionHandler, failedPermissionHandler);
     }
 
     @Override

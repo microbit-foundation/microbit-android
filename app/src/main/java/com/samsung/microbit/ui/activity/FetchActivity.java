@@ -945,7 +945,7 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
-                return onShowFileChooser( webView, filePathCallback, fileChooserParams);
+                return showFileChooser( webView, filePathCallback, fileChooserParams);
             }
         }); //setWebChromeClient
 
@@ -979,7 +979,7 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         }
     }
 
-    private boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+    private boolean showFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
         mWebFileChooserCallback = filePathCallback;
         try {
             Intent intent = fileChooserParams.createIntent();
