@@ -317,6 +317,8 @@ public class UIUtils {
         safelyStartActivityToast( context, context.getString(R.string.unable_to_open_link));
     }
 
+//    public static boolean safelyStartActivityDebugFail = false;
+
     // Wrap startActivity and startActivityForResult
     // Call resolveActivity and catch exception from startActivity
     // Return non-zero error on fail
@@ -324,10 +326,12 @@ public class UIUtils {
     // needs to add code similar to the cancel case in onActivityResult
     public static int safelyStartActivity( Context context, boolean report, Intent intent,
                                            boolean forResult, int requestCode, Bundle options) {
-//        if ( report) {
-//            safelyStartActivityToastGeneric( context);
+//        if ( safelyStartActivityDebugFail) {
+//            if (report) {
+//                safelyStartActivityToastGeneric(context);
+//            }
+//            return 4;
 //        }
-//        return 4;
 
         int error = 0;
         ComponentName componentName = intent.resolveActivity( context.getPackageManager());
