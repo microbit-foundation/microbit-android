@@ -336,25 +336,29 @@ public class UIUtils {
         int error = 0;
         ComponentName componentName = intent.resolveActivity( context.getPackageManager());
         if ( componentName == null) {
+            /* TODO: Why is componentName null for
+                    ACTION_CREATE_DOCUMENT (unless createChooser is used)
+                    ACTION_VIEW?
+            */
             Log.i(TAG,"startActivity - no component");
-            error = 1;
-        } else {
-            try {
-                if ( forResult) {
-                    if ( !(context instanceof Activity)) {
-                        error = 3;
-                    } else {
-                        ((Activity) context).startActivityForResult(intent, requestCode, options);
-                    }
-                } else {
-                    context.startActivity(intent);
-                }
-            } catch (Exception e) {
-                Log.i(TAG, "startActivity - exception");
-                e.printStackTrace();
-                error = 2;
-            }
         }
+
+        try {
+            if ( forResult) {
+                if ( !(context instanceof Activity)) {
+                    error = 3;
+                } else {
+                    ((Activity) context).startActivityForResult(intent, requestCode, options);
+                }
+            } else {
+                context.startActivity(intent);
+            }
+        } catch (Exception e) {
+            Log.i(TAG, "startActivity - exception");
+            e.printStackTrace();
+            error = 2;
+        }
+
         if ( report && error != 0) {
             safelyStartActivityToastGeneric( context);
         }
