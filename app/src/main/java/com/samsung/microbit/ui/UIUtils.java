@@ -279,28 +279,6 @@ public class UIUtils {
         }
     }
 
-//    public static void safelyStartActivityPopup( Context context, String message, String title) {
-//        PopUp.show( message, title,
-//                R.drawable.error_face,
-//                R.drawable.red_btn,
-//                PopUp.GIFF_ANIMATION_ERROR,
-//                PopUp.TYPE_ALERT,
-//                null,
-//                null);
-//    }
-//
-//    public static void safelyStartActivityPopup( Context context, String title) {
-//        safelyStartActivityPopup( context, context.getString(R.string.this_device_may_have_restrictions_in_place), title);
-//    }
-//
-//    public static void safelyStartActivityPopupGeneric( Context context) {
-//        safelyStartActivityPopup( context, context.getString(R.string.unable_to_start_activity));
-//    }
-//
-//    public static void safelyStartActivityPopupOpenLink( Context context) {
-//        safelyStartActivityPopup( context, context.getString(R.string.unable_to_open_link));
-//    }
-
     public static void safelyStartActivityToast( Context context, String message, String title) {
         Toast.makeText( context, title + ".\n" + message, Toast.LENGTH_LONG).show();
     }
@@ -320,7 +298,6 @@ public class UIUtils {
 //    public static boolean safelyStartActivityDebugFail = false;
 
     // Wrap startActivity and startActivityForResult
-    // Call resolveActivity and catch exception from startActivity
     // Return non-zero error on fail
     // When startActivityForResult fails, the caller likely
     // needs to add code similar to the cancel case in onActivityResult
@@ -334,14 +311,6 @@ public class UIUtils {
 //        }
 
         int error = 0;
-        ComponentName componentName = intent.resolveActivity( context.getPackageManager());
-        if ( componentName == null) {
-            /* TODO: Why is componentName null for
-                    ACTION_CREATE_DOCUMENT (unless createChooser is used)
-                    ACTION_VIEW?
-            */
-            Log.i(TAG,"startActivity - no component");
-        }
 
         try {
             if ( forResult) {
