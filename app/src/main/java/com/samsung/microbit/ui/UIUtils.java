@@ -1,10 +1,16 @@
 package com.samsung.microbit.ui;
 
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Bundle;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
@@ -13,6 +19,7 @@ import android.view.WindowMetrics;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.samsung.microbit.R;
 
@@ -270,5 +277,90 @@ public class UIUtils {
             }
             view.animate();
         }
+    }
+
+    public static void safelyStartActivityToast( Context context, String message, String title) {
+        Toast.makeText( context, title + ".\n" + message, Toast.LENGTH_LONG).show();
+    }
+
+    public static void safelyStartActivityToast( Context context, String title) {
+        safelyStartActivityToast( context, context.getString(R.string.this_device_may_have_restrictions_in_place), title);
+    }
+
+    public static void safelyStartActivityToastGeneric( Context context) {
+        safelyStartActivityToast( context, context.getString(R.string.unable_to_start_activity));
+    }
+
+    public static void safelyStartActivityToastOpenLink( Context context) {
+        safelyStartActivityToast( context, context.getString(R.string.unable_to_open_link));
+    }
+
+//    public static boolean safelyStartActivityDebugFail = false;
+
+    // Wrap startActivity and startActivityForResult
+    // Return non-zero error on fail
+    // When startActivityForResult fails, the caller likely
+    // needs to add code similar to the cancel case in onActivityResult
+    public static int safelyStartActivity( Context context, boolean report, Intent intent,
+                                           boolean forResult, int requestCode, Bundle options) {
+//        if ( safelyStartActivityDebugFail) {
+//            if (report) {
+//                safelyStartActivityToastGeneric(context);
+//            }
+//            return 4;
+//        }
+
+        int error = 0;
+
+        try {
+            if ( forResult) {
+                if ( !(context instanceof Activity)) {
+                    error = 3;
+                } else {
+                    ((Activity) context).startActivityForResult(intent, requestCode, options);
+                }
+            } else {
+                context.startActivity(intent);
+            }
+        } catch (Exception e) {
+            Log.i(TAG, "startActivity - exception");
+            e.printStackTrace();
+            error = 2;
+        }
+
+        if ( report && error != 0) {
+            safelyStartActivityToastGeneric( context);
+        }
+        return error;
+    }
+
+    public static int safelyStartActivity(Context context, boolean report, Intent intent, Bundle options) {
+        return UIUtils.safelyStartActivity( context, report, intent, false, 0, options);
+    }
+
+    public static int safelyStartActivity(Context context, boolean report, Intent intent) {
+        return UIUtils.safelyStartActivity( context, report, intent, null);
+    }
+
+    public static int safelyStartActivityForResult(Activity activity, boolean report, Intent intent, int requestCode, Bundle options) {
+        return UIUtils.safelyStartActivity( activity, report, intent, true, requestCode, options);
+    }
+
+    public static int safelyStartActivityForResult(Activity activity, boolean report, Intent intent, int requestCode) {
+        return UIUtils.safelyStartActivityForResult( activity, report, intent, requestCode, null);
+    }
+
+    public static int safelyStartActivityViewURI( Context context, boolean report, Uri uri) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData( uri);
+        int error = UIUtils.safelyStartActivity( context, false, intent);
+        if ( report && error != 0) {
+            safelyStartActivityToastOpenLink( context);
+        }
+        return error;
+    }
+
+    public static int safelyStartActivityViewURL( Context context, boolean report, String url) {
+        return UIUtils.safelyStartActivityViewURI( context, report, Uri.parse( url));
     }
 }

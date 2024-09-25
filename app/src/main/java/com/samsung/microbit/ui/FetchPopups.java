@@ -59,6 +59,12 @@ public class FetchPopups {
                 popupClickActivityCancelled, popupClickActivityCancelled);
     }
 
+    public void bluetoothEnableRestricted() {
+        UIUtils.safelyStartActivityToast( mClient.fetchPopupsContext(),
+                mClient.fetchPopupsContext().getString(R.string.unable_to_start_activity_to_enable_bluetooth));
+        mClient.fetchPopupsCancelled();
+    }
+
     public void bluetoothConnectPermissionError() {
         PopUp.show(mClient.fetchPopupsContext().getString(R.string.ble_permission_connect_error),
                 mClient.fetchPopupsContext().getString(R.string.permissions_needed_title),

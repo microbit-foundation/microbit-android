@@ -360,6 +360,14 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
                 }
                 dataToSave = null;
                 break;
+            case REQUEST_CODE_CHOOSE_FILE:
+                if ( resultCode != RESULT_OK) {
+                    mWebFileChooserCallback.onReceiveValue( null);
+                    return;
+                }
+                Uri[] uris = WebChromeClient.FileChooserParams.parseResult ( resultCode, data);
+                mWebFileChooserCallback.onReceiveValue( uris);
+                break;
         }
     }
 
@@ -468,9 +476,7 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
                 break;
 
             case R.id.fetchSelectDuringMore:
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse(getString(R.string.fetchDuringFindOutMoreUrl)));
-                startActivity(intent);
+                UIUtils.safelyStartActivityViewURL( this, true, getString(R.string.fetchDuringFindOutMoreUrl));
                 break;
         }
     }
@@ -675,7 +681,10 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
     @SuppressLint("MissingPermission")
     private void enableBluetooth() {
         Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-        startActivityForResult(enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
+        int error = UIUtils.safelyStartActivityForResult( this, false, enableBtIntent, RequestCodes.REQUEST_ENABLE_BT);
+        if ( error != 0) {
+            mPopups.bluetoothEnableRestricted();
+        }
     }
 
     private boolean havePermission(String permission) {
@@ -869,9 +878,7 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
 
     private void openURL( String url) {
         logi( "openURL: " + url);
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setData(Uri.parse( url));
-        startActivity(intent);
+        UIUtils.safelyStartActivityViewURL( this, true, url);
     }
 
     /**
@@ -938,16 +945,7 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
-                mWebFileChooserCallback = filePathCallback;
-                try {
-                    Intent intent = fileChooserParams.createIntent();
-                    startActivityForResult(intent, REQUEST_CODE_CHOOSE_FILE);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return false;
-                }
-                return true;
-
+                return showFileChooser( webView, filePathCallback, fileChooserParams);
             }
         }); //setWebChromeClient
 
@@ -979,6 +977,21 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         public void onDownloadBase64( String base64, String mimetype) {
             mContext.onDownloadBase64( base64, mimetype);
         }
+    }
+
+    private boolean showFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+        mWebFileChooserCallback = filePathCallback;
+        try {
+            Intent intent = fileChooserParams.createIntent();
+            int error = UIUtils.safelyStartActivityForResult( this, true, intent, REQUEST_CODE_CHOOSE_FILE);
+            if ( error != 0) {
+                mWebFileChooserCallback.onReceiveValue( null);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
     private void onDownloadBlob( String blob) {
@@ -1032,7 +1045,10 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         intent.setType( mimetype);
         intent.putExtra(Intent.EXTRA_TITLE, name);
         dataToSave = data;
-        startActivityForResult( intent, REQUEST_CODE_SAVEDATA);
+        int error = UIUtils.safelyStartActivityForResult( this, true, intent, REQUEST_CODE_SAVEDATA);
+        if ( error != 0) {
+            dataToSave = null;
+        }
     }
 
     private String displayHtmlGetPath() {

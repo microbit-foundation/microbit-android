@@ -42,6 +42,7 @@ import com.samsung.microbit.data.constants.PermissionCodes;
 import com.samsung.microbit.data.model.ConnectedDevice;
 import com.samsung.microbit.service.IPCService;
 import com.samsung.microbit.ui.PopUp;
+import com.samsung.microbit.ui.UIUtils;
 import com.samsung.microbit.utils.FileUtils;
 import com.samsung.microbit.utils.ProjectsHelper;
 import com.samsung.microbit.utils.Utils;
@@ -393,9 +394,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 startActivity(i);
                 break;
             case R.id.discover_btn:
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse(getString(R.string.discover_url)));
-                startActivity(intent);
+                UIUtils.safelyStartActivityViewURL( this, true, getString(R.string.discover_url));
                 break;
 
             // TODO: HACK - Navigation View items from drawer here instead of [onNavigationItemSelected]
@@ -406,9 +405,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.btn_about: {
-                Intent aboutIntent = new Intent(Intent.ACTION_VIEW);
-                aboutIntent.setData(Uri.parse(getString(R.string.about_url)));
-                startActivity(aboutIntent);
+                UIUtils.safelyStartActivityViewURL( this, true, getString(R.string.about_url));
                 // Close drawer
                 drawer.closeDrawer(GravityCompat.START);
             }
@@ -422,19 +419,13 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             }
             break;
             case R.id.btn_privacy_cookies: {
-
-                Intent privacyIntent = new Intent(Intent.ACTION_VIEW);
-                privacyIntent.setData(Uri.parse(getString(R.string.privacy_policy_url)));
-                startActivity(privacyIntent);
+                UIUtils.safelyStartActivityViewURL( this, true, getString(R.string.privacy_policy_url));
                 // Close drawer
                 drawer.closeDrawer(GravityCompat.START);
             }
             break;
             case R.id.btn_terms_conditions: {
-
-                Intent termsIntent = new Intent(Intent.ACTION_VIEW);
-                termsIntent.setData(Uri.parse(getString(R.string.terms_of_use_url)));
-                startActivity(termsIntent);
+                UIUtils.safelyStartActivityViewURL( this, true, getString(R.string.terms_of_use_url));
                 // Close drawer
                 drawer.closeDrawer(GravityCompat.START);
             }
@@ -449,7 +440,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 String body = prepareEmailBody();
                 feedbackIntent.putExtra(Intent.EXTRA_TEXT, Html.fromHtml(body));
                 Intent mailer = Intent.createChooser(feedbackIntent, null);
-                startActivity(mailer);
+                UIUtils.safelyStartActivity( this, true, mailer);
                 // Close drawer
                 if(drawer != null) {
                     drawer.closeDrawer(GravityCompat.START);
