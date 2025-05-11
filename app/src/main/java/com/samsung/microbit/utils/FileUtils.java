@@ -197,9 +197,16 @@ public class FileUtils {
     }
 
     public static byte[] readBytesFromInputStream(InputStream is, final int size) {
+        if ( size <= 0) {
+            return null;
+        }
+
         byte[] bytes = null;
         try {
-            bytes = new byte[size];
+            bytes = newBytes(size);
+            if ( bytes == null) {
+                return null;
+            }
             int remain = size;
             int offset = 0;
             while ( remain > 0) {
@@ -207,8 +214,10 @@ public class FileUtils {
                 remain -= read;
                 offset += read;
             }
-        }  catch ( Exception e){
+        }  catch ( Exception e) {
             bytes = null;
+            Log.e( TAG, "readBytesFromInputStream Exception");
+            e.printStackTrace();
         }
         return bytes;
     }
@@ -216,12 +225,18 @@ public class FileUtils {
     public static byte[] readBytesFromFile( File file) {
         byte[] bytes = null;
         try {
+            long size = file.length();
+            if ( size <= 0 || size > Integer.MAX_VALUE) {
+                Log.e( TAG, "readBytesFromFile error - size");
+                return null;
+            }
             FileInputStream is = new FileInputStream( file);
-            int size = (int) file.length();
-            bytes = readBytesFromInputStream(is, size);
+            bytes = readBytesFromInputStream(is, (int) size);
             is.close();
         }  catch ( Exception e){
             bytes = null;
+            Log.e( TAG, "readBytesFromFile Exception");
+            e.printStackTrace();
         }
         return bytes;
     }
@@ -229,18 +244,42 @@ public class FileUtils {
     public static byte[] readBytesFromUri( Uri uri, Context ctx) {
         byte[] bytes = null;
         try {
+            long size = fileSizeFromUri( uri, ctx);
+            if ( size <= 0 || size > Integer.MAX_VALUE) {
+                Log.e( TAG, "readBytesFromUri error - size");
+                return null;
+            }
             InputStream is = ctx.getContentResolver().openInputStream( uri);
             if ( is != null) {
-                int size = (int) fileSizeFromUri( uri, ctx);
-                bytes = readBytesFromInputStream( is, size);
+                bytes = readBytesFromInputStream( is, (int) size);
                 is.close();
             }
         }  catch ( Exception e){
             bytes = null;
+            Log.e( TAG, "readBytesFromFile Exception");
+            e.printStackTrace();
         }
         return bytes;
     }
 
+    public static byte[] newBytes(final int size) {
+        if ( size <= 0) {
+            return null;
+        }
+
+        byte[] bytes = null;
+        try {
+            bytes = new byte[size];
+        }  catch ( Exception e) {
+            bytes = null;
+            Log.e( TAG, "newBytes(" + size + ") Exception");
+            e.printStackTrace();
+        }  catch ( OutOfMemoryError oom) {
+            bytes = null;
+            Log.e( TAG, "newBytes(" + size + ") OutOfMemoryError");
+        }
+        return bytes;
+    }
 
     public static boolean stringBuilderAddStream( StringBuilder sb, InputStream is) {
         boolean ok = true;
