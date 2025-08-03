@@ -29,6 +29,11 @@ public class HelpWebView extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // TODO: EdgeToEdge - Remove once activities handle insets.
+        // Call before the DecorView is accessed in setContentView
+        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
+
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_help_web_view);

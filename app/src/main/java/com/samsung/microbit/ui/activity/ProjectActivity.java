@@ -623,6 +623,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // TODO: EdgeToEdge - Remove once activities handle insets.
+        // Call before the DecorView is accessed in setContentView
+        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
+
         super.onCreate(savedInstanceState);
 
         MBApp application = MBApp.getApp();
