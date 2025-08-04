@@ -2,6 +2,7 @@ package com.samsung.microbit.ui.activity;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 
 import com.samsung.microbit.R;
@@ -28,6 +29,11 @@ public class NotificationActivity extends Activity {
 
         // Now finish, which will drop you to the activity at which you were at the top of the task stack
         finish();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
     }
 
     @Override
