@@ -29,6 +29,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.app.ActivityCompat;
@@ -1479,6 +1480,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     .setKeepBond(true)
                     .setForeground(true)
                     .setZip( getCachePathAppZip());
+
+            //if ( Build.HARDWARE.equals("ums512_1h10")) {
+            if ( Build.MANUFACTURER.toLowerCase().contains("lenovo")
+                    && Build.DEVICE.toLowerCase().contains("tb328")) {
+                // Lenovo M10 TB328FU with Android 12 returns mtu 247, but DFU fails
+                starter.disableMtuRequest(); //faster than setMtu(23), which also works
+            }
+
             final DfuServiceController controller = starter.start(this, DfuService.class);
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -1490,6 +1499,12 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     .setForceDfu(true)
                     .setPacketsReceiptNotificationsEnabled(true)
                     .setBinOrHex(DfuBaseService.TYPE_APPLICATION, getCachePathAppBin());
+
+            // works with Android 8, but not 14
+            starter.setPacketsReceiptNotificationsValue( 5);
+//            starter.setForceScanningForNewAddressInLegacyDfu(true);
+//           starter.disableMtuRequest();
+
             final DfuServiceController controller = starter.start(this, DfuService.class);
         }
     }
