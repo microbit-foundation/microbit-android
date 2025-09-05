@@ -1481,7 +1481,6 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     .setZip( getCachePathAppZip());
 
             // https://github.com/microbit-foundation/microbit-android/issues/82
-            // ? if ( Build.HARDWARE.equals("ums512_1h10")) {
             if ( Build.MANUFACTURER.toLowerCase().contains("lenovo")
                     && Build.DEVICE.toLowerCase().contains("tb328")) {
                 // Tested with Lenovo M10 TB328FU with Android 12 - returns mtu 247, but DFU fails
