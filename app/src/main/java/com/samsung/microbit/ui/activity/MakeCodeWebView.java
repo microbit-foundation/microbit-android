@@ -69,6 +69,11 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // TODO: EdgeToEdge - Remove once activities handle insets.
+        // Call before the DecorView is accessed in setContentView
+        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
+
         super.onCreate(savedInstanceState);
 
         activityHandle = this;

@@ -324,4 +324,11 @@
     <style name="AlertDialogDarkButtons" parent="Theme.AppCompat.Light.Dialog.Alert">
         <item name="android:textColor">@color/black_color</item>
     </style>
+
+    <!-- TODO: EdgeToEdge - Remove once activities handle insets. -->
+    <style name="OptOutEdgeToEdgeEnforcement">
+        <!-- android:windowOptOutEdgeToEdgeEnforcement
+             isn't supported before SDK 35. This empty
+             style enables programmatically opting-out. -->
+    </style>
 </resources>

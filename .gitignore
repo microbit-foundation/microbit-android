@@ -30,6 +30,8 @@ local.properties
 .idea/caches/
 .idea/codeStyles/
 .idea/deploymentTargetDropDown.xml
+.idea/appInsightsSettings.xml
+.idea/deploymentTargetSelector.xml
 *.iml
 
 # OS-specific files

@@ -122,8 +122,13 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         logi("onCreate() :: ");
+
+        // TODO: EdgeToEdge - Remove once activities handle insets.
+        // Call before the DecorView is accessed in setContentView
+        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
+
+        super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_home);
 

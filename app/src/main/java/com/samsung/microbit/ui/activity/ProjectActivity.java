@@ -623,6 +623,11 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // TODO: EdgeToEdge - Remove once activities handle insets.
+        // Call before the DecorView is accessed in setContentView
+        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
+
         super.onCreate(savedInstanceState);
 
         MBApp application = MBApp.getApp();
@@ -1474,6 +1479,14 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
                     .setKeepBond(true)
                     .setForeground(true)
                     .setZip( getCachePathAppZip());
+
+            // https://github.com/microbit-foundation/microbit-android/issues/82
+            if ( Build.MANUFACTURER.toLowerCase().contains("lenovo")
+                    && Build.DEVICE.toLowerCase().contains("tb328")) {
+                // Tested with Lenovo M10 TB328FU with Android 12 - returns mtu 247, but DFU fails
+                starter.disableMtuRequest(); // faster than setMtu(23), which also works
+            }
+
             final DfuServiceController controller = starter.start(this, DfuService.class);
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
