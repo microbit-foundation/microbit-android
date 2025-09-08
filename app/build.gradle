@@ -40,7 +40,8 @@ dependencies {
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
     implementation 'pl.droidsonroids.gif:android-gif-drawable:1.2.29'
-    implementation 'no.nordicsemi.android:dfu:2.9.0'
+    //implementation 'no.nordicsemi.android:dfu:2.9.0'
+    implementation project(':dfu')
     implementation project(':pfLibrary')
     implementation 'com.google.android.gms:play-services-analytics:18.1.1'
     implementation 'com.google.code.gson:gson:2.13.1'

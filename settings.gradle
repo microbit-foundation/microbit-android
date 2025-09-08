@@ -1,2 +1,4 @@
 include ':app'
 include ':pfLibrary'
+include ':dfu'
+project(':dfu').projectDir = new File(rootDir, 'Android-DFU-Library/lib/dfu/')
