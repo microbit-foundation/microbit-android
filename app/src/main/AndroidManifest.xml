@@ -66,6 +66,7 @@
 
         <activity
             android:name=".ui.activity.HomeActivity"
+            android:theme="@style/AppTheme.NoActionBar.EdgeMainGray"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:label="@string/home_activity_name"
             android:launchMode="singleTop"/>
