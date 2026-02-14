@@ -64,6 +64,9 @@
         android:theme="@style/AppTheme.NoActionBar"
         android:requestLegacyExternalStorage="true"
         android:enableOnBackInvokedCallback="false">
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true"/>
 
         <activity
             android:name=".ui.activity.HomeActivity"
