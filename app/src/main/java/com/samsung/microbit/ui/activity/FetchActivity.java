@@ -40,6 +40,7 @@ import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
+import androidx.core.view.WindowCompat;
 
 import com.samsung.microbit.MBApp;
 import com.samsung.microbit.MBAppState;
@@ -246,11 +247,8 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
     protected void onCreate(Bundle savedInstanceState) {
         logi("onCreate");
 
-        // TODO: EdgeToEdge - Remove once activities handle insets.
-        // Call before the DecorView is accessed in setContentView
-        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
-
         super.onCreate(savedInstanceState);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         displayCreate();
 
