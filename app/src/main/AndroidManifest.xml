@@ -137,6 +137,7 @@
             android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activity.PairingActivity"
+            android:theme="@style/AppTheme.NoActionBar.EdgeMainGray"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:label="@string/title_activity_connect"
             android:launchMode="singleTop"

@@ -36,6 +36,8 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.samsung.microbit.MBApp;
@@ -848,11 +850,8 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
     protected void onCreate(Bundle savedInstanceState) {
         logi("onCreate() ::");
 
-        // TODO: EdgeToEdge - Remove once activities handle insets.
-        // Call before the DecorView is accessed in setContentView
-        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
-
         super.onCreate(savedInstanceState);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         MBApp application = MBApp.getApp();
 
@@ -879,6 +878,16 @@ public class PairingActivity extends Activity implements View.OnClickListener, B
 
         // setContentView takes just over 2s
         setContentView(R.layout.activity_connect);
+
+        // Pass insets to children
+        ViewCompat.setOnApplyWindowInsetsListener( findViewById(R.id.ll_pairing_activity_screen), (v, windowInsets) -> {
+            LinearLayout root = (LinearLayout) v;
+            int childCount = root.getChildCount();
+            for (int index = 0; index < childCount; ++index) {
+                ViewCompat.dispatchApplyWindowInsets( root.getChildAt(index), windowInsets);
+            }
+            return windowInsets;
+        });
 
         initViews();
 

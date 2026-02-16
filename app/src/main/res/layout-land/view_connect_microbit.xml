@@ -3,40 +3,49 @@
     android:id="@+id/connectDeviceView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
-
-    <!-- Toolbar-->
-    <include layout="@layout/pairing_toolbar" />
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
 
     <LinearLayout
-        android:layout_centerInParent="true"
+        android:id="@+id/connectDeviceViewInner"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="?attr/actionBarSize">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@drawable/bg">
 
-        <RelativeLayout
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="match_parent"
-            android:layout_marginTop="@dimen/connections_container_with_button_margin"
-            android:layout_marginBottom="@dimen/connections_container_with_button_margin"
-            android:layout_marginStart="@dimen/connections_container_with_button_margin"
-            android:layout_marginEnd="@dimen/connections_container_layouts_indentation"
-            android:orientation="vertical">
-            <!-- Pairing state-->
-            <include layout="@layout/pairing_device_state" />
+        <!-- Toolbar-->
+        <include layout="@layout/pairing_toolbar" />
 
-            <!-- Start pairing-->
-            <include layout="@layout/pairing_start_pairing_devices"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_alignParentBottom="true"/>
-        </RelativeLayout>
-
-        <!-- Manage devices -->
-        <include layout="@layout/pairing_manage_devices"
+        <LinearLayout
+            android:layout_centerInParent="true"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_width="0dp"
-            android:layout_weight="1" />
+            android:paddingTop="?attr/actionBarSize">
+
+            <RelativeLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="match_parent"
+                android:layout_marginTop="@dimen/connections_container_with_button_margin"
+                android:layout_marginBottom="@dimen/connections_container_with_button_margin"
+                android:layout_marginStart="@dimen/connections_container_with_button_margin"
+                android:layout_marginEnd="@dimen/connections_container_layouts_indentation"
+                android:orientation="vertical">
+                <!-- Pairing state-->
+                <include layout="@layout/pairing_device_state" />
+
+                <!-- Start pairing-->
+                <include layout="@layout/pairing_start_pairing_devices"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentBottom="true"/>
+            </RelativeLayout>
+
+            <!-- Manage devices -->
+            <include layout="@layout/pairing_manage_devices"
+                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_weight="1" />
+        </LinearLayout>
     </LinearLayout>
 </RelativeLayout>

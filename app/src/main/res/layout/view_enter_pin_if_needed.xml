@@ -3,7 +3,8 @@
     android:id="@+id/enterPinIfNeededView"
     style="@style/pairing_step_layout_style"
     android:gravity="center_horizontal"
-    android:keepScreenOn="true">
+    android:keepScreenOn="true"
+    android:fitsSystemWindows="true">
 
     <!-- Title -->
     <TextView
