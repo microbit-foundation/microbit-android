@@ -21,6 +21,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -34,6 +35,10 @@ import androidx.appcompat.widget.PopupMenu;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.samsung.microbit.MBApp;
@@ -624,11 +629,8 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        // TODO: EdgeToEdge - Remove once activities handle insets.
-        // Call before the DecorView is accessed in setContentView
-        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
-
         super.onCreate(savedInstanceState);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         MBApp application = MBApp.getApp();
 
@@ -647,6 +649,17 @@ public class ProjectActivity extends Activity implements View.OnClickListener, B
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         setContentView(R.layout.activity_projects);
+
+        // Pass insets to children
+        ViewCompat.setOnApplyWindowInsetsListener( findViewById(R.id.layout), (v, windowInsets) -> {
+            LinearLayout root = (LinearLayout) v;
+            int childCount = root.getChildCount();
+            for (int index = 0; index < childCount; ++index) {
+                ViewCompat.dispatchApplyWindowInsets( root.getChildAt(index), windowInsets);
+            }
+            return windowInsets;
+        });
+
         initViews();
         setupFontStyle();
 
