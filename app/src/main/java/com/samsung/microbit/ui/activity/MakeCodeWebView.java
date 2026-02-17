@@ -9,6 +9,8 @@ import android.os.Looper;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -17,6 +19,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.samsung.microbit.BuildConfig;
@@ -31,7 +34,11 @@ import java.io.FileOutputStream;
 
 import static android.content.ContentValues.TAG;
 
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 /**
  * Displays MakeCode
@@ -54,19 +61,35 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     private boolean mRelaunchOnFinishNavigation = false;
     private String  mRelaunchURL = makecodeUrl;
 
-
     public static void setMakecodeUrl(String url) {
         makecodeUrl = url;
+    }
+
+    protected void showSystemBars( boolean show) {
+        WindowInsetsControllerCompat wIC =
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (wIC == null) {
+            return;
+        }
+
+        int type = WindowInsetsCompat.Type.statusBars();
+        if (show) {
+            wIC.show(type);
+        } else {
+            wIC.hide(type);
+        }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+        showSystemBars( false);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        showSystemBars( true);
     }
 
     @Override
@@ -77,8 +100,19 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
         activityHandle = this;
 
-        setContentView(R.layout.activity_help_web_view);
-        webView = (WebView) findViewById(R.id.generalView);
+        setContentView(R.layout.activity_makecode);
+
+        ViewCompat.setOnApplyWindowInsetsListener( findViewById(R.id.MakeCode), (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            mlp.leftMargin = insets.left;
+            mlp.bottomMargin = insets.bottom;
+            mlp.rightMargin = insets.right;
+            v.setLayoutParams(mlp);
+            return WindowInsetsCompat.CONSUMED;
+        });
+
+        webView = (WebView) findViewById(R.id.MakeCodeWebView);
 
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
