@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/rootLayout"
-    style="@style/popup_layout_style">
+    style="@style/popup_layout_style"
+    android:fitsSystemWindows="true">
 
     <RelativeLayout
         android:id="@+id/pop_gif_and_image_view_layout"

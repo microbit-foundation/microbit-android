@@ -16,6 +16,7 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.core.view.WindowCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.samsung.microbit.MBApp;
@@ -190,11 +191,8 @@ public class PopUpActivity extends Activity implements View.OnClickListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        // TODO: EdgeToEdge - Remove once activities handle insets.
-        // Call before the DecorView is accessed in setContentView
-        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
-
         super.onCreate(savedInstanceState);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         Log.d("PopUpActivity", "onCreate() popuptype = " + getIntent().getIntExtra(INTENT_EXTRA_TYPE, PopUp.TYPE_NONE));
         setContentView(R.layout.activity_popup);
