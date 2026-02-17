@@ -23,6 +23,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.view.WindowCompat;
 
 import com.samsung.microbit.R;
 import com.samsung.microbit.plugin.AudioRecordPlugin;
@@ -109,11 +110,8 @@ public class AudioRecorderActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        // TODO: EdgeToEdge - Remove once activities handle insets.
-        // Call before the DecorView is accessed in setContentView
-        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
-
         super.onCreate(savedInstanceState);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         mLaunchActivity = false;
 
