@@ -104,7 +104,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
         ViewCompat.setOnApplyWindowInsetsListener( findViewById(R.id.MakeCode), (v, windowInsets) -> {
             Insets insets = windowInsets.getInsets(
-                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout() | WindowInsetsCompat.Type.ime());
             ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
             mlp.leftMargin = insets.left;
             mlp.bottomMargin = insets.bottom;
