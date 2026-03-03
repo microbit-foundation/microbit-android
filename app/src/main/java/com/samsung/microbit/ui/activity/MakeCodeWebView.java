@@ -2,7 +2,10 @@ package com.samsung.microbit.ui.activity;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.graphics.Rect;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,7 +13,9 @@ import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -34,6 +39,7 @@ import java.io.FileOutputStream;
 
 import static android.content.ContentValues.TAG;
 
+import androidx.annotation.NonNull;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -60,6 +66,7 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private boolean mRelaunchOnFinishNavigation = false;
     private String  mRelaunchURL = makecodeUrl;
+    private int     mKeypadHeight = -1;
 
     public static void setMakecodeUrl(String url) {
         makecodeUrl = url;
@@ -93,6 +100,12 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
     }
 
     @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        ViewCompat.requestApplyInsets( findViewById(R.id.MakeCode));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
 
         super.onCreate(savedInstanceState);
@@ -113,6 +126,26 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
             v.setLayoutParams(mlp);
             return WindowInsetsCompat.CONSUMED;
         });
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            findViewById(R.id.MakeCode).getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    Rect r = new Rect();
+
+                    View rootView = findViewById(R.id.MakeCode);
+                    rootView.getWindowVisibleDisplayFrame(r);
+                    int screenHeight = rootView.getRootView().getHeight();
+                    int keypadHeight = screenHeight - r.bottom;
+
+                    if ( mKeypadHeight != keypadHeight) {
+                        Log.v(TAG, "onGlobalLayout keypad changed");
+                        mKeypadHeight = keypadHeight;
+                        ViewCompat.requestApplyInsets(findViewById(R.id.MakeCode));
+                     }
+                }
+            });
+        }
 
         webView = (WebView) findViewById(R.id.MakeCodeWebView);
 
@@ -299,7 +332,6 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webView.loadUrl(makecodeUrl);
         MBApp.getAppState().eventPairMakeCodeBegin();
     } // onCreate
-
 
     private boolean showFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
         onShowFileChooser_filePathCallback = filePathCallback;

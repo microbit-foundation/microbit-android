@@ -161,7 +161,7 @@
             android:launchMode="singleTask"/>
         <activity
             android:name=".ui.activity.MakeCodeWebView"
-            android:configChanges="orientation|screenSize"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden"
             android:label="MakeCode Webview"
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTask"
