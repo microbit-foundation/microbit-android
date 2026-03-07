@@ -31,6 +31,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -40,6 +41,7 @@ import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 
 import com.samsung.microbit.MBApp;
@@ -739,12 +741,34 @@ public class FetchActivity extends Activity implements View.OnClickListener, UIU
         //Remove title bar
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.fetch_main);
+
+        // Pass insets to children
+        ViewCompat.setOnApplyWindowInsetsListener( findViewById(R.id.fetchMain), (v, windowInsets) -> {
+            LinearLayout root = (LinearLayout) v;
+            int childCount = root.getChildCount();
+            for (int index = 0; index < childCount; ++index) {
+                ViewCompat.dispatchApplyWindowInsets( root.getChildAt(index), windowInsets);
+            }
+            return windowInsets;
+        });
+
         displayHtmlDelete();
         displayInit();
     }
 
     public void displayConfigurationChanged(Configuration newConfig) {
         setContentView(R.layout.fetch_main);
+
+        // Pass insets to children
+        ViewCompat.setOnApplyWindowInsetsListener( findViewById(R.id.fetchMain), (v, windowInsets) -> {
+            LinearLayout root = (LinearLayout) v;
+            int childCount = root.getChildCount();
+            for (int index = 0; index < childCount; ++index) {
+                ViewCompat.dispatchApplyWindowInsets( root.getChildAt(index), windowInsets);
+            }
+            return windowInsets;
+        });
+
         displayInit();
     }
 
