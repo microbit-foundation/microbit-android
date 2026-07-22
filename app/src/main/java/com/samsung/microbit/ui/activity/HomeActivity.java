@@ -193,7 +193,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
 
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                (Activity) this, (DrawerLayout) mDrawer, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                this, mDrawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
 
         boolean shareStats = false;
         mPrefs = getSharedPreferences("com.samsung.microbit", MODE_PRIVATE);

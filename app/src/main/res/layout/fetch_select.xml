@@ -68,7 +68,7 @@
         android:layout_height="0dp"
         android:layout_gravity="center"
         android:gravity="center"
-        android:contentDescription="@null"
+        android:contentDescription="@string/fetch_works_with_micro_bit_v2_only"
         android:src="@drawable/v2only"/>
 
     <View
