@@ -2,66 +2,75 @@
     android:id="@+id/viewProjectsProjects"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg"
-    android:orientation="vertical">
+    android:background="@color/main_gray_color"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true">
 
     <!-- App bar -->
     <include layout="@layout/projects_app_bar" />
 
-    <!-- Project list -->
     <LinearLayout
+        android:id="@+id/viewProjectsProjectsInner"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="@dimen/project_items_layout_margin_top"
-        android:layout_weight="1"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg"
         android:orientation="vertical">
 
-        <include layout="@layout/project_list" />
-
-        <TextView
-            android:id="@+id/project_list_empty"
-            style="@style/h1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:backgroundTintMode="screen"
-            android:gravity="center"
-            android:text="@string/no_projects"
-            android:visibility="gone"/>
-
-    </LinearLayout>
-
-    <include layout="@layout/view_divider" />
-
-    <!-- Bottom panel -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/main_gray_transparent_60_opacity_color"
-        android:gravity="center_horizontal"
-        android:weightSum="2">
-
-        <!-- Fetch button -->
+        <!-- Project list -->
         <LinearLayout
-            android:id="@+id/projectFetch"
-            style="@style/custom_button_layout"
-            android:layout_width="0dp"
-            android:layout_weight="@integer/project_fetch_button_weight"
-            android:layout_margin="@dimen/project_fetch_button_margin"
-            android:background="@drawable/black_btn"
-            android:onClick="onClick">
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/project_items_layout_margin_top"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-            <ImageView
-                style="@style/custom_button_image"
-                android:contentDescription="@string/desc_fetch"
-                android:src="@drawable/ic_fetch" />
+            <include layout="@layout/project_list" />
 
             <TextView
-                android:id="@+id/projectFetchText"
-                style="@style/fetch_button_text"
-                android:layout_width="wrap_content"
+                android:id="@+id/project_list_empty"
+                style="@style/h1"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/fetch_my_data" />
+                android:layout_gravity="center"
+                android:backgroundTintMode="screen"
+                android:gravity="center"
+                android:text="@string/no_projects"
+                android:visibility="gone"/>
+
+        </LinearLayout>
+
+        <include layout="@layout/view_divider" />
+
+        <!-- Bottom panel -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/main_gray_transparent_60_opacity_color"
+            android:gravity="center_horizontal"
+            android:weightSum="2">
+
+            <!-- Fetch button -->
+            <LinearLayout
+                android:id="@+id/projectFetch"
+                style="@style/custom_button_layout"
+                android:layout_width="0dp"
+                android:layout_weight="@integer/project_fetch_button_weight"
+                android:layout_margin="@dimen/project_fetch_button_margin"
+                android:background="@drawable/black_btn"
+                android:onClick="onClick">
+
+                <ImageView
+                    style="@style/custom_button_image"
+                    android:contentDescription="@string/desc_fetch"
+                    android:src="@drawable/ic_fetch" />
+
+                <TextView
+                    android:id="@+id/projectFetchText"
+                    style="@style/fetch_button_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/fetch_my_data" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

@@ -62,10 +62,15 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme.NoActionBar"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:enableOnBackInvokedCallback="false">
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true"/>
 
         <activity
             android:name=".ui.activity.HomeActivity"
+            android:theme="@style/AppTheme.NoActionBar.EdgeMainGray"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:label="@string/home_activity_name"
             android:launchMode="singleTop"/>
@@ -73,6 +78,7 @@
         <!-- label was changed(removed colon), because some file managers (e.g. Total Commander) cannot open the activity.-->
         <activity
             android:name=".ui.activity.ProjectActivity"
+            android:theme="@style/AppTheme.NoActionBar.EdgeMainGray"
             android:label="@string/app_name_without_colon"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize"
@@ -132,6 +138,7 @@
             android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activity.PairingActivity"
+            android:theme="@style/AppTheme.NoActionBar.EdgeMainGray"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:label="@string/title_activity_connect"
             android:launchMode="singleTop"
@@ -154,8 +161,9 @@
             android:launchMode="singleTask"/>
         <activity
             android:name=".ui.activity.MakeCodeWebView"
-            android:configChanges="orientation|screenSize"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden"
             android:label="MakeCode Webview"
+            android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTask"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"/>
         <activity

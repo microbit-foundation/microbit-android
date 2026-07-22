@@ -2,13 +2,20 @@ package com.samsung.microbit.ui.activity;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.res.Configuration;
+import android.graphics.Rect;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
+import android.view.Window;
+import android.view.WindowInsets;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -17,6 +24,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.samsung.microbit.BuildConfig;
@@ -30,6 +38,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 
 import static android.content.ContentValues.TAG;
+
+import androidx.annotation.NonNull;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 /**
  * Displays MakeCode
@@ -51,35 +66,88 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
 
     private boolean mRelaunchOnFinishNavigation = false;
     private String  mRelaunchURL = makecodeUrl;
-
+    private int     mKeypadHeight = -1;
 
     public static void setMakecodeUrl(String url) {
         makecodeUrl = url;
     }
 
+    protected void showSystemBars( boolean show) {
+        WindowInsetsControllerCompat wIC =
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (wIC == null) {
+            return;
+        }
+
+        int type = WindowInsetsCompat.Type.statusBars();
+        if (show) {
+            wIC.show(type);
+        } else {
+            wIC.hide(type);
+        }
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
+        showSystemBars( false);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        showSystemBars( true);
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        ViewCompat.requestApplyInsets( findViewById(R.id.MakeCode));
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        // TODO: EdgeToEdge - Remove once activities handle insets.
-        // Call before the DecorView is accessed in setContentView
-        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
-
         super.onCreate(savedInstanceState);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         activityHandle = this;
 
-        setContentView(R.layout.activity_help_web_view);
-        webView = (WebView) findViewById(R.id.generalView);
+        setContentView(R.layout.activity_makecode);
+
+        ViewCompat.setOnApplyWindowInsetsListener( findViewById(R.id.MakeCode), (v, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout() | WindowInsetsCompat.Type.ime());
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+            mlp.leftMargin = insets.left;
+            mlp.bottomMargin = insets.bottom;
+            mlp.rightMargin = insets.right;
+            mlp.topMargin = insets.top;
+            v.setLayoutParams(mlp);
+            return WindowInsetsCompat.CONSUMED;
+        });
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            findViewById(R.id.MakeCode).getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    Rect r = new Rect();
+
+                    View rootView = findViewById(R.id.MakeCode);
+                    rootView.getWindowVisibleDisplayFrame(r);
+                    int screenHeight = rootView.getRootView().getHeight();
+                    int keypadHeight = screenHeight - r.bottom;
+
+                    if ( mKeypadHeight != keypadHeight) {
+                        Log.v(TAG, "onGlobalLayout keypad changed");
+                        mKeypadHeight = keypadHeight;
+                        ViewCompat.requestApplyInsets(findViewById(R.id.MakeCode));
+                     }
+                }
+            });
+        }
+
+        webView = (WebView) findViewById(R.id.MakeCodeWebView);
 
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
@@ -264,7 +332,6 @@ public class MakeCodeWebView extends Activity implements View.OnClickListener {
         webView.loadUrl(makecodeUrl);
         MBApp.getAppState().eventPairMakeCodeBegin();
     } // onCreate
-
 
     private boolean showFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
         onShowFileChooser_filePathCallback = filePathCallback;

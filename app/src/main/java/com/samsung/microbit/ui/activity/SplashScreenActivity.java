@@ -12,6 +12,8 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 
+import androidx.core.view.WindowCompat;
+
 import com.samsung.microbit.R;
 
 import pl.droidsonroids.gif.GifDrawable;
@@ -45,11 +47,8 @@ public class SplashScreenActivity extends Activity implements View.OnClickListen
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        // TODO: EdgeToEdge - Remove once activities handle insets.
-        // Call before the DecorView is accessed in setContentView
-        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
-
         super.onCreate(savedInstanceState);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         setContentView(R.layout.activity_splash_screen);
         initViews();

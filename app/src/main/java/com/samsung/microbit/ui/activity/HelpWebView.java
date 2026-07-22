@@ -8,6 +8,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import androidx.core.view.WindowCompat;
+
 import com.samsung.microbit.R;
 
 /**
@@ -30,11 +32,8 @@ public class HelpWebView extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        // TODO: EdgeToEdge - Remove once activities handle insets.
-        // Call before the DecorView is accessed in setContentView
-        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
-
         super.onCreate(savedInstanceState);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         setContentView(R.layout.activity_help_web_view);
         webView = (WebView) findViewById(R.id.generalView);

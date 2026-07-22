@@ -32,6 +32,9 @@ local.properties
 .idea/deploymentTargetDropDown.xml
 .idea/appInsightsSettings.xml
 .idea/deploymentTargetSelector.xml
+.idea/AndroidProjectSystem.xml
+.idea/runConfigurations.xml
+.idea/deviceManager.xml
 *.iml
 
 # OS-specific files

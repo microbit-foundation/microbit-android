@@ -33,6 +33,8 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
 import androidx.core.view.GravityCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.samsung.microbit.MBApp;
@@ -124,11 +126,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         logi("onCreate() :: ");
 
-        // TODO: EdgeToEdge - Remove once activities handle insets.
-        // Call before the DecorView is accessed in setContentView
-        getTheme().applyStyle(R.style.OptOutEdgeToEdgeEnforcement, /* force */ false);
-
         super.onCreate(savedInstanceState);
+        WindowCompat.enableEdgeToEdge(getWindow());
 
         setContentView(R.layout.activity_home);
 
@@ -170,6 +169,12 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
      * Creates and setups side navigation menu.
      */
     private void setupDrawer() {
+
+        // DrawLayout passes insets to children
+        // Allow left side menu (custom_nav_header_main, nav_view) to pass insets to child ScrollView
+        ViewCompat.setOnApplyWindowInsetsListener( findViewById(R.id.nav_view), (v, windowInsets) -> {
+            return windowInsets;
+        });
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         toolbar.setNavigationContentDescription(R.string.content_description_toolbar_home);

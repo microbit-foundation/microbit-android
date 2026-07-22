@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/newDeviceView"
-    style="@style/pairing_step_layout_style">
+    style="@style/pairing_step_layout_style"
+    android:fitsSystemWindows="true">
 
     <!-- New Device title -->
     <TextView

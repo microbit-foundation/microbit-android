@@ -5,7 +5,8 @@
     android:paddingLeft="10dp"
     android:paddingRight="10dp"
     android:gravity="center"
-    android:id="@+id/layout">
+    android:id="@+id/layout"
+    android:fitsSystemWindows="true">
 
     <ImageView
         android:layout_width="@dimen/audio_mic_size"

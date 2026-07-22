@@ -9,7 +9,8 @@
     android:gravity="center"
     android:padding="16dp"
     android:orientation="horizontal"
-    android:weightSum="100">
+    android:weightSum="100"
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:id="@+id/viewProjectsSearchingLeft"
